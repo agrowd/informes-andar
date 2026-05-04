@@ -46,6 +46,7 @@ export default function YoungsPage() {
   const [reportsHistory, setReportsHistory] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   const loadYoungs = async (pageNum: number = page) => {
     try {
@@ -201,7 +202,7 @@ export default function YoungsPage() {
               <h3 style={{ marginBottom: 15, borderBottom: '2px solid #f1f5f9', paddingBottom: 8 }}>1. Foto y Nombre</h3>
               <div style={{ display: 'flex', gap: 25, alignItems: 'flex-start', flexWrap: 'wrap' }}>
                 <div style={{ width: 140 }}>
-                  <ImageUpload value={form.foto || ''} onChange={url => setForm({...form, foto: url})} label="Foto" type="young" />
+                  <ImageUpload value={form.foto || ''} onChange={url => setForm({...form, foto: url})} onLoading={setIsUploading} label="Foto" type="young" />
                 </div>
                 <div style={{ flex: 1, minWidth: 280 }}>
                   <label>Nombre Completo del Joven<br/>
@@ -235,7 +236,9 @@ export default function YoungsPage() {
           </div>
           
           <div style={{ marginTop: 40, borderTop: '1px solid var(--border)', paddingTop: 20 }}>
-            <button className="ga-btn primary" style={{ padding: '12px 40px', fontSize: 16 }} onClick={handleSave}>Finalizar Alta</button>
+            <button className="ga-btn primary" style={{ padding: '12px 40px', fontSize: 16 }} onClick={handleSave} disabled={isSaving || isUploading}>
+              {isSaving ? 'Guardando...' : isUploading ? 'Subiendo foto...' : 'Finalizar Alta'}
+            </button>
           </div>
         </div>
       </div>
@@ -260,7 +263,7 @@ export default function YoungsPage() {
           <div className="ga-card" style={{ padding: 30 }}>
             <div style={{ display: 'flex', gap: 30, flexWrap: 'wrap' }}>
               <div style={{ width: 180 }}>
-                <ImageUpload value={form.foto || ''} onChange={url => setForm({...form, foto: url})} label="Cambiar Foto" type="young" />
+                <ImageUpload value={form.foto || ''} onChange={url => setForm({...form, foto: url})} onLoading={setIsUploading} label="Cambiar Foto" type="young" />
               </div>
               <div style={{ flex: 1, minWidth: 300 }}>
                 <div className="ga-form-grid">
@@ -295,8 +298,8 @@ export default function YoungsPage() {
             </div>
 
             <div style={{ marginTop: 40, display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #f1f5f9', paddingTop: 25 }}>
-              <button className="ga-btn primary" style={{ padding: '10px 30px' }} onClick={handleSave} disabled={isSaving}>
-                {isSaving ? 'Guardando...' : 'Guardar Todos los Cambios'}
+              <button className="ga-btn primary" style={{ padding: '10px 30px' }} onClick={handleSave} disabled={isSaving || isUploading}>
+                {isSaving ? 'Guardando...' : isUploading ? 'Subiendo foto...' : 'Guardar Todos los Cambios'}
               </button>
               <button className="ga-btn" style={{ color: 'white', background: 'var(--error)', border: 'none' }} onClick={() => deleteYoung(selectedYoung.id || selectedYoung._id || '')}>Eliminar Joven Definitivamente</button>
             </div>

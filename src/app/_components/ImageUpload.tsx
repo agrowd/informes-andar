@@ -9,6 +9,7 @@ interface ImageUploadProps {
   maxSize?: number; // en MB
   disabled?: boolean;
   className?: string;
+  onLoading?: (loading: boolean) => void;
 }
 
 export default function ImageUpload({ 
@@ -16,51 +17,87 @@ export default function ImageUpload({
   onChange, 
   label = 'Subir imagen',
   type = 'general',
-  maxSize = 5,
+  maxSize = 10,
   disabled = false,
-  className = ''
+  className = '',
+  onLoading
 }: ImageUploadProps) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const [preview, setPreview] = useState<string | null>(value || null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Sincronizar vista previa con el valor externo
   useEffect(() => {
     setPreview(value || null);
   }, [value]);
 
+  const compressImage = (file: File): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target?.result as string;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 800;
+          const MAX_HEIGHT = 800;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+
+          canvas.toBlob((blob) => {
+            if (blob) resolve(blob);
+            else reject(new Error('Canvas to Blob failed'));
+          }, 'image/jpeg', 0.7); // 0.7 es la calidad de compresión
+        };
+        img.onerror = () => reject(new Error('Image load failed'));
+      };
+      reader.onerror = () => reject(new Error('File read failed'));
+    });
+  };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validar tipo
     if (!file.type.startsWith('image/')) {
       setError('Solo se permiten archivos de imagen');
       return;
     }
 
-    // Validar tamaño
-    if (file.size > maxSize * 1024 * 1024) {
-      setError(`El archivo es demasiado grande. Máximo ${maxSize}MB`);
-      return;
-    }
+    // Preview local rápido
+    const localReader = new FileReader();
+    localReader.onloadend = () => setPreview(localReader.result as string);
+    localReader.readAsDataURL(file);
 
-    // Preview local
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setPreview(reader.result as string);
-    };
-    reader.readAsDataURL(file);
-
-    // Subir archivo
     setUploading(true);
+    if (onLoading) onLoading(true);
     setError('');
 
     try {
+      console.log(`[CLIENT] Comprimiendo imagen original: ${file.size} bytes`);
+      const compressedBlob = await compressImage(file);
+      console.log(`[CLIENT] Imagen comprimida: ${compressedBlob.size} bytes`);
+
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append('file', compressedBlob, 'upload.jpg');
       formData.append('type', type);
 
       const res = await fetch('/api/upload', {
@@ -75,16 +112,16 @@ export default function ImageUpload({
         setError('');
       } else {
         setError(data.error || 'Error al subir la imagen');
-        setPreview(null);
+        setPreview(value || null);
       }
     } catch (err) {
-      setError('Error al subir la imagen');
-      setPreview(null);
+      console.error(err);
+      setError('Error al procesar la imagen');
+      setPreview(value || null);
     } finally {
       setUploading(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
+      if (onLoading) onLoading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -92,22 +129,20 @@ export default function ImageUpload({
     setPreview(null);
     onChange('');
     setError('');
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
   };
 
   return (
     <div className={className} style={{ marginTop: 8 }}>
-      {label && <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>{label}</label>}
+      {label && <label style={{ display: 'block', marginBottom: 8, fontWeight: 600 }}>{label}</label>}
       
       {preview ? (
         <div style={{ 
           position: 'relative', 
           display: 'inline-block',
-          borderRadius: 8,
+          borderRadius: 12,
           overflow: 'hidden',
-          border: '2px solid var(--border)'
+          border: '2px solid var(--border)',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
         }}>
           <img 
             src={preview} 
@@ -115,104 +150,90 @@ export default function ImageUpload({
             style={{ 
               display: 'block',
               maxWidth: '100%',
-              maxHeight: 300,
-              objectFit: 'contain',
-              background: '#f5f5f5'
+              width: 140,
+              height: 140,
+              objectFit: 'cover',
+              background: '#f8fafc'
             }} 
           />
           {!disabled && (
             <button
               type="button"
               onClick={handleRemove}
-              className="ga-btn"
               style={{
                 position: 'absolute',
-                top: 8,
-                right: 8,
+                top: 4,
+                right: 4,
                 background: 'rgba(220, 38, 38, 0.9)',
                 color: 'white',
                 border: 'none',
-                padding: '6px 10px',
-                borderRadius: 6,
+                width: 24,
+                height: 24,
+                borderRadius: '50%',
                 cursor: 'pointer',
-                fontSize: 12
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 10
               }}
+              title="Eliminar"
             >
-              ✕ Eliminar
+              ✕
             </button>
+          )}
+          {uploading && (
+            <div style={{
+              position: 'absolute',
+              inset: 0,
+              background: 'rgba(255,255,255,0.7)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: 12,
+              fontWeight: 'bold'
+            }}>
+              Subiendo...
+            </div>
           )}
         </div>
       ) : (
         <div
           onClick={() => !disabled && !uploading && fileInputRef.current?.click()}
           style={{
+            width: 140,
+            height: 140,
             border: '2px dashed var(--border)',
-            borderRadius: 8,
-            padding: '24px',
+            borderRadius: 12,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
             textAlign: 'center',
             cursor: disabled ? 'not-allowed' : 'pointer',
-            background: disabled ? '#f5f5f5' : 'white',
+            background: '#f8fafc',
             transition: 'all 0.2s',
-            opacity: disabled ? 0.6 : 1
-          }}
-          onMouseEnter={(e) => {
-            if (!disabled && !uploading) {
-              e.currentTarget.style.borderColor = 'var(--primary)';
-              e.currentTarget.style.background = '#f0f7ff';
-            }
-          }}
-          onMouseLeave={(e) => {
-            if (!disabled && !uploading) {
-              e.currentTarget.style.borderColor = 'var(--border)';
-              e.currentTarget.style.background = 'white';
-            }
+            opacity: uploading ? 0.6 : 1
           }}
         >
-          {uploading ? (
-            <div>
-              <div style={{ fontSize: 24, marginBottom: 8 }}>⏳</div>
-              <div style={{ color: 'var(--muted)' }}>Subiendo imagen...</div>
-            </div>
-          ) : (
-            <div>
-              <div style={{ fontSize: 32, marginBottom: 8 }}>📷</div>
-              <div style={{ fontWeight: 500, marginBottom: 4 }}>Haz clic para subir imagen</div>
-              <div style={{ fontSize: 12, color: 'var(--muted)' }}>
-                JPG, PNG, WebP o GIF (máx. {maxSize}MB)
-              </div>
-            </div>
-          )}
+          <div style={{ fontSize: 24 }}>📷</div>
+          <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 4 }}>
+            {uploading ? 'Subiendo...' : 'Subir Foto'}
+          </div>
         </div>
       )}
 
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
+        accept="image/*"
         onChange={handleFileSelect}
         disabled={disabled || uploading}
         style={{ display: 'none' }}
       />
 
       {error && (
-        <div style={{
-          marginTop: 8,
-          padding: 8,
-          background: '#fee',
-          color: '#c33',
-          borderRadius: 6,
-          fontSize: 13
-        }}>
-          {error}
-        </div>
-      )}
-
-      {value && !preview && (
-        <div style={{ marginTop: 8, fontSize: 12, color: 'var(--muted)' }}>
-          Imagen actual: <a href={value} target="_blank" rel="noopener noreferrer">{value}</a>
-        </div>
+        <div style={{ marginTop: 4, color: 'var(--error)', fontSize: 11 }}>{error}</div>
       )}
     </div>
   );
 }
-
