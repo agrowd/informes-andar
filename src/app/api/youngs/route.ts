@@ -8,6 +8,15 @@ export const dynamic = 'force-dynamic';
 export async function GET(req: NextRequest) {
   try {
     await connectToDB();
+
+    // MIGRACIÓN RÁPIDA: Ampliar columna foto a TEXT para soportar Base64
+    if (sql) {
+      try {
+        await sql`ALTER TABLE youngs ALTER COLUMN foto TYPE TEXT`;
+      } catch (e) {
+        // Ya es TEXT o la tabla aún no existe
+      }
+    }
     const session = await getServerSession(authOptions as any) as any;
     const role = (session?.user as any)?.role || 'FACILITADOR';
     const userId = (session?.user as any)?.id;
