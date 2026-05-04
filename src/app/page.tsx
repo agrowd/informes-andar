@@ -334,7 +334,27 @@ function FormContent() {
 	// Cargar datos del joven cuando se selecciona
 	useEffect(() => {
 		const youngId = data?.datosGenerales?.youngId;
-		if (!youngId) return;
+		
+		if (!youngId) {
+			// LIMPIEZA: Si no hay joven seleccionado, resetear campos vinculados al perfil
+			setData((prev: any) => ({
+				...prev,
+				datosGenerales: {
+					...(prev?.datosGenerales || {}),
+					nombreCompleto: '',
+					fotoJoven: '',
+					numeroLegajo: '',
+					obraSocial: '',
+					fechaNacimiento: '',
+					youngId: ''
+				},
+				circuloApoyo: {
+					...(prev?.circuloApoyo || {}),
+					miembros: []
+				}
+			}));
+			return;
+		}
 
 		const selectedYoung = youngs.find((y: any) => (y._id || y.id) === youngId);
 		if (selectedYoung) {
@@ -1067,7 +1087,11 @@ function FormContent() {
 					<label><EditableText k="sec.1.joven" fallback="Joven" tag="span" /> <span style={{ color: '#d00' }}>*</span><br />
 						<select className="ga-select" value={data.datosGenerales?.youngId || ''} onChange={(e) => onChange('datosGenerales.youngId', e.target.value)}>
 							<option value="">Seleccione…</option>
-							{youngs.map((y) => <option key={y._id} value={y._id}>{y.nombreCompleto}</option>)}
+							{youngs.map((y) => (
+								<option key={y._id || y.id} value={y._id || y.id}>
+									{y.nombreCompleto} {y.dni ? ` - DNI: ${y.dni}` : ''} {y.legajo ? ` - Legajo: ${y.legajo}` : ''}
+								</option>
+							))}
 						</select>
 					</label>
 					<label><EditableText k="sec.1.nombreCompleto" fallback="Nombre completo" tag="span" /> <span style={{ color: '#d00' }}>*</span><br />
