@@ -17,11 +17,8 @@ export async function POST(req: NextRequest) {
     const type = formData.get('type') as string || 'general'; // 'young', 'form', 'general'
 
     if (!file) {
-      console.log('[UPLOAD] Error: No se proporcionó archivo');
       return NextResponse.json({ error: 'No se proporcionó archivo' }, { status: 400 });
     }
-
-    console.log(`[UPLOAD] Recibido: ${file.name} (${file.size} bytes), tipo: ${file.type}`);
 
     // Validar tipo de archivo
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
@@ -45,7 +42,6 @@ export async function POST(req: NextRequest) {
     const cloudinaryUploadPreset = process.env.CLOUDINARY_UPLOAD_PRESET;
 
     if (cloudinaryCloudName && cloudinaryUploadPreset) {
-      console.log('[UPLOAD] Intentando subir a Cloudinary...');
       try {
         const cloudinaryFormData = new FormData();
         cloudinaryFormData.append('file', `data:${file.type};base64,${base64}`);
@@ -63,7 +59,6 @@ export async function POST(req: NextRequest) {
         const cloudinaryData = await cloudinaryResponse.json();
 
         if (cloudinaryData.secure_url) {
-          console.log('[UPLOAD] Éxito Cloudinary:', cloudinaryData.secure_url);
           return NextResponse.json({ 
             success: true, 
             url: cloudinaryData.secure_url,
@@ -80,8 +75,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Fallback: usar base64 directamente (guardar como data URL)
-    console.log('[UPLOAD] Usando Fallback Base64 (URL muy larga)');
+    // Fallback: usar base64 directamente
     const base64Data = `data:${file.type};base64,${base64}`;
     
     return NextResponse.json({ 
