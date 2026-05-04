@@ -98,7 +98,7 @@ export default function YoungsPage() {
       return (
         <img
           src={young.foto}
-          alt={young.nombreCompleto}
+          alt={young.nombreCompleto || 'J'}
           style={{ width: size, height: size, borderRadius: 12, objectFit: 'cover', border: '2px solid var(--border)' }}
         />
       );
@@ -144,13 +144,19 @@ export default function YoungsPage() {
     setEditingId(young.id || young._id || null);
     setForm({ 
       ...young, 
+      nombreCompleto: young.nombreCompleto || '',
+      dni: young.dni || '',
+      taller: young.taller || '',
+      legajo: young.legajo || '',
+      obraSocial: young.obraSocial || '',
       fechaNacimiento: young.fechaNacimiento?.split('T')[0] || '',
       assignedFacilitators: young.assignedFacilitators || [],
       circuloApoyo: young.circuloApoyo || []
     });
     setView('detail');
     setActiveTab('perfil');
-    if (young.id || young._id) loadReportsHistory(young.id || young._id || '');
+    const id = young.id || young._id;
+    if (id) loadReportsHistory(id);
   };
 
   const deleteYoung = async (id: string) => {
@@ -172,12 +178,12 @@ export default function YoungsPage() {
         <h1>Alta de Nuevo Joven</h1>
         <div className="ga-card">
           <div className="ga-form-grid">
-            <label>Nombre Completo<br/><input className="ga-input" value={form.nombreCompleto} onChange={e => setForm({...form, nombreCompleto: e.target.value})}/></label>
-            <label>DNI<br/><input className="ga-input" value={form.dni} onChange={e => setForm({...form, dni: e.target.value})}/></label>
+            <label>Nombre Completo<br/><input className="ga-input" value={form.nombreCompleto || ''} onChange={e => setForm({...form, nombreCompleto: e.target.value})}/></label>
+            <label>DNI<br/><input className="ga-input" value={form.dni || ''} onChange={e => setForm({...form, dni: e.target.value})}/></label>
             <label>Taller inicial<br/>
-              <select className="ga-select" value={form.taller} onChange={e => setForm({...form, taller: e.target.value})}>
+              <select className="ga-select" value={form.taller || ''} onChange={e => setForm({...form, taller: e.target.value})}>
                 <option value="">Seleccionar taller...</option>
-                {talleres.map(t => <option key={t.id} value={t.nombre}>{t.nombre}</option>)}
+                {talleres.map(t => <option key={t.id || t._id} value={t.nombre}>{t.nombre}</option>)}
               </select>
             </label>
           </div>
@@ -196,7 +202,7 @@ export default function YoungsPage() {
           <div>
             <h1 style={{ margin: 0 }}>{selectedYoung.nombreCompleto}</h1>
             <div style={{ display: 'flex', gap: 15, marginTop: 5, color: 'var(--muted)', fontSize: 14 }}>
-              <span><strong>DNI:</strong> {selectedYoung.dni}</span>
+              <span><strong>DNI:</strong> {selectedYoung.dni || '—'}</span>
               <span><strong>Legajo:</strong> {selectedYoung.legajo || '—'}</span>
               <span><strong>Taller:</strong> {selectedYoung.taller || 'Sin asignar'}</span>
             </div>
@@ -213,11 +219,11 @@ export default function YoungsPage() {
           <div className="ga-card">
             <h3>Datos de Identidad</h3>
             <div className="ga-form-grid">
-              <label>Nombre Completo<br/><input className="ga-input" value={form.nombreCompleto} onChange={e => setForm({...form, nombreCompleto: e.target.value})}/></label>
-              <label>DNI<br/><input className="ga-input" value={form.dni} onChange={e => setForm({...form, dni: e.target.value})}/></label>
-              <label>Fecha de Nacimiento<br/><input type="date" className="ga-input" value={form.fechaNacimiento} onChange={e => setForm({...form, fechaNacimiento: e.target.value})}/></label>
-              <label>Nº de Legajo<br/><input className="ga-input" value={form.legajo} onChange={e => setForm({...form, legajo: e.target.value})}/></label>
-              <label>Obra Social<br/><input className="ga-input" value={form.obraSocial} onChange={e => setForm({...form, obraSocial: e.target.value})}/></label>
+              <label>Nombre Completo<br/><input className="ga-input" value={form.nombreCompleto || ''} onChange={e => setForm({...form, nombreCompleto: e.target.value})}/></label>
+              <label>DNI<br/><input className="ga-input" value={form.dni || ''} onChange={e => setForm({...form, dni: e.target.value})}/></label>
+              <label>Fecha de Nacimiento<br/><input type="date" className="ga-input" value={form.fechaNacimiento || ''} onChange={e => setForm({...form, fechaNacimiento: e.target.value})}/></label>
+              <label>Nº de Legajo<br/><input className="ga-input" value={form.legajo || ''} onChange={e => setForm({...form, legajo: e.target.value})}/></label>
+              <label>Obra Social<br/><input className="ga-input" value={form.obraSocial || ''} onChange={e => setForm({...form, obraSocial: e.target.value})}/></label>
               <div style={{ gridColumn: '1/-1' }}>
                 <ImageUpload value={form.foto || ''} onChange={url => setForm({...form, foto: url})} label="Foto de Perfil" type="young" />
               </div>
@@ -227,11 +233,15 @@ export default function YoungsPage() {
             <div style={{ background: '#f8fafc', padding: 15, borderRadius: 10, border: '1px solid var(--border)' }}>
               {(form.circuloApoyo || []).map((m, i) => (
                 <div key={i} style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
-                  <input className="ga-input" placeholder="Vínculo (ej: Madre)" list="vinculos-list" value={m.vinculo} onChange={e => {
-                    const next = [...form.circuloApoyo!]; next[i].vinculo = e.target.value; setForm({...form, circuloApoyo: next});
+                  <input className="ga-input" placeholder="Vínculo (ej: Madre)" list="vinculos-list" value={m.vinculo || ''} onChange={e => {
+                    const next = [...form.circuloApoyo!]; 
+                    next[i] = { ...next[i], vinculo: e.target.value }; 
+                    setForm({...form, circuloApoyo: next});
                   }}/>
-                  <input className="ga-input" placeholder="Nombre completo" value={m.nombre} onChange={e => {
-                    const next = [...form.circuloApoyo!]; next[i].nombre = e.target.value; setForm({...form, circuloApoyo: next});
+                  <input className="ga-input" placeholder="Nombre completo" value={m.nombre || ''} onChange={e => {
+                    const next = [...form.circuloApoyo!]; 
+                    next[i] = { ...next[i], nombre: e.target.value }; 
+                    setForm({...form, circuloApoyo: next});
                   }}/>
                   <button className="ga-btn" style={{ color: 'var(--error)', padding: '8px' }} onClick={() => {
                     setForm({...form, circuloApoyo: form.circuloApoyo!.filter((_, idx) => idx !== i)});
@@ -253,14 +263,14 @@ export default function YoungsPage() {
             <h3>Gestión de Talleres y Responsables</h3>
             <div className="ga-form-grid">
               <label>Taller Asignado<br/>
-                <select className="ga-select" value={form.taller} onChange={e => setForm({...form, taller: e.target.value})}>
+                <select className="ga-select" value={form.taller || ''} onChange={e => setForm({...form, taller: e.target.value})}>
                   <option value="">Sin asignar</option>
-                  {talleres.map(t => <option key={t.id} value={t.nombre}>{t.nombre}</option>)}
+                  {talleres.map(t => <option key={t.id || t._id} value={t.nombre}>{t.nombre}</option>)}
                 </select>
               </label>
               <label style={{ gridColumn: '1/-1' }}>Facilitadores Asignados<br/>
-                <select multiple className="ga-select" style={{ height: 150, marginTop: 5 }} value={form.assignedFacilitators} onChange={e => setForm({...form, assignedFacilitators: Array.from(e.target.selectedOptions).map(o => o.value)})}>
-                  {facilitadores.map(f => <option key={f.id} value={f.id}>{f.name || f.email}</option>)}
+                <select multiple className="ga-select" style={{ height: 150, marginTop: 5 }} value={form.assignedFacilitators || []} onChange={e => setForm({...form, assignedFacilitators: Array.from(e.target.selectedOptions).map(o => o.value)})}>
+                  {facilitadores.map(f => <option key={f.id || f._id} value={f.id || f._id}>{f.name || f.email}</option>)}
                 </select>
                 <small style={{ color: 'var(--muted)', display: 'block', marginTop: 5 }}>Mantén presionado Ctrl (Windows) o Cmd (Mac) para seleccionar varios.</small>
               </label>
