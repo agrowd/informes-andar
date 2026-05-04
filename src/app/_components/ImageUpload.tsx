@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 interface ImageUploadProps {
   value?: string;
@@ -24,6 +24,12 @@ export default function ImageUpload({
   const [error, setError] = useState('');
   const [preview, setPreview] = useState<string | null>(value || null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Sincronizar vista previa con el valor externo
+  useEffect(() => {
+    setPreview(value || null);
+  }, [value]);
+
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

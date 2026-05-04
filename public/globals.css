@@ -154,6 +154,82 @@ h3{font-size:16px;line-height:24px;margin:4px 0 6px;font-weight:700}
   .ga-table-card td:before{content:attr(data-label);font-weight:600;margin-right:12px;color:var(--muted)}
 }
 
+/* Cuadrícula de Jóvenes */
+.ga-young-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 24px;
+  margin-top: 20px;
+}
+.ga-young-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 24px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+  position: relative;
+  overflow: hidden;
+}
+.ga-young-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 12px 24px rgba(31, 41, 55, 0.1);
+  border-color: var(--primary);
+  background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFF 100%);
+}
+.ga-young-card .avatar-wrap {
+  width: 100px;
+  height: 100px;
+  margin-bottom: 16px;
+  border-radius: 20px; /* Cambiado a cuadrado redondeado */
+  overflow: hidden;
+  border: 4px solid #F1F5F9;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+}
+.ga-young-card:hover .avatar-wrap {
+  border-color: var(--primary);
+  transform: scale(1.05);
+}
+.ga-young-card .name {
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--text);
+  margin-bottom: 6px;
+  line-height: 1.2;
+}
+.ga-young-card .taller {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--primary);
+  background: #EFF6FF;
+  padding: 4px 10px;
+  border-radius: 8px;
+}
+.ga-young-card .dni {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 8px;
+  opacity: 0.8;
+}
+
+/* Mejora general de inputs y botones */
+.ga-input:focus, .ga-select:focus, textarea:focus {
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+}
+.ga-btn.primary {
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+}
+.ga-btn.primary:active {
+  transform: scale(0.98);
+}
+
 /* Sistema de Pestañas (Tabs) */
 .ga-tabs-nav {
   display: flex;

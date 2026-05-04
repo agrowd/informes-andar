@@ -45,6 +45,7 @@ export default function YoungsPage() {
   const [activeTab, setActiveTab] = useState<'perfil' | 'asignaciones' | 'historial'>('perfil');
   const [reportsHistory, setReportsHistory] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const loadYoungs = async (pageNum: number = page) => {
     try {
@@ -129,22 +130,29 @@ export default function YoungsPage() {
   const handleSave = async () => {
     if (!form.nombreCompleto) return alert('El nombre es obligatorio');
     
-    const url = editingId ? `/api/youngs/${editingId}` : '/api/youngs';
-    const res = await fetch(url, {
-      method: editingId ? 'PUT' : 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form)
-    });
-    if (res.ok) {
-      alert('Cambios guardados con éxito');
-      loadYoungs();
-      if (!editingId) setView('list');
-      else {
-        setSelectedYoung({...form});
-        setActiveTab('perfil');
+    setIsSaving(true);
+    try {
+      const url = editingId ? `/api/youngs/${editingId}` : '/api/youngs';
+      const res = await fetch(url, {
+        method: editingId ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form)
+      });
+      if (res.ok) {
+        alert('Cambios guardados con éxito');
+        loadYoungs();
+        if (!editingId) setView('list');
+        else {
+          setSelectedYoung({...form});
+          setActiveTab('perfil');
+        }
+      } else {
+        alert('Error al guardar los datos');
       }
-    } else {
-      alert('Error al guardar los datos');
+    } catch (err) {
+      alert('Error de conexión al guardar');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -287,7 +295,9 @@ export default function YoungsPage() {
             </div>
 
             <div style={{ marginTop: 40, display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #f1f5f9', paddingTop: 25 }}>
-              <button className="ga-btn primary" style={{ padding: '10px 30px' }} onClick={handleSave}>Guardar Todos los Cambios</button>
+              <button className="ga-btn primary" style={{ padding: '10px 30px' }} onClick={handleSave} disabled={isSaving}>
+                {isSaving ? 'Guardando...' : 'Guardar Todos los Cambios'}
+              </button>
               <button className="ga-btn" style={{ color: 'white', background: 'var(--error)', border: 'none' }} onClick={() => deleteYoung(selectedYoung.id || selectedYoung._id || '')}>Eliminar Joven Definitivamente</button>
             </div>
           </div>
