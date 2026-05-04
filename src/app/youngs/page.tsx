@@ -39,6 +39,13 @@ export default function YoungsPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
 
+  // Estados de navegación
+  const [view, setView] = useState<'list' | 'detail' | 'create'>('list');
+  const [selectedYoung, setSelectedYoung] = useState<Young | null>(null);
+  const [activeTab, setActiveTab] = useState<'perfil' | 'asignaciones' | 'historial'>('perfil');
+  const [reportsHistory, setReportsHistory] = useState<any[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+
   const loadYoungs = async (pageNum: number = page) => {
     try {
       const params = new URLSearchParams({
@@ -54,22 +61,28 @@ export default function YoungsPage() {
       setPage(pageNum);
     } catch (error) {
       console.error('Error cargando jóvenes:', error);
-      alert('No se pudo cargar la lista de jóvenes');
+    }
+  };
+
+  const loadReportsHistory = async (youngId: string) => {
+    setLoadingHistory(true);
+    try {
+      const res = await fetch(`/api/reports?youngId=${youngId}`);
+      if (res.ok) {
+        const json = await res.json();
+        setReportsHistory(json.items || []);
+      }
+    } catch (error) {
+      console.error('Error cargando historial:', error);
+    } finally {
+      setLoadingHistory(false);
     }
   };
 
   useEffect(() => {
     loadYoungs();
-
-    fetch('/api/users')
-      .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
-      .then((json) => setFacilitadores(json.items || []))
-      .catch((err) => console.warn('Error cargando facilitadores:', err));
-
-    fetch('/api/talleres')
-      .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
-      .then((json) => setTalleres(json.items || []))
-      .catch((err) => console.warn('Error cargando talleres:', err));
+    fetch('/api/users').then(r => r.json()).then(j => setFacilitadores(j.items || []));
+    fetch('/api/talleres').then(r => r.json()).then(j => setTalleres(j.items || []));
   }, []);
 
   const formatDate = (value?: string | null) => {
@@ -80,434 +93,296 @@ export default function YoungsPage() {
     return value;
   };
 
-  const getInitials = (name?: string) => {
-    if (!name) return 'J';
-    return name
-      .split(' ')
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((segment) => segment[0]?.toUpperCase() ?? '')
-      .join('');
-  };
-
-  const renderAvatar = (young: Young) => {
+  const renderAvatar = (young: Young, size = 48) => {
     if (young.foto) {
       return (
         <img
           src={young.foto}
-          alt={young.nombreCompleto || 'Foto del joven'}
-          style={{
-            width: 48,
-            height: 48,
-            borderRadius: 8,
-            objectFit: 'cover',
-            border: '1px solid var(--border)'
-          }}
-          loading="lazy"
+          alt={young.nombreCompleto}
+          style={{ width: size, height: size, borderRadius: 12, objectFit: 'cover', border: '2px solid var(--border)' }}
         />
       );
     }
-
     return (
-      <div
-        style={{
-          width: 48,
-          height: 48,
-          borderRadius: 8,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: '#e0e7ff',
-          color: '#4338ca',
-          fontWeight: 600,
-          border: '1px solid #c7d2fe'
-        }}
-      >
-        {getInitials(young.nombreCompleto)}
+      <div style={{
+        width: size, height: size, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: 'linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%)', color: '#4338ca', fontWeight: 700, border: '2px solid #c7d2fe'
+      }}>
+        {young.nombreCompleto?.[0]?.toUpperCase() || 'J'}
       </div>
     );
   };
 
   const filteredItems = useMemo(() => {
     if (!search) return items;
-    const value = search.toLowerCase();
-    return items.filter((young) => {
-      return (
-        (young.nombreCompleto || '').toLowerCase().includes(value) ||
-        (young.dni || '').toLowerCase().includes(value) ||
-        (young.taller || '').toLowerCase().includes(value) ||
-        (young.legajo || '').toLowerCase().includes(value) ||
-        (young.obraSocial || '').toLowerCase().includes(value)
-      );
-    });
+    const v = search.toLowerCase();
+    return items.filter(y => y.nombreCompleto?.toLowerCase().includes(v) || y.dni?.includes(v));
   }, [items, search]);
 
-  const resetForm = () =>
-    setForm({
-      nombreCompleto: '',
-      dni: '',
-      taller: '',
-      legajo: '',
-      obraSocial: '',
-      assignedFacilitators: [],
-      fechaNacimiento: '',
-      foto: '',
-      circuloApoyo: []
-    });
+  const resetForm = () => {
+    setForm({ nombreCompleto: '', dni: '', taller: '', legajo: '', obraSocial: '', assignedFacilitators: [], fechaNacimiento: '', foto: '', circuloApoyo: [] });
+    setEditingId(null);
+  };
 
-  const handleCreateOrUpdate = async () => {
-    if (!form.nombreCompleto) {
-      alert('El nombre completo es obligatorio');
-      return;
-    }
-
-    const payload = {
-      ...form,
-      assignedFacilitators: form.assignedFacilitators || [],
-      circuloApoyo: (form.circuloApoyo || []).map((m) => ({
-        nombre: m?.nombre || '',
-        vinculo: m?.vinculo || ''
-      }))
-    };
-
+  const handleSave = async () => {
     const url = editingId ? `/api/youngs/${editingId}` : '/api/youngs';
-    const method = editingId ? 'PUT' : 'POST';
-
-    try {
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      if (!res.ok) {
-        const error = await res.json().catch(() => ({ error: 'Error en el guardado' }));
-        throw new Error(error.error || `HTTP ${res.status}`);
-      }
-      await loadYoungs();
-      resetForm();
-      setEditingId(null);
-      alert(editingId ? 'Joven actualizado correctamente' : 'Joven creado correctamente');
-    } catch (error: any) {
-      console.error('Error guardando joven:', error);
-      alert(error?.message || 'No se pudo guardar el joven');
+    const res = await fetch(url, {
+      method: editingId ? 'PUT' : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(form)
+    });
+    if (res.ok) {
+      alert('Guardado correctamente');
+      loadYoungs();
+      if (!editingId) setView('list');
+      else setSelectedYoung({...form});
     }
   };
 
-  const startEdit = (young: Young) => {
+  const openDetail = (young: Young) => {
+    setSelectedYoung(young);
     setEditingId(young.id || young._id || null);
-    setForm({
-      nombreCompleto: young.nombreCompleto || '',
-      dni: young.dni || '',
-      taller: young.taller || '',
-      legajo: young.legajo || '',
-      obraSocial: young.obraSocial || '',
-      foto: young.foto || '',
-      fechaNacimiento: young.fechaNacimiento
-        ? typeof young.fechaNacimiento === 'string'
-          ? young.fechaNacimiento.split('T')[0]
-          : new Date(young.fechaNacimiento).toISOString().split('T')[0]
-        : '',
+    setForm({ 
+      ...young, 
+      fechaNacimiento: young.fechaNacimiento?.split('T')[0] || '',
       assignedFacilitators: young.assignedFacilitators || [],
       circuloApoyo: young.circuloApoyo || []
     });
+    setView('detail');
+    setActiveTab('perfil');
+    if (young.id || young._id) loadReportsHistory(young.id || young._id || '');
   };
 
   const deleteYoung = async (id: string) => {
-    const target = items.find((y) => (y._id || y.id) === id);
-    const name = target?.nombreCompleto || 'este joven';
-    if (!confirm(`¿Eliminar a "${name}"? Esta acción no se puede deshacer.`)) return;
-    try {
-      const res = await fetch(`/api/youngs/${id}`, { method: 'DELETE' });
-      if (!res.ok) {
-        const error = await res.json().catch(() => ({ error: 'Error eliminando' }));
-        throw new Error(error.error || `HTTP ${res.status}`);
-      }
-      await loadYoungs(page);
-      alert('Joven eliminado correctamente');
-    } catch (error: any) {
-      console.error('Error eliminando joven:', error);
-      alert(error?.message || 'No se pudo eliminar el joven');
+    if (!confirm('¿Eliminar joven? Esta acción es irreversible.')) return;
+    const res = await fetch(`/api/youngs/${id}`, { method: 'DELETE' });
+    if (res.ok) {
+      loadYoungs();
+      setView('list');
     }
   };
 
-  const circuloDatalistId = 'youngs-circulo-vinculos';
-
-  return (
-    <div>
-      <h1>Jóvenes</h1>
-
-      <div className="ga-card" style={{ marginBottom: 12 }}>
-        <label style={{ display: 'block', marginBottom: 8 }}>
-          Buscar<br />
-          <input
-            className="ga-input"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar por nombre, DNI, legajo u obra social..."
-            style={{ width: '100%' }}
-          />
-        </label>
-      </div>
-
-      <div className="ga-card" style={{ marginBottom: 12 }}>
-        <h3>{editingId ? 'Editar joven' : 'Alta de joven'}</h3>
-        <div className="ga-form-grid">
-          <label>
-            Nombre completo<br />
-            <input
-              className="ga-input"
-              value={form.nombreCompleto || ''}
-              onChange={(e) => setForm({ ...form, nombreCompleto: e.target.value })}
-            />
-          </label>
-          <label>
-            DNI<br />
-            <input className="ga-input" value={form.dni || ''} onChange={(e) => setForm({ ...form, dni: e.target.value })} />
-          </label>
-          <label>
-            Taller<br />
-            <select
-              className="ga-select"
-              value={form.taller || ''}
-              onChange={(e) => setForm({ ...form, taller: e.target.value })}
-            >
-              <option value="">Seleccione un taller...</option>
-              {talleres.map((t) => (
-                <option key={t.id || t._id} value={t.nombre}>
-                  {t.nombre}
-                </option>
-              ))}
-            </select>
-            <small style={{ fontSize: 12, color: '#666' }}>
-              ¿No está en la lista? Crealo desde <a href="/talleres">/talleres</a>
-            </small>
-          </label>
-          <label>
-            Fecha de nacimiento<br />
-            <input
-              className="ga-input"
-              type="date"
-              value={form.fechaNacimiento || ''}
-              onChange={(e) => setForm({ ...form, fechaNacimiento: e.target.value })}
-            />
-          </label>
-          <label>
-            Nº de legajo<br />
-            <input className="ga-input" value={form.legajo || ''} onChange={(e) => setForm({ ...form, legajo: e.target.value })} />
-          </label>
-          <label>
-            Obra social<br />
-            <input
-              className="ga-input"
-              value={form.obraSocial || ''}
-              onChange={(e) => setForm({ ...form, obraSocial: e.target.value })}
-            />
-          </label>
-          <label style={{ gridColumn: '1 / -1' }}>
-            Asignar facilitadores<br />
-            <select
-              className="ga-select"
-              multiple
-              value={form.assignedFacilitators || []}
-              onChange={(e) => setForm({ ...form, assignedFacilitators: Array.from(e.target.selectedOptions).map((o) => o.value) })}
-              style={{ minHeight: 100 }}
-            >
-              {facilitadores.map((f) => (
-                <option key={f.id || f._id} value={f.id || f._id}>
-                  {f.name || f.email}
-                </option>
-              ))}
-            </select>
-            <small style={{ fontSize: 12, color: '#666' }}>Ctrl/Cmd para seleccionar múltiples</small>
-          </label>
-          <div style={{ gridColumn: '1 / -1' }}>
-            <ImageUpload
-              value={form.foto || ''}
-              onChange={(url) => setForm({ ...form, foto: url })}
-              label="Foto del/la joven"
-              type="young"
-            />
+  // Vistas
+  if (view === 'create') {
+    return (
+      <div className="ga-container">
+        <div style={{ marginBottom: 20 }}>
+          <button className="ga-btn" onClick={() => setView('list')}>← Volver al listado</button>
+        </div>
+        <h1>Alta de Nuevo Joven</h1>
+        <div className="ga-card">
+          <div className="ga-form-grid">
+            <label>Nombre Completo<br/><input className="ga-input" value={form.nombreCompleto} onChange={e => setForm({...form, nombreCompleto: e.target.value})}/></label>
+            <label>DNI<br/><input className="ga-input" value={form.dni} onChange={e => setForm({...form, dni: e.target.value})}/></label>
+            <label>Taller inicial<br/>
+              <select className="ga-select" value={form.taller} onChange={e => setForm({...form, taller: e.target.value})}>
+                <option value="">Seleccionar taller...</option>
+                {talleres.map(t => <option key={t.id} value={t.nombre}>{t.nombre}</option>)}
+              </select>
+            </label>
           </div>
+          <button className="ga-btn primary" style={{ marginTop: 25, minWidth: 150 }} onClick={handleSave}>Crear Registro</button>
+        </div>
+      </div>
+    );
+  }
 
-          <div style={{ gridColumn: '1 / -1' }}>
-            <b>Círculo de apoyo</b>
-            <p style={{ fontSize: 12, color: '#666' }}>Primero seleccioná el vínculo (Madre, Hermano/a, etc.) y luego el nombre propio.</p>
-            {(form.circuloApoyo || []).map((miembro, index) => (
-              <div key={index} style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}>
-                <input
-                  className="ga-input"
-                  list={circuloDatalistId}
-                  placeholder="Vínculo (ej: Madre)"
-                  value={miembro?.vinculo || ''}
-                  onChange={(e) => {
-                    const next = [...(form.circuloApoyo || [])];
-                    next[index] = { ...next[index], vinculo: e.target.value };
-                    setForm({ ...form, circuloApoyo: next });
-                  }}
-                  style={{ flex: '1 1 160px', minWidth: 130 }}
-                />
-                <input
-                  className="ga-input"
-                  placeholder="Nombre (ej: Cristina)"
-                  value={miembro?.nombre || ''}
-                  onChange={(e) => {
-                    const next = [...(form.circuloApoyo || [])];
-                    next[index] = { ...next[index], nombre: e.target.value };
-                    setForm({ ...form, circuloApoyo: next });
-                  }}
-                  style={{ flex: '2 1 220px', minWidth: 160 }}
-                />
-                <button
-                  type="button"
-                  className="ga-btn"
-                  onClick={() => {
-                    const next = (form.circuloApoyo || []).filter((_, idx) => idx !== index);
-                    setForm({ ...form, circuloApoyo: next });
-                  }}
-                  style={{ background: '#fee', color: '#c33' }}
-                >
-                  Quitar
-                </button>
+  if (view === 'detail' && selectedYoung) {
+    return (
+      <div className="ga-container">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 30 }}>
+          <button className="ga-btn" onClick={() => setView('list')} style={{ padding: '8px 12px' }}>←</button>
+          {renderAvatar(selectedYoung, 80)}
+          <div>
+            <h1 style={{ margin: 0 }}>{selectedYoung.nombreCompleto}</h1>
+            <div style={{ display: 'flex', gap: 15, marginTop: 5, color: 'var(--muted)', fontSize: 14 }}>
+              <span><strong>DNI:</strong> {selectedYoung.dni}</span>
+              <span><strong>Legajo:</strong> {selectedYoung.legajo || '—'}</span>
+              <span><strong>Taller:</strong> {selectedYoung.taller || 'Sin asignar'}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="ga-tabs-nav">
+          <button className={`ga-tab ${activeTab === 'perfil' ? 'active' : ''}`} onClick={() => setActiveTab('perfil')}>Información Personal</button>
+          <button className={`ga-tab ${activeTab === 'asignaciones' ? 'active' : ''}`} onClick={() => setActiveTab('asignaciones')}>Seguimiento</button>
+          <button className={`ga-tab ${activeTab === 'historial' ? 'active' : ''}`} onClick={() => setActiveTab('historial')}>Historial de Informes</button>
+        </div>
+
+        {activeTab === 'perfil' && (
+          <div className="ga-card">
+            <h3>Datos de Identidad</h3>
+            <div className="ga-form-grid">
+              <label>Nombre Completo<br/><input className="ga-input" value={form.nombreCompleto} onChange={e => setForm({...form, nombreCompleto: e.target.value})}/></label>
+              <label>DNI<br/><input className="ga-input" value={form.dni} onChange={e => setForm({...form, dni: e.target.value})}/></label>
+              <label>Fecha de Nacimiento<br/><input type="date" className="ga-input" value={form.fechaNacimiento} onChange={e => setForm({...form, fechaNacimiento: e.target.value})}/></label>
+              <label>Nº de Legajo<br/><input className="ga-input" value={form.legajo} onChange={e => setForm({...form, legajo: e.target.value})}/></label>
+              <label>Obra Social<br/><input className="ga-input" value={form.obraSocial} onChange={e => setForm({...form, obraSocial: e.target.value})}/></label>
+              <div style={{ gridColumn: '1/-1' }}>
+                <ImageUpload value={form.foto || ''} onChange={url => setForm({...form, foto: url})} label="Foto de Perfil" type="young" />
               </div>
-            ))}
-            <button
-              type="button"
-              className="ga-btn secondary"
-              onClick={() => setForm({ ...form, circuloApoyo: [...(form.circuloApoyo || []), { nombre: '', vinculo: '' }] })}
-            >
-              + Agregar integrante
-            </button>
-            <datalist id={circuloDatalistId}>
-              {integrantesCirculoTipos.map((tipo) => (
-                <option key={tipo} value={tipo} />
-              ))}
-            </datalist>
-          </div>
-        </div>
-        <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button className="ga-btn primary" onClick={handleCreateOrUpdate} style={{ minWidth: 150 }}>
-            {editingId ? 'Guardar cambios' : 'Crear joven'}
-          </button>
-          {editingId && (
-            <button className="ga-btn" onClick={() => { resetForm(); setEditingId(null); }}>
-              Cancelar
-            </button>
-          )}
-        </div>
-      </div>
+            </div>
 
-      <div className="ga-card">
-        <h3>Listado ({filteredItems.length} de {total})</h3>
-        {items.length === 0 ? (
-          <p style={{ color: 'var(--muted)' }}>No hay jóvenes registrados</p>
-        ) : (
-          <>
-            <div className="ga-desktop-only">
-              <div className="ga-table-mobile-wrap" style={{ marginTop: 12 }}>
-                <table className="ga-table" style={{ width: '100%' }}>
+            <h3 style={{ marginTop: 30 }}>Círculo de Apoyo</h3>
+            <div style={{ background: '#f8fafc', padding: 15, borderRadius: 10, border: '1px solid var(--border)' }}>
+              {(form.circuloApoyo || []).map((m, i) => (
+                <div key={i} style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
+                  <input className="ga-input" placeholder="Vínculo (ej: Madre)" list="vinculos-list" value={m.vinculo} onChange={e => {
+                    const next = [...form.circuloApoyo!]; next[i].vinculo = e.target.value; setForm({...form, circuloApoyo: next});
+                  }}/>
+                  <input className="ga-input" placeholder="Nombre completo" value={m.nombre} onChange={e => {
+                    const next = [...form.circuloApoyo!]; next[i].nombre = e.target.value; setForm({...form, circuloApoyo: next});
+                  }}/>
+                  <button className="ga-btn" style={{ color: 'var(--error)', padding: '8px' }} onClick={() => {
+                    setForm({...form, circuloApoyo: form.circuloApoyo!.filter((_, idx) => idx !== i)});
+                  }}>✕</button>
+                </div>
+              ))}
+              <button className="ga-btn secondary" onClick={() => setForm({...form, circuloApoyo: [...(form.circuloApoyo || []), {nombre:'', vinculo:''}]})}>+ Agregar Integrante</button>
+            </div>
+
+            <div style={{ marginTop: 30, display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--border)', paddingTop: 20 }}>
+              <button className="ga-btn primary" style={{ minWidth: 150 }} onClick={handleSave}>Guardar Cambios</button>
+              <button className="ga-btn" style={{ color: 'var(--error)', background: '#fee' }} onClick={() => deleteYoung(selectedYoung.id || selectedYoung._id || '')}>Eliminar Joven</button>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'asignaciones' && (
+          <div className="ga-card">
+            <h3>Gestión de Talleres y Responsables</h3>
+            <div className="ga-form-grid">
+              <label>Taller Asignado<br/>
+                <select className="ga-select" value={form.taller} onChange={e => setForm({...form, taller: e.target.value})}>
+                  <option value="">Sin asignar</option>
+                  {talleres.map(t => <option key={t.id} value={t.nombre}>{t.nombre}</option>)}
+                </select>
+              </label>
+              <label style={{ gridColumn: '1/-1' }}>Facilitadores Asignados<br/>
+                <select multiple className="ga-select" style={{ height: 150, marginTop: 5 }} value={form.assignedFacilitators} onChange={e => setForm({...form, assignedFacilitators: Array.from(e.target.selectedOptions).map(o => o.value)})}>
+                  {facilitadores.map(f => <option key={f.id} value={f.id}>{f.name || f.email}</option>)}
+                </select>
+                <small style={{ color: 'var(--muted)', display: 'block', marginTop: 5 }}>Mantén presionado Ctrl (Windows) o Cmd (Mac) para seleccionar varios.</small>
+              </label>
+            </div>
+            <button className="ga-btn primary" style={{ marginTop: 25 }} onClick={handleSave}>Actualizar Asignaciones</button>
+          </div>
+        )}
+
+        {activeTab === 'historial' && (
+          <div className="ga-card">
+            <h3>Historial de Informes Técnicos</h3>
+            {loadingHistory ? (
+              <div style={{ padding: 40, textAlign: 'center', color: 'var(--muted)' }}>Cargando historial...</div>
+            ) : reportsHistory.length === 0 ? (
+              <div style={{ padding: 40, textAlign: 'center', color: 'var(--muted)' }}>No se registran informes previos para este joven.</div>
+            ) : (
+              <div className="ga-table-mobile-wrap">
+                <table className="ga-table">
                   <thead>
                     <tr>
-                      <th>Foto</th>
-                      <th>Nombre</th>
-                      <th>Datos personales</th>
-                      <th>Nº de legajo</th>
-                      <th>Obra social</th>
-                      <th>Taller</th>
-                      <th>Acciones</th>
+                      <th>Fecha de Creación</th>
+                      <th>Periodo</th>
+                      <th>Estado</th>
+                      <th style={{ textAlign: 'right' }}>Acciones</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredItems.map((young) => (
-                      <tr key={young._id || young.id}>
-                        <td>{renderAvatar(young)}</td>
-                        <td style={{ fontWeight: 500 }}>{young.nombreCompleto}</td>
-                        <td>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
-                            <span><strong>DNI:</strong> {young.dni || '—'}</span>
-                            <span><strong>Fecha nac.:</strong> {formatDate(young.fechaNacimiento)}</span>
-                          </div>
-                        </td>
-                        <td>{young.legajo || '—'}</td>
-                        <td>{young.obraSocial || '—'}</td>
-                        <td>{young.taller || '—'}</td>
-                        <td>
-                          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                            <button className="ga-btn secondary" onClick={() => startEdit(young)} style={{ fontSize: 12, padding: '4px 8px' }}>
-                              Editar
-                            </button>
-                            <button
-                              className="ga-btn"
-                              onClick={() => deleteYoung(young.id || young._id || '')}
-                              style={{ fontSize: 12, padding: '4px 8px', background: '#fee', color: '#c33' }}
-                            >
-                              Eliminar
-                            </button>
-                          </div>
+                    {reportsHistory.map(r => (
+                      <tr key={r.id} className="ga-table-row-hover">
+                        <td>{formatDate(r.createdAt)}</td>
+                        <td><span style={{ fontWeight: 600 }}>{r.periodo}</span></td>
+                        <td><span className={`ga-status-pill ${r.status?.toLowerCase()}`}>{r.status}</span></td>
+                        <td style={{ textAlign: 'right' }}>
+                          <a href={`/reports/${r.id}`} className="ga-btn secondary" style={{ fontSize: 12 }}>Abrir Informe</a>
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-            </div>
-
-            <div className="ga-mobile-only" style={{ marginTop: 12 }}>
-              {filteredItems.map((young) => (
-                <div key={young._id || young.id} className="ga-card" style={{ marginBottom: 12, padding: 16 }}>
-                  <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 10 }}>
-                    {renderAvatar(young)}
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 600 }}>{young.nombreCompleto}</div>
-                      <div style={{ fontSize: 13, color: '#444' }}>
-                        <div>DNI: {young.dni || '—'}</div>
-                        <div>Fecha nac.: {formatDate(young.fechaNacimiento)}</div>
-                        <div>Legajo: {young.legajo || '—'}</div>
-                        <div>Obra social: {young.obraSocial || '—'}</div>
-                        {young.taller && <div>Taller: {young.taller}</div>}
-                      </div>
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button className="ga-btn secondary" onClick={() => startEdit(young)} style={{ fontSize: 12 }}>
-                      Editar
-                    </button>
-                    <button
-                      className="ga-btn"
-                      onClick={() => deleteYoung(young.id || young._id || '')}
-                      style={{ fontSize: 12, background: '#fee', color: '#c33' }}
-                    >
-                      Eliminar
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div
-              style={{
-                marginTop: 16,
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                flexWrap: 'wrap',
-                gap: 8
-              }}
-            >
-              <div style={{ color: 'var(--muted)', fontSize: 14 }}>
-                Mostrando {filteredItems.length} de {total} jóvenes
-              </div>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <button className="ga-btn" onClick={() => loadYoungs(page - 1)} disabled={page === 1}>
-                  ← Anterior
-                </button>
-                <span> Página {page} de {totalPages} </span>
-                <button className="ga-btn" onClick={() => loadYoungs(page + 1)} disabled={page >= totalPages}>
-                  Siguiente →
-                </button>
-              </div>
-            </div>
-          </>
+            )}
+          </div>
         )}
+
+        <datalist id="vinculos-list">
+          {integrantesCirculoTipos.map(v => <option key={v} value={v} />)}
+        </datalist>
+      </div>
+    );
+  }
+
+  return (
+    <div className="ga-container">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 25, flexWrap: 'wrap', gap: 15 }}>
+        <div>
+          <h1 style={{ margin: 0 }}>Jóvenes</h1>
+          <p style={{ margin: 0, color: 'var(--muted)' }}>Gestión centralizada de perfiles y seguimiento.</p>
+        </div>
+        <button className="ga-btn primary" onClick={() => { resetForm(); setView('create'); }}>
+          <span style={{ fontSize: 18, marginRight: 5 }}>+</span> Nuevo Joven
+        </button>
+      </div>
+
+      <div className="ga-card" style={{ marginBottom: 20 }}>
+        <input 
+          className="ga-input" 
+          style={{ width: '100%', maxWidth: 500 }} 
+          placeholder="Buscar por nombre, DNI o taller..." 
+          value={search} 
+          onChange={e => setSearch(e.target.value)} 
+        />
+      </div>
+
+      <div className="ga-card" style={{ padding: 0, overflow: 'hidden' }}>
+        <table className="ga-table" style={{ border: 'none' }}>
+          <thead style={{ background: '#f8fafc' }}>
+            <tr>
+              <th style={{ width: 80, border: 'none' }}>Foto</th>
+              <th style={{ border: 'none' }}>Nombre del Joven</th>
+              <th style={{ border: 'none' }}>DNI</th>
+              <th style={{ border: 'none' }}>Taller</th>
+              <th style={{ width: 100, border: 'none' }}>Perfil</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredItems.map(y => (
+              <tr 
+                key={y.id || y._id} 
+                onClick={() => openDetail(y)} 
+                style={{ cursor: 'pointer' }}
+                className="ga-table-row-hover"
+              >
+                <td style={{ border: 'none' }}>{renderAvatar(y, 44)}</td>
+                <td style={{ border: 'none' }}>
+                  <div style={{ color: 'var(--primary)', fontWeight: 700 }}>{y.nombreCompleto}</div>
+                  <div style={{ fontSize: 12, color: 'var(--muted)' }}>Legajo: {y.legajo || '—'}</div>
+                </td>
+                <td style={{ border: 'none' }}>{y.dni}</td>
+                <td style={{ border: 'none' }}>
+                  <span style={{ fontSize: 13, background: '#f1f5f9', padding: '4px 8px', borderRadius: 6 }}>{y.taller || 'Sin taller'}</span>
+                </td>
+                <td style={{ border: 'none', textAlign: 'right' }}>
+                  <button className="ga-btn secondary" style={{ fontSize: 11, padding: '4px 10px' }}>VER FICHA</button>
+                </td>
+              </tr>
+            ))}
+            {filteredItems.length === 0 && (
+              <tr>
+                <td colSpan={5} style={{ textAlign: 'center', padding: 40, color: 'var(--muted)' }}>
+                  No se encontraron jóvenes con esos criterios.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* PAGINACIÓN */}
+      <div style={{ marginTop: 25, display: 'flex', justifyContent: 'center', gap: 15, alignItems: 'center' }}>
+        <button className="ga-btn" onClick={() => loadYoungs(page - 1)} disabled={page === 1}>Anterior</button>
+        <span style={{ fontSize: 14, fontWeight: 600 }}>Página {page} de {totalPages}</span>
+        <button className="ga-btn" onClick={() => loadYoungs(page + 1)} disabled={page >= totalPages}>Siguiente</button>
       </div>
     </div>
   );
