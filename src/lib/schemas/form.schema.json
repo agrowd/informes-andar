@@ -1,0 +1,170 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://granja-andar.org/schemas/form.schema.json",
+  "title": "Formulario Informe Evolutivo",
+  "type": "object",
+  "required": [
+    "datosGenerales",
+    "objetivo",
+    "escucha",
+    "estadoEmocional",
+    "apoyosAjustes",
+    "evaluacion",
+    "logros",
+    "suenosMetas",
+    "circuloApoyo",
+    "sugerencias"
+  ],
+  "properties": {
+    "datosGenerales": {
+      "type": "object",
+      "required": ["nombreCompleto", "periodo"],
+      "properties": {
+        "nombreCompleto": { "type": "string", "minLength": 1 },
+        "dni": { "type": ["string", "null"], "nullable": true },
+        "periodo": { "type": "string", "minLength": 1 },
+        "metaSueño": { "type": ["string", "null"], "nullable": true },
+        "numeroLegajo": { "type": ["string", "null"], "nullable": true },
+        "youngId": { "type": ["string", "null"], "nullable": true },
+        "facilitadorId": { "type": ["string", "null"], "nullable": true },
+        "facilitadorNombre": { "type": ["string", "null"], "nullable": true },
+        "taller": { "type": ["string", "null"], "nullable": true },
+        "fechaNacimiento": { "type": ["string", "null"], "format": "date", "nullable": true },
+        "fotoJoven": { "type": ["string", "null"], "nullable": true },
+        "circuloApoyo": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["nombre", "vinculo"],
+            "properties": {
+              "nombre": { "type": "string" },
+              "vinculo": { "type": "string" }
+            }
+          },
+          "default": []
+        }
+      }
+    },
+    "objetivo": {
+      "type": "object",
+      "properties": {
+        "textoMarco": { "type": ["string", "null"], "nullable": true },
+        "focos": { "type": "array", "items": { "type": "string" }, "default": [] },
+        "estrategias": { "type": "array", "items": { "type": "string" }, "default": [] }
+      },
+      "required": []
+    },
+    "escucha": {
+      "type": "object",
+      "properties": {
+        "preferencias": { "type": "array", "items": { "type": "string" }, "default": [] },
+        "areasInteres": { "type": "array", "items": { "type": "string" }, "default": [] },
+        "nivelAutonomia": { "type": ["string", "null"], "nullable": true },
+        "areasInteresOtro": { "type": ["string", "null"], "nullable": true }
+      }
+    },
+    "estadoEmocional": {
+      "type": "object",
+      "properties": {
+        "prevalencias": { "type": "array", "items": { "type": "string" }, "default": [] },
+        "expresionGeneral": { "type": "array", "items": { "type": "string" }, "default": [] },
+        "vinculoEntorno": { "type": "array", "items": { "type": "string" }, "default": [] },
+        "bienestarSubjetivo": { "type": "array", "items": { "type": "string" }, "default": [] },
+        "regulacion": { "type": "array", "items": { "type": "string" }, "default": [] },
+        "situacionesInfluyen": { "type": "array", "items": { "type": "string" }, "default": [] },
+        "estrategias": { "type": "array", "items": { "type": "string" }, "default": [] },
+        "tecnicasAutorregulacion": { "type": "array", "items": { "type": "string" }, "default": [] }
+      }
+    },
+    "apoyosAjustes": {
+      "type": "object",
+      "properties": {
+        "apoyos": { "type": "array", "items": { "type": "string" }, "default": [] },
+        "ajustes": { "type": "array", "items": { "type": "string" }, "default": [] },
+        "contextos": { "type": "array", "items": { "type": "string" }, "default": [] }
+      }
+    },
+    "evaluacion": {
+      "type": "object",
+      "properties": {
+        "dimensiones": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["dimension"],
+            "properties": {
+              "dimension": { "type": "string" },
+              "anterior": { "type": ["string", "null"], "nullable": true },
+              "actual": { "type": ["string", "null"], "nullable": true },
+              "evolucion": { "type": ["string", "null"], "enum": ["✔", "➖", "❌", "⏳", null], "nullable": true },
+              "observacion": { "type": ["string", "null"], "nullable": true }
+            }
+          },
+          "default": []
+        }
+      }
+    },
+    "logros": { "type": "array", "items": { "type": "string" }, "default": [] },
+    "logrosImagenes": { "type": "array", "items": { "type": "string" }, "default": [] },
+    "experiencias": {
+      "type": "object",
+      "properties": {
+        "participacion": { "type": ["string", "null"], "nullable": true },
+        "tiposVividas": { "type": "array", "items": { "type": "string" }, "default": [] },
+        "tipoApoyo": { "type": "array", "items": { "type": "string" }, "default": [] },
+        "motivosNoParticipa": { "type": "array", "items": { "type": "string" }, "default": [] },
+        "detalle": { "type": ["string", "null"], "nullable": true }
+      }
+    },
+    "suenosMetas": {
+      "type": "object",
+      "properties": {
+        "metas": { "type": "array", "items": { "type": "string" }, "default": [] },
+        "recursosNecesarios": { "type": "array", "items": { "type": "string" }, "default": [] }
+      }
+    },
+    "circuloApoyo": {
+      "type": "object",
+      "properties": {
+        "participacion": { "type": ["string", "null"], "nullable": true },
+        "acompanaronMayorCompromiso": { "type": "array", "items": { "type": "string" }, "default": [] },
+        "respetoDecisiones": { "type": "array", "items": { "type": "string" }, "default": [] },
+        "gradoInvolucramiento": { "type": ["string", "null"], "nullable": true },
+        "valoracion": {
+          "type": "object",
+          "properties": {
+            "grupal": { "type": ["string", "null"], "enum": ["ROJO","AMARILLO","VERDE", null], "nullable": true },
+            "individual": { "type": ["string", "null"], "enum": ["ROJO","AMARILLO","VERDE", null], "nullable": true }
+          }
+        },
+        "miembros": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["nombre", "vinculo"],
+            "properties": {
+              "nombre": { "type": "string" },
+              "vinculo": { "type": "string" }
+            }
+          },
+          "default": []
+        }
+      }
+    },
+    "abordaje": {
+      "type": "object",
+      "properties": {
+        "enfoque": { "type": "array", "items": { "type": "string", "enum": ["Relación","Sueño","Meta"] }, "default": [] },
+        "descripcion": { "type": ["string", "null"], "nullable": true }
+      }
+    },
+    "sugerencias": {
+      "type": "object",
+      "properties": {
+        "areasPrioritarias": { "type": "array", "items": { "type": "string" }, "default": [] },
+        "recomendaciones": { "type": "array", "items": { "type": "string" }, "default": [] }
+      }
+    }
+  }
+}
+

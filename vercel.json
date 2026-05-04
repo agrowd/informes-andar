@@ -1,0 +1,14 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "functions": {
+    "src/app/api/generate-report/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/reports/[id]/pdf/route.ts": {
+      "maxDuration": 60
+    }
+  },
+  "buildCommand": "pnpm build"
+}
+

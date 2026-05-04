@@ -1,0 +1,85 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Testing
+coverage/
+.nyc_output
+
+# Next.js
+.next/
+out/
+build/
+dist/
+
+# Production
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Misc
+.DS_Store
+*.pem
+
+# Debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Local env files
+.env
+.env*.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Vercel
+.vercel
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+Thumbs.db
+
+# Public reports (generated files)
+public/reports/*.pdf
+!public/reports/.gitkeep
+
+# Uploaded images
+public/uploads/
+!public/uploads/.gitkeep
+
+# Exclude large data files but keep documentation
+*.md
+!README.md
+!ANALISIS_COMPLETO_FALTANTE.md
+!CHECKLIST_PRUEBAS.md
+!COMO_USAR_POSTGRES_VERCEL.md
+!CONFIGURAR_CLOUDINARY.md
+!CONFIGURAR_GOOGLE_OAUTH.md
+!CONFIGURAR_VERCEL.md
+!CORRECCIONES_APLICADAS.md
+!DEPLOY_VERCEL.md
+!FUNCIONALIDADES_CRITICAS_FALTANTES.md
+!FUNCIONALIDADES_FALTANTES.md
+!FUNCIONALIDADES_FALTANTES_COMPLETO.md
+!GUIA_POSTGRES_VERCEL.md
+!LISTA_CORRECCIONES.md
+!PROBLEMAS_ENCONTRADOS.md
+!PRUEBAS_EJECUTADAS.md
+!SETUP_LEGAJO_OBRA_SOCIAL.md
+!SETUP_TALLERES.md
+!SETUP_TALLERES_NEON.md

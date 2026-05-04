@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://granja-andar.org/schemas/report.schema.json",
+  "title": "Informe Evolutivo (Salida)",
+  "type": "object",
+  "required": ["datosGenerales", "secciones", "evaluacionDimensiones", "trazabilidad"],
+  "properties": {
+    "datosGenerales": {
+      "type": "object",
+      "required": ["nombreCompleto", "periodo"],
+      "properties": {
+        "nombreCompleto": { "type": "string" },
+        "dni": { "type": ["string", "null"], "nullable": true },
+        "periodo": { "type": "string" },
+        "metaSueño": { "type": ["string", "null"], "nullable": true },
+        "circuloApoyo": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": []
+        }
+      }
+    },
+    "secciones": {
+      "type": "object",
+      "properties": {
+        "datosGenerales": { "type": "array", "items": { "$ref": "#/$defs/fragmento" } },
+        "objetivo": { "type": "array", "items": { "$ref": "#/$defs/fragmento" } },
+        "abordaje": { "type": "array", "items": { "$ref": "#/$defs/fragmento" } },
+        "escucha": { "type": "array", "items": { "$ref": "#/$defs/fragmento" } },
+        "estadoEmocional": { "type": "array", "items": { "$ref": "#/$defs/fragmento" } },
+        "apoyosAjustes": { "type": "array", "items": { "$ref": "#/$defs/fragmento" } },
+        "logros": { "type": "array", "items": { "$ref": "#/$defs/fragmento" } },
+        "suenosMetas": { "type": "array", "items": { "$ref": "#/$defs/fragmento" } },
+        "circuloApoyo": { "type": "array", "items": { "$ref": "#/$defs/fragmento" } },
+        "sugerencias": { "type": "array", "items": { "$ref": "#/$defs/fragmento" } }
+      },
+      "additionalProperties": false
+    },
+    "evaluacionDimensiones": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["dimension", "evolucion"],
+        "properties": {
+          "dimension": { "type": "string" },
+          "evolucion": { "type": "string", "enum": ["✔", "➖", "❌", "⏳"] },
+          "comentario": { "type": ["string", "null"], "nullable": true }
+        }
+      }
+    },
+    "trazabilidad": {
+      "type": "object",
+      "description": "Mapa campoDelFormulario → arreglo de identificadores de fragmentos o textos",
+      "additionalProperties": {
+        "type": "array",
+        "items": { "type": "string" }
+      }
+    }
+  },
+  "$defs": {
+    "fragmento": {
+      "type": "object",
+      "required": ["texto"],
+      "properties": {
+        "id": { "type": ["string", "null"], "nullable": true },
+        "texto": { "type": "string" },
+        "fuentes": { "type": "array", "items": { "type": "string" }, "default": [] }
+      }
+    }
+  }
+}
+
