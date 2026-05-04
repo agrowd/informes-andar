@@ -18,6 +18,15 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     }
 
     const body = await req.json();
+    console.log(`[YOUNGS-API] Petición PUT para ID: ${params.id}`);
+    console.log(`[YOUNGS-API] Datos recibidos:`, {
+      nombre: body.nombreCompleto,
+      dni: body.dni,
+      taller: body.taller,
+      hasFoto: !!body.foto,
+      fotoLength: body.foto?.length || 0
+    });
+
     const { nombreCompleto, dni, taller, assignedFacilitators, fechaNacimiento, circuloApoyo, foto, legajo, obraSocial } = body;
 
     if (!nombreCompleto) {
