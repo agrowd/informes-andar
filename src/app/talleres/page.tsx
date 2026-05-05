@@ -22,7 +22,7 @@ export default function TalleresPage() {
     }
     if (!canManage) {
       alert('No tienes permisos para gestionar talleres');
-      router.push('/dashboard');
+      router.push('/');
       return;
     }
     load();

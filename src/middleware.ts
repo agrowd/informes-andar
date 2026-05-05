@@ -7,7 +7,7 @@ export default withAuth(
     console.log('[Middleware] Request:', { pathname, hasToken: !!req.nextauth.token });
     
     // Rutas protegidas que requieren autenticación
-    const protectedPaths = ['/dashboard', '/forms', '/reports', '/youngs', '/audit', '/users'];
+    const protectedPaths = ['/forms', '/reports', '/youngs', '/audit', '/users', '/form'];
     const isPublicPath = pathname === '/login' || pathname.startsWith('/api/auth');
     const isProtected = protectedPaths.some(path => pathname.startsWith(path)) || 
                         (pathname === '/' && !isPublicPath);
@@ -22,8 +22,8 @@ export default withAuth(
     
     // Si está en login y ya tiene sesión, redirigir al dashboard
     if (pathname === '/login' && req.nextauth.token) {
-      console.log('[Middleware] Ya autenticado, redirigiendo a dashboard');
-      return NextResponse.redirect(new URL('/dashboard', req.url));
+      console.log('[Middleware] Ya autenticado, redirigiendo a inicio');
+      return NextResponse.redirect(new URL('/', req.url));
     }
     
     console.log('[Middleware] Permitir acceso a:', pathname);
@@ -45,7 +45,6 @@ export default withAuth(
 export const config = {
   matcher: [
     '/',
-    '/dashboard/:path*',
     '/forms/:path*',
     '/reports/:path*',
     '/youngs/:path*',

@@ -50,7 +50,7 @@ export default function UsersPage() {
     if (!canManage) {
       console.log('[UsersPage] No tiene permisos, redirigiendo a dashboard');
       alert('No tienes permisos para gestionar usuarios');
-      router.push('/dashboard');
+      router.push('/');
       return;
     }
     

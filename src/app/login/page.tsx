@@ -12,7 +12,7 @@ export default function LoginPage() {
     // Si ya está logueado, redirigir al dashboard
     getSession().then(session => {
       if (session) {
-        router.push('/dashboard');
+        router.push('/');
       }
     });
   }, [router]);
@@ -37,7 +37,7 @@ export default function LoginPage() {
         email: email.trim(),
         password,
         redirect: false,
-        callbackUrl: '/dashboard'
+        callbackUrl: '/'
       });
       
       if (result?.error) {
@@ -45,7 +45,7 @@ export default function LoginPage() {
         setError(result.error === 'CredentialsSignin' ? 'Email o contraseña incorrectos' : 'Error al iniciar sesión. Intenta nuevamente.');
         setLoading(false);
       } else if (result?.ok) {
-        router.push('/dashboard');
+        router.push('/');
         router.refresh();
       } else {
         setError('Error desconocido al iniciar sesión');

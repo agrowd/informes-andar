@@ -46,8 +46,8 @@ export default function Nav() {
 
   return (
     <nav className="ga-nav">
-      <a className={cls('/')} href="/">Inicio</a>
-      <a className={cls('/dashboard')} href="/dashboard">Tablero</a>
+      <a className={cls('/')} href="/">Tablero</a>
+      <a className={cls('/form')} href="/form">Cargar Informe</a>
       <a className={cls('/forms')} href="/forms">Formularios</a>
       <a className={cls('/reports')} href="/reports">Informes</a>
       <a className={cls('/youngs')} href="/youngs">Jóvenes</a>

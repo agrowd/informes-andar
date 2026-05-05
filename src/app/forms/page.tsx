@@ -132,7 +132,7 @@ export default function FormsList() {
                 </td>
                 <td style={{ border: '1px solid #ccc', padding: 4 }}>
                   <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
-                    <a href={`/?formId=${it._id}`} className="ga-btn secondary" style={{ fontSize: 12, padding: '4px 8px', whiteSpace: 'nowrap' }} title="Abrir en formulario para editar">
+                    <a href={`/form?formId=${it._id}`} className="ga-btn secondary" style={{ fontSize: 12, padding: '4px 8px', whiteSpace: 'nowrap' }} title="Abrir en formulario para editar">
                       ✏️ Editar
                     </a>
                     <button 
@@ -140,7 +140,7 @@ export default function FormsList() {
                       style={{ fontSize: 12, padding: '4px 8px', whiteSpace: 'nowrap' }}
                       onClick={async () => {
                         if (!confirm('¿Deseas generar un informe desde este formulario? Se abrirá en el formulario para generar.')) return;
-                        window.location.href = `/?formId=${it._id}`;
+                        window.location.href = `/form?formId=${it._id}`;
                       }}
                       title="Generar informe desde este formulario"
                     >
