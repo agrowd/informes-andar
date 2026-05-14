@@ -64,9 +64,11 @@
         "areasInteres": { "type": "array", "items": { "type": "string" }, "default": [] },
         "nivelAutonomia": { "type": ["string", "null"], "nullable": true },
         "areasInteresOtro": { "type": ["string", "null"], "nullable": true },
-        "comentario": { "type": "string", "minLength": 1 }
+        "preferenciasComentario": { "type": "string", "minLength": 1 },
+        "areasInteresComentario": { "type": "string", "minLength": 1 },
+        "comentario": { "type": "string" }
       },
-      "required": ["comentario"]
+      "required": ["preferenciasComentario", "areasInteresComentario"]
     },
     "estadoEmocional": {
       "type": "object",
@@ -79,9 +81,12 @@
         "situacionesInfluyen": { "type": "array", "items": { "type": "string" }, "default": [] },
         "estrategias": { "type": "array", "items": { "type": "string" }, "default": [] },
         "tecnicasAutorregulacion": { "type": "array", "items": { "type": "string" }, "default": [] },
-        "comentario": { "type": "string", "minLength": 1 }
+        "situacionesComentario": { "type": "string", "minLength": 1 },
+        "estrategiasComentario": { "type": "string", "minLength": 1 },
+        "autorregulacionComentario": { "type": "string", "minLength": 1 },
+        "comentario": { "type": "string" }
       },
-      "required": ["comentario"]
+      "required": ["situacionesComentario", "estrategiasComentario", "autorregulacionComentario"]
     },
     "apoyosAjustes": {
       "type": "object",
@@ -89,9 +94,11 @@
         "apoyos": { "type": "array", "items": { "type": "string" }, "default": [] },
         "ajustes": { "type": "array", "items": { "type": "string" }, "default": [] },
         "contextos": { "type": "array", "items": { "type": "string" }, "default": [] },
-        "comentario": { "type": "string", "minLength": 1 }
+        "apoyosComentario": { "type": "string", "minLength": 1 },
+        "ajustesComentario": { "type": "string", "minLength": 1 },
+        "comentario": { "type": "string" }
       },
-      "required": ["comentario"]
+      "required": ["apoyosComentario", "ajustesComentario"]
     },
     "evaluacion": {
       "type": "object",
@@ -113,7 +120,14 @@
         }
       }
     },
-    "logros": { "type": "array", "items": { "type": "string" }, "default": [] },
+    "logros": {
+      "type": "object",
+      "properties": {
+        "items": { "type": "array", "items": { "type": "string" }, "default": [] },
+        "comentario": { "type": "string", "minLength": 1 }
+      },
+      "required": ["comentario"]
+    },
     "logrosImagenes": { "type": "array", "items": { "type": "string" }, "default": [] },
     "experiencias": {
       "type": "object",
@@ -123,18 +137,22 @@
         "tipoApoyo": { "type": "array", "items": { "type": "string" }, "default": [] },
         "motivosNoParticipa": { "type": "array", "items": { "type": "string" }, "default": [] },
         "detalle": { "type": ["string", "null"], "nullable": true },
-        "comentario": { "type": "string", "minLength": 1 }
+        "tiposComentario": { "type": "string", "minLength": 1 },
+        "apoyoComentario": { "type": "string", "minLength": 1 },
+        "comentario": { "type": "string" }
       },
-      "required": ["comentario"]
+      "required": ["tiposComentario", "apoyoComentario"]
     },
     "suenosMetas": {
       "type": "object",
       "properties": {
         "metas": { "type": "array", "items": { "type": "string" }, "default": [] },
         "recursosNecesarios": { "type": "array", "items": { "type": "string" }, "default": [] },
-        "comentario": { "type": "string", "minLength": 1 }
+        "metasComentario": { "type": "string", "minLength": 1 },
+        "recursosComentario": { "type": "string", "minLength": 1 },
+        "comentario": { "type": "string" }
       },
-      "required": ["comentario"]
+      "required": ["metasComentario", "recursosComentario"]
     },
     "circuloApoyo": {
       "type": "object",
@@ -179,9 +197,11 @@
       "properties": {
         "areasPrioritarias": { "type": "array", "items": { "type": "string" }, "default": [] },
         "recomendaciones": { "type": "array", "items": { "type": "string" }, "default": [] },
-        "comentario": { "type": "string", "minLength": 1 }
+        "areasComentario": { "type": "string", "minLength": 1 },
+        "recomendacionesComentario": { "type": "string", "minLength": 1 },
+        "comentario": { "type": "string" }
       },
-      "required": ["comentario"]
+      "required": ["areasComentario", "recomendacionesComentario"]
     }
   }
 }

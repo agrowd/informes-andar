@@ -55,16 +55,16 @@ const validate = ajv.compile(formSchema as any);
 const initialData: any = {
 	datosGenerales: { nombreCompleto: '', periodo: '', numeroLegajo: '', facilitadorNombre: '', metaSueño: '', fotoJoven: '' },
 	objetivo: { textoMarco: INITIAL_TEXT_MARCO, focosComentario: '', estrategiasComentario: '', comentario: '' },
-	escucha: { comentario: '' },
-	estadoEmocional: { comentario: '' },
-	apoyosAjustes: { comentario: '' },
+	escucha: { preferenciasComentario: '', areasInteresComentario: '', comentario: '' },
+	estadoEmocional: { situacionesComentario: '', estrategiasComentario: '', autorregulacionComentario: '', comentario: '' },
+	apoyosAjustes: { apoyosComentario: '', ajustesComentario: '', comentario: '' },
 	evaluacion: { dimensiones: dimensionesCalidadVida.map((d) => ({ dimension: d })) },
-	logros: [],
+	logros: { items: [], comentario: '' },
 	logrosImagenes: [],
-	suenosMetas: { comentario: '' },
-	experiencias: { comentario: '' },
+	suenosMetas: { metasComentario: '', recursosComentario: '', comentario: '' },
+	experiencias: { tiposComentario: '', apoyoComentario: '', comentario: '' },
 	circuloApoyo: { valoracion: { grupal: '', individual: '', nombresIndividual: '' }, acompanaronMayorCompromiso: [], comentario: '' },
-	sugerencias: { comentario: '' }
+	sugerencias: { areasComentario: '', recomendacionesComentario: '', comentario: '' }
 };
 
 const friendlyFieldNames: Record<string, string> = {
@@ -81,15 +81,25 @@ const friendlyFieldNames: Record<string, string> = {
 	'objetivo.estrategias': 'Estrategias implementadas',
 	'objetivo.estrategiasComentario': 'Comentario sobre Estrategias',
 	'escucha.preferencias': 'Preferencias / decisiones',
+	'escucha.preferenciasComentario': 'Comentario sobre Preferencias',
 	'escucha.areasInteres': 'Áreas de interés',
+	'escucha.areasInteresComentario': 'Comentario sobre Áreas de interés',
 	'estadoEmocional.prevalencias': 'Prevalencias emocionales',
 	'estadoEmocional.expresionGeneral': 'Expresión emocional general',
 	'estadoEmocional.regulacion': 'Regulación emocional',
+	'estadoEmocional.situacionesComentario': 'Comentario sobre Situaciones que influyeron',
+	'estadoEmocional.estrategiasComentario': 'Comentario sobre Estrategias de acompañamiento',
+	'estadoEmocional.autorregulacionComentario': 'Comentario sobre Técnicas de autorregulación',
 	'apoyosAjustes.apoyos': 'Apoyos',
+	'apoyosAjustes.apoyosComentario': 'Comentario sobre Apoyos',
+	'apoyosAjustes.ajustesComentario': 'Comentario sobre Ajustes',
 	'evaluacion.dimensiones': 'Dimensiones de evaluación',
-	'logros': 'Logros',
+	'logros.items': 'Logros',
+	'logros.comentario': 'Comentario sobre Logros',
 	'sugerencias.areasPrioritarias': 'Áreas prioritarias',
-	'sugerencias.recomendaciones': 'Recomendaciones'
+	'sugerencias.areasComentario': 'Comentario sobre Áreas prioritarias',
+	'sugerencias.recomendaciones': 'Recomendaciones',
+	'sugerencias.recomendacionesComentario': 'Comentario sobre Recomendaciones'
 };
 
 const checkboxPathsRequireNotes: string[] = [];
@@ -622,11 +632,27 @@ function FormContent() {
 		const commentPaths = [
 			'circuloApoyo.comentario',
 			'objetivo.comentario',
+			'objetivo.focosComentario',
+			'objetivo.estrategiasComentario',
+			'escucha.preferenciasComentario',
+			'escucha.areasInteresComentario',
 			'escucha.comentario',
+			'estadoEmocional.situacionesComentario',
+			'estadoEmocional.estrategiasComentario',
+			'estadoEmocional.autorregulacionComentario',
 			'estadoEmocional.comentario',
+			'apoyosAjustes.apoyosComentario',
+			'apoyosAjustes.ajustesComentario',
 			'apoyosAjustes.comentario',
+			'logros.comentario',
+			'suenosMetas.metasComentario',
+			'suenosMetas.recursosComentario',
 			'suenosMetas.comentario',
+			'experiencias.tiposComentario',
+			'experiencias.apoyoComentario',
 			'experiencias.comentario',
+			'sugerencias.areasComentario',
+			'sugerencias.recomendacionesComentario',
 			'sugerencias.comentario'
 		];
 		commentPaths.forEach(path => {
@@ -1333,12 +1359,18 @@ function FormContent() {
 					</button>
 				</div>
 				<p style={{ color: '#666', fontSize: 12 }}><EditableText k="hint.escucha" fallback={hints.escucha || ''} tag="span" /></p>
-				<CheckboxGroup label={<EditableText k="sec.3.preferencias" fallback="Preferencias / decisiones" tag="span" />} path="escucha.preferencias" options={escuchaPreferencias} showNotes={false} />
 				<p className="ga-hint" style={{ marginTop: 8, marginBottom: 8, fontSize: 13, color: '#555' }}>
+					<strong>3.1 Preferencias / decisiones:</strong> <strong>Especifique detalles</strong> en el comentario de abajo.
+				</p>
+				<CheckboxGroup label={<EditableText k="sec.3.preferencias" fallback="Preferencias / decisiones" tag="span" />} path="escucha.preferencias" options={escuchaPreferencias} showNotes={false} />
+				<SectionComment path="escucha.preferenciasComentario" label="Comentario sobre Preferencias / decisiones (Obligatorio)" />
+				
+				<p className="ga-hint" style={{ marginTop: 16, marginBottom: 8, fontSize: 13, color: '#555' }}>
 					<strong>3.2 Áreas de interés:</strong> <strong>Especifique detalles</strong> en el comentario de abajo.
 				</p>
 				<CheckboxGroup label={<EditableText k="sec.3.areasInteres" fallback="Áreas de interés" tag="span" />} path="escucha.areasInteres" options={escuchaAreasInteres} showNotes={false} />
-				<SectionComment path="escucha.comentario" label="Comentario general de Escucha y Autodeterminación (Obligatorio)" />
+				<SectionComment path="escucha.areasInteresComentario" label="Comentario sobre Áreas de interés (Obligatorio)" />
+				
 				<Select label={<EditableText k="sec.3.nivelAutonomia" fallback="Nivel de autonomía" tag="span" />} path="escucha.nivelAutonomia" options={nivelesAutonomia} />
 				<p className="ga-hint"><EditableText k="hint.autonomia" fallback="Aclaraciones: niveles orientativos para describir la autonomía percibida en actividades y decisiones cotidianas." tag="span" /></p>
 				<label><EditableText k="sec.3.otroEspecificar" fallback={'Si seleccionaste "Otro" en áreas de interés, especificar'} tag="span" /><br />
@@ -1381,11 +1413,31 @@ function FormContent() {
 				</p>
 				<CheckboxGroup label={<EditableText k="sec.4.vinculo" fallback="Vínculo con el entorno" tag="span" />} path="estadoEmocional.vinculoEntorno" options={vinculoEntorno} showNotes={false} />
 				<CheckboxGroup label={<EditableText k="sec.4.bienestar" fallback="Bienestar subjetivo" tag="span" />} path="estadoEmocional.bienestarSubjetivo" options={bienestarSubjetivo} showNotes={false} />
+				
+				<p className="ga-hint" style={{ marginTop: 16, marginBottom: 8, fontSize: 13, color: '#555' }}>
+					<strong>Regulación emocional:</strong> <strong>Especifique detalles</strong> en el comentario de abajo.
+				</p>
 				<CheckboxGroup label={<EditableText k="sec.4.regulacion" fallback="Regulación emocional" tag="span" />} path="estadoEmocional.regulacion" options={regulacionEmocional} showNotes={false} />
+				
+				<p className="ga-hint" style={{ marginTop: 16, marginBottom: 8, fontSize: 13, color: '#555' }}>
+					<strong>Situaciones que influyeron:</strong> <strong>Especifique detalles</strong> en el comentario de abajo.
+				</p>
 				<CheckboxGroup label={<EditableText k="sec.4.situaciones" fallback="Situaciones que influyeron" tag="span" />} path="estadoEmocional.situacionesInfluyen" options={situacionesInfluyen} showNotes={false} />
+				<SectionComment path="estadoEmocional.situacionesComentario" label="Comentario sobre Situaciones que influyeron (Obligatorio)" />
+				
+				<p className="ga-hint" style={{ marginTop: 16, marginBottom: 8, fontSize: 13, color: '#555' }}>
+					<strong>Estrategias de acompañamiento:</strong> <strong>Especifique detalles</strong> en el comentario de abajo.
+				</p>
 				<CheckboxGroup label={<EditableText k="sec.4.estrategias" fallback="Estrategias de acompañamiento" tag="span" />} path="estadoEmocional.estrategias" options={estrategiasAcompanamiento} showNotes={false} />
+				<SectionComment path="estadoEmocional.estrategiasComentario" label="Comentario sobre Estrategias de acompañamiento (Obligatorio)" />
+				
+				<p className="ga-hint" style={{ marginTop: 16, marginBottom: 8, fontSize: 13, color: '#555' }}>
+					<strong>Técnicas de autorregulación:</strong> <strong>Especifique detalles</strong> en el comentario de abajo.
+				</p>
 				<CheckboxGroup label={<EditableText k="sec.4.autorregulacion" fallback="Técnicas de autorregulación" tag="span" />} path="estadoEmocional.tecnicasAutorregulacion" options={tecnicasAutorregulacion} showNotes={false} />
-				<SectionComment path="estadoEmocional.comentario" label="Comentario general de Estado Emocional (Obligatorio)" />
+				<SectionComment path="estadoEmocional.autorregulacionComentario" label="Comentario sobre Técnicas de autorregulación (Obligatorio)" />
+				
+				<SectionComment path="estadoEmocional.comentario" />
 			</section>
 
 			<section className="ga-card" style={sectionStyle(5)}>
@@ -1415,16 +1467,23 @@ function FormContent() {
 					</button>
 				</div>
 				<p style={{ color: '#666', fontSize: 12 }}><EditableText k="hint.apoyosAjustes" fallback={hints.apoyosAjustes || ''} tag="span" /></p>
-				<p className="ga-hint" style={{ marginBottom: 12, fontSize: 13, color: '#555' }}>
-					<strong>5.1 Apoyos:</strong> <strong>Marcar todos los que correspondan</strong>, considerando necesidades, intereses and preferencias de la persona.
-				</p>
 				<p className="ga-hint" style={{ marginTop: 8, marginBottom: 8, fontSize: 13, color: '#555' }}>
-					<strong>Apoyos y Ajustes:</strong> <strong>Especifique detalles</strong> en el comentario de abajo.
+					<strong>5.1 Apoyos:</strong> <strong>Especifique detalles</strong> en el comentario de abajo.
 				</p>
 				<CheckboxGroup label={<EditableText k="sec.5.apoyos" fallback="Apoyos" tag="span" />} path="apoyosAjustes.apoyos" options={apoyosOpciones} showNotes={false} />
+				<SectionComment path="apoyosAjustes.apoyosComentario" label="Comentario sobre Apoyos (Obligatorio)" />
+				
+				<p className="ga-hint" style={{ marginTop: 16, marginBottom: 8, fontSize: 13, color: '#555' }}>
+					<strong>5.3 Ajustes razonables:</strong> <strong>Especifique detalles</strong> en el comentario de abajo.
+				</p>
 				<CheckboxGroup label={<EditableText k="sec.5.ajustes" fallback="Ajustes razonables" tag="span" />} path="apoyosAjustes.ajustes" options={ajustesOpciones} showNotes={false} />
+				<SectionComment path="apoyosAjustes.ajustesComentario" label="Comentario sobre Ajustes razonables (Obligatorio)" />
+				
+				<p className="ga-hint" style={{ marginTop: 16, marginBottom: 8, fontSize: 13, color: '#555' }}>
+					<strong>Contextos de aplicación:</strong> Marcar todas las que correspondan.
+				</p>
 				<CheckboxGroup label={<EditableText k="sec.5.contextos" fallback="Contextos de aplicación" tag="span" />} path="apoyosAjustes.contextos" options={contextosApoyo} showNotes={false} />
-				<SectionComment path="apoyosAjustes.comentario" label="Comentario general de Apoyos y Ajustes (Obligatorio)" />
+				<SectionComment path="apoyosAjustes.comentario" />
 			</section>
 
 			<section className="ga-card" style={sectionStyle(6)}>
@@ -1467,7 +1526,11 @@ function FormContent() {
 
 			<section className="ga-card" style={sectionStyle(7)}>
 				<EditableText k="sec.7.titulo" fallback="Logros destacados y habilidades" tag="h2" />
-				<CheckboxGroup label={<EditableText k="sec.7.logros" fallback="Logros" tag="span" />} path="logros" options={logrosOpciones} />
+				<p className="ga-hint" style={{ marginTop: 8, marginBottom: 8, fontSize: 13, color: '#555' }}>
+					<strong>Logros:</strong> <strong>Especifique detalles</strong> en el comentario de abajo.
+				</p>
+				<CheckboxGroup label={<EditableText k="sec.7.logros" fallback="Logros" tag="span" />} path="logros.items" options={logrosOpciones} showNotes={false} />
+				<SectionComment path="logros.comentario" label="Comentario sobre Logros y habilidades (Obligatorio)" />
 				<div style={{ marginTop: 16 }}>
 					<label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>
 						<EditableText k="sec.7.imagenes" fallback="Imágenes de logros (opcional)" tag="span" />
@@ -1561,11 +1624,18 @@ function FormContent() {
 						?
 					</button>
 				</div>
-				<CheckboxGroup label={<EditableText k="sec.8.metas" fallback="Metas" tag="span" />} path="suenosMetas.metas" options={metasOpciones} />
 				<p className="ga-hint" style={{ marginTop: 8, marginBottom: 8, fontSize: 13, color: '#555' }}>
-					<strong>8.2 Recursos necesarios:</strong> <strong>Marcar todos los que correspondan</strong>.
+					<strong>8.1 Metas:</strong> <strong>Especifique detalles</strong> en el comentario de abajo.
 				</p>
-				<CheckboxGroup label={<EditableText k="sec.8.recursos" fallback="Recursos necesarios" tag="span" />} path="suenosMetas.recursosNecesarios" options={recursosOpciones} />
+				<CheckboxGroup label={<EditableText k="sec.8.metas" fallback="Metas" tag="span" />} path="suenosMetas.metas" options={metasOpciones} showNotes={false} />
+				<SectionComment path="suenosMetas.metasComentario" label="Comentario sobre Metas (Obligatorio)" />
+				
+				<p className="ga-hint" style={{ marginTop: 16, marginBottom: 8, fontSize: 13, color: '#555' }}>
+					<strong>8.2 Recursos necesarios:</strong> <strong>Especifique detalles</strong> en el comentario de abajo.
+				</p>
+				<CheckboxGroup label={<EditableText k="sec.8.recursos" fallback="Recursos necesarios" tag="span" />} path="suenosMetas.recursosNecesarios" options={recursosOpciones} showNotes={false} />
+				<SectionComment path="suenosMetas.recursosComentario" label="Comentario sobre Recursos necesarios (Obligatorio)" />
+				
 				<SectionComment path="suenosMetas.comentario" />
 			</section>
 
@@ -1603,22 +1673,39 @@ function FormContent() {
 					Si seleccionó "Sí, participó con apoyo o acompañamiento": Se sumó a las experiencias con cierto grado de apoyo, mostrando disposición parcial o requerimientos específicos para involucrarse.
 				</p>
 				<p className="ga-hint" style={{ marginTop: 8, marginBottom: 8, fontSize: 13, color: '#555' }}>
-					<strong>Experiencias:</strong> <strong>Especifique detalles</strong> en el comentario de abajo.
+					<strong>Experiencias vividas:</strong> <strong>Especifique detalles</strong> en el comentario de abajo.
 				</p>
 				<CheckboxGroup label={<EditableText k="sec.9.tiposVividas" fallback="Tipos de experiencias vividas" tag="span" />} path="experiencias.tiposVividas" options={nuevasExperiencias} showNotes={false} />
+				<SectionComment path="experiencias.tiposComentario" label="Comentario sobre Experiencias vividas (Obligatorio)" />
+				
+				<p className="ga-hint" style={{ marginTop: 16, marginBottom: 8, fontSize: 13, color: '#555' }}>
+					<strong>Tipo de apoyo brindado:</strong> <strong>Especifique detalles</strong> en el comentario de abajo.
+				</p>
 				<CheckboxGroup label={<EditableText k="sec.9.tipoApoyo" fallback="Tipo de apoyo brindado" tag="span" />} path="experiencias.tipoApoyo" options={tipoApoyoExperiencias} showNotes={false} />
+				<SectionComment path="experiencias.apoyoComentario" label="Comentario sobre Apoyo recibido (Obligatorio)" />
+				
+				<p className="ga-hint" style={{ marginTop: 16, marginBottom: 8, fontSize: 13, color: '#555' }}>
+					<strong>Motivos si no participó:</strong> Marcar todos los que correspondan.
+				</p>
 				<CheckboxGroup label={<EditableText k="sec.9.motivos" fallback="Motivos si no participó" tag="span" />} path="experiencias.motivosNoParticipa" options={motivosNoParticipa} showNotes={false} />
-				<SectionComment path="experiencias.comentario" label="Comentario sobre Experiencias significativas (Obligatorio)" />
+				<SectionComment path="experiencias.comentario" />
 			</section>
 
 			<section className="ga-card" style={sectionStyle(10)}>
 				<EditableText k="sec.10.titulo" fallback="Sugerencias y recomendaciones" tag="h2" />
 				<p className="ga-hint" style={{ marginTop: 8, marginBottom: 8, fontSize: 13, color: '#555' }}>
-					<strong>Sugerencias:</strong> <strong>Especifique detalles</strong> en el comentario de abajo.
+					<strong>10.1 Áreas prioritarias:</strong> <strong>Especifique detalles</strong> en el comentario de abajo.
 				</p>
 				<CheckboxGroup label={<EditableText k="sec.10.areas" fallback="Áreas prioritarias" tag="span" />} path="sugerencias.areasPrioritarias" options={areasPrioritarias} showNotes={false} />
+				<SectionComment path="sugerencias.areasComentario" label="Comentario sobre Áreas prioritarias (Obligatorio)" />
+				
+				<p className="ga-hint" style={{ marginTop: 16, marginBottom: 8, fontSize: 13, color: '#555' }}>
+					<strong>10.2 Recomendaciones:</strong> <strong>Especifique detalles</strong> en el comentario de abajo.
+				</p>
 				<CheckboxGroup label={<EditableText k="sec.10.recomendaciones" fallback="Recomendaciones" tag="span" />} path="sugerencias.recomendaciones" options={recomendacionesOpciones} showNotes={false} />
-				<SectionComment path="sugerencias.comentario" label="Comentario sobre Sugerencias y recomendaciones (Obligatorio)" />
+				<SectionComment path="sugerencias.recomendacionesComentario" label="Comentario sobre Recomendaciones (Obligatorio)" />
+				
+				<SectionComment path="sugerencias.comentario" />
 			</section>
 
 			<div style={{ marginTop: 12 }} className="ga-row">
