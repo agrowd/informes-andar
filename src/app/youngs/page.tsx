@@ -384,6 +384,9 @@ export default function YoungsPage() {
                 </table>
               </div>
             )}
+          </div>
+        )}
+
         {activeTab === 'analiticas' && (
           <div className="ga-card" style={{ padding: 30 }}>
             <h3 style={{ marginBottom: 20 }}>Visualización de Progreso</h3>
