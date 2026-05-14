@@ -43,7 +43,7 @@ export default function YoungsPage() {
   // Estados de navegación
   const [view, setView] = useState<'list' | 'detail' | 'create'>('list');
   const [selectedYoung, setSelectedYoung] = useState<Young | null>(null);
-  const [activeTab, setActiveTab] = useState<'perfil' | 'asignaciones' | 'historial'>('perfil');
+  const [activeTab, setActiveTab] = useState<'perfil' | 'asignaciones' | 'historial' | 'analiticas'>('perfil');
   const [reportsHistory, setReportsHistory] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
