@@ -50,9 +50,10 @@
       "properties": {
         "textoMarco": { "type": ["string", "null"], "nullable": true },
         "focos": { "type": "array", "items": { "type": "string" }, "default": [] },
-        "estrategias": { "type": "array", "items": { "type": "string" }, "default": [] }
+        "estrategias": { "type": "array", "items": { "type": "string" }, "default": [] },
+        "comentario": { "type": "string", "minLength": 1 }
       },
-      "required": []
+      "required": ["comentario"]
     },
     "escucha": {
       "type": "object",
@@ -60,8 +61,10 @@
         "preferencias": { "type": "array", "items": { "type": "string" }, "default": [] },
         "areasInteres": { "type": "array", "items": { "type": "string" }, "default": [] },
         "nivelAutonomia": { "type": ["string", "null"], "nullable": true },
-        "areasInteresOtro": { "type": ["string", "null"], "nullable": true }
-      }
+        "areasInteresOtro": { "type": ["string", "null"], "nullable": true },
+        "comentario": { "type": "string", "minLength": 1 }
+      },
+      "required": ["comentario"]
     },
     "estadoEmocional": {
       "type": "object",
@@ -73,16 +76,20 @@
         "regulacion": { "type": "array", "items": { "type": "string" }, "default": [] },
         "situacionesInfluyen": { "type": "array", "items": { "type": "string" }, "default": [] },
         "estrategias": { "type": "array", "items": { "type": "string" }, "default": [] },
-        "tecnicasAutorregulacion": { "type": "array", "items": { "type": "string" }, "default": [] }
-      }
+        "tecnicasAutorregulacion": { "type": "array", "items": { "type": "string" }, "default": [] },
+        "comentario": { "type": "string", "minLength": 1 }
+      },
+      "required": ["comentario"]
     },
     "apoyosAjustes": {
       "type": "object",
       "properties": {
         "apoyos": { "type": "array", "items": { "type": "string" }, "default": [] },
         "ajustes": { "type": "array", "items": { "type": "string" }, "default": [] },
-        "contextos": { "type": "array", "items": { "type": "string" }, "default": [] }
-      }
+        "contextos": { "type": "array", "items": { "type": "string" }, "default": [] },
+        "comentario": { "type": "string", "minLength": 1 }
+      },
+      "required": ["comentario"]
     },
     "evaluacion": {
       "type": "object",
@@ -113,15 +120,19 @@
         "tiposVividas": { "type": "array", "items": { "type": "string" }, "default": [] },
         "tipoApoyo": { "type": "array", "items": { "type": "string" }, "default": [] },
         "motivosNoParticipa": { "type": "array", "items": { "type": "string" }, "default": [] },
-        "detalle": { "type": ["string", "null"], "nullable": true }
-      }
+        "detalle": { "type": ["string", "null"], "nullable": true },
+        "comentario": { "type": "string", "minLength": 1 }
+      },
+      "required": ["comentario"]
     },
     "suenosMetas": {
       "type": "object",
       "properties": {
         "metas": { "type": "array", "items": { "type": "string" }, "default": [] },
-        "recursosNecesarios": { "type": "array", "items": { "type": "string" }, "default": [] }
-      }
+        "recursosNecesarios": { "type": "array", "items": { "type": "string" }, "default": [] },
+        "comentario": { "type": "string", "minLength": 1 }
+      },
+      "required": ["comentario"]
     },
     "circuloApoyo": {
       "type": "object",
@@ -134,7 +145,8 @@
           "type": "object",
           "properties": {
             "grupal": { "type": ["string", "null"], "enum": ["ROJO","AMARILLO","VERDE", null], "nullable": true },
-            "individual": { "type": ["string", "null"], "enum": ["ROJO","AMARILLO","VERDE", null], "nullable": true }
+            "individual": { "type": ["string", "null"], "enum": ["ROJO","AMARILLO","VERDE", null], "nullable": true },
+            "nombresIndividual": { "type": ["string", "null"], "nullable": true }
           }
         },
         "miembros": {
@@ -148,8 +160,10 @@
             }
           },
           "default": []
-        }
-      }
+        },
+        "comentario": { "type": "string", "minLength": 1 }
+      },
+      "required": ["comentario"]
     },
     "abordaje": {
       "type": "object",
@@ -162,8 +176,10 @@
       "type": "object",
       "properties": {
         "areasPrioritarias": { "type": "array", "items": { "type": "string" }, "default": [] },
-        "recomendaciones": { "type": "array", "items": { "type": "string" }, "default": [] }
-      }
+        "recomendaciones": { "type": "array", "items": { "type": "string" }, "default": [] },
+        "comentario": { "type": "string", "minLength": 1 }
+      },
+      "required": ["comentario"]
     }
   }
 }

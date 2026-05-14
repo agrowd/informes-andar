@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import ImageUpload from '../_components/ImageUpload';
+import QualityOfLifeChart from '../_components/QualityOfLifeChart';
 import { integrantesCirculoTipos } from '@/lib/form/options';
 
 type Young = {
@@ -47,6 +48,8 @@ export default function YoungsPage() {
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [evolutionData, setEvolutionData] = useState<any[]>([]);
+  const [loadingEvolution, setLoadingEvolution] = useState(false);
 
   const loadYoungs = async (pageNum: number = page) => {
     try {
@@ -78,6 +81,21 @@ export default function YoungsPage() {
       console.error('Error cargando historial:', error);
     } finally {
       setLoadingHistory(false);
+    }
+  };
+
+  const loadEvolution = async (youngId: string) => {
+    setLoadingEvolution(true);
+    try {
+      const res = await fetch(`/api/youngs/${youngId}/evolution`);
+      if (res.ok) {
+        const json = await res.json();
+        setEvolutionData(json.evolution || []);
+      }
+    } catch (error) {
+      console.error('Error cargando evolución:', error);
+    } finally {
+      setLoadingEvolution(false);
     }
   };
 
@@ -174,7 +192,10 @@ export default function YoungsPage() {
     setView('detail');
     setActiveTab('perfil');
     const id = young.id || young._id;
-    if (id) loadReportsHistory(id);
+    if (id) {
+      loadReportsHistory(id);
+      loadEvolution(id);
+    }
   };
 
   const deleteYoung = async (id: string) => {
@@ -256,7 +277,8 @@ export default function YoungsPage() {
         <div className="ga-tabs-nav">
           <button className={`ga-tab ${activeTab === 'perfil' ? 'active' : ''}`} onClick={() => setActiveTab('perfil')}>Ficha Técnica</button>
           <button className={`ga-tab ${activeTab === 'asignaciones' ? 'active' : ''}`} onClick={() => setActiveTab('asignaciones')}>Seguimiento</button>
-          <button className={`ga-tab ${activeTab === 'historial' ? 'active' : ''}`} onClick={() => setActiveTab('historial')}>Historial de Informes</button>
+          <button className={`ga-tab ${activeTab === 'historial' ? 'active' : ''}`} onClick={() => setActiveTab('historial')}>Historial</button>
+          <button className={`ga-tab ${activeTab === 'analiticas' ? 'active' : ''}`} onClick={() => setActiveTab('analiticas')}>Analíticas 📊</button>
         </div>
 
         {activeTab === 'perfil' && (
@@ -360,6 +382,20 @@ export default function YoungsPage() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            )}
+        {activeTab === 'analiticas' && (
+          <div className="ga-card" style={{ padding: 30 }}>
+            <h3 style={{ marginBottom: 20 }}>Visualización de Progreso</h3>
+            {loadingEvolution ? (
+              <div style={{ padding: 40, textAlign: 'center' }}>Cargando analíticas...</div>
+            ) : evolutionData.length === 0 ? (
+              <div style={{ padding: 40, textAlign: 'center', color: 'var(--muted)', background: '#f8fafc', borderRadius: 12 }}>
+                No hay datos suficientes para generar el gráfico comparativo.
+              </div>
+            ) : (
+              <div style={{ maxWidth: 800, margin: '0 auto' }}>
+                <QualityOfLifeChart periods={evolutionData} />
               </div>
             )}
           </div>

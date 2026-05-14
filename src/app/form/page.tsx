@@ -46,23 +46,25 @@ import {
 } from '@/lib/form/options';
 import { getTooltip } from '@/lib/form/tooltips';
 
+const INITIAL_TEXT_MARCO = `Desde una perspectiva central, las personas de reconocimiento del valor de cada proyecto de vida, se acompañan jóvenes en el proceso de identificación, construcción y desarrollo de sus metas personales. Este acompañamiento se realiza considerando de manera integral. Se acompaña al joven en el logro de sus metas personales, considerando las dimensiones de calidad de vida y brindando los apoyos necesarios para el desarrollo de las habilidades como la toma de decisiones, la planificación, la autoregulación emocional y la participación activa. Este proceso se realiza de manera progresiva, respetando sus tiempos, promoviendo su autonomía y fortaleciendo su protagonismo en la toma de decisiones sobre su vida.`;
+
 const ajv = new Ajv2020({ allErrors: true });
 addFormats(ajv);
 const validate = ajv.compile(formSchema as any);
 
 const initialData: any = {
 	datosGenerales: { nombreCompleto: '', periodo: '', numeroLegajo: '', facilitadorNombre: '', metaSueño: '', fotoJoven: '' },
-	objetivo: {},
-	escucha: {},
-	estadoEmocional: {},
-	apoyosAjustes: {},
+	objetivo: { textoMarco: INITIAL_TEXT_MARCO, comentario: '' },
+	escucha: { comentario: '' },
+	estadoEmocional: { comentario: '' },
+	apoyosAjustes: { comentario: '' },
 	evaluacion: { dimensiones: dimensionesCalidadVida.map((d) => ({ dimension: d })) },
 	logros: [],
 	logrosImagenes: [],
-	suenosMetas: {},
-	experiencias: {},
-	circuloApoyo: { valoracion: { grupal: '', individual: '' }, acompanaronMayorCompromiso: [] },
-	sugerencias: {}
+	suenosMetas: { comentario: '' },
+	experiencias: { comentario: '' },
+	circuloApoyo: { valoracion: { grupal: '', individual: '', nombresIndividual: '' }, acompanaronMayorCompromiso: [], comentario: '' },
+	sugerencias: { comentario: '' }
 };
 
 const friendlyFieldNames: Record<string, string> = {
@@ -640,6 +642,27 @@ function FormContent() {
 				}
 			});
 		});
+
+		const commentPaths = [
+			'circuloApoyo.comentario',
+			'objetivo.comentario',
+			'escucha.comentario',
+			'estadoEmocional.comentario',
+			'apoyosAjustes.comentario',
+			'suenosMetas.comentario',
+			'experiencias.comentario',
+			'sugerencias.comentario'
+		];
+		commentPaths.forEach(path => {
+			const val = getValueByPath(data, path);
+			if (!val || !val.trim()) {
+				extraErrors.push(`El comentario en "${getReadableLabel(path)}" es obligatorio para personalizar el informe.`);
+			}
+		});
+
+		if ((data.circuloApoyo?.valoracion?.individual === 'ROJO' || data.circuloApoyo?.valoracion?.individual === 'AMARILLO') && !data.circuloApoyo?.valoracion?.nombresIndividual?.trim()) {
+			extraErrors.push('En el Círculo de Apoyo, debe especificar los nombres de las personas que no están participando adecuadamente.');
+		}
 		
 		const allErrors = [...ajvErrors, ...extraErrors];
 		setErrors(allErrors);
@@ -1009,6 +1032,28 @@ function FormContent() {
 		);
 	};
 
+	const SectionComment = ({ path, label }: { path: string, label?: string }) => {
+		const value = getValueByPath(data, path) || '';
+		return (
+			<div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid #eee' }}>
+				<label style={{ display: 'block' }}>
+					<b style={{ color: '#1a365d' }}>{label || 'Comentario de personalización (Obligatorio)'}</b>
+					<p style={{ fontSize: 12, color: '#666', marginTop: 4, marginBottom: 8 }}>
+						Agregue una descripción personalizada de este período para el joven. Evite frases genéricas.
+					</p>
+					<textarea 
+						className={`ga-textarea-large ${!value.trim() ? 'ga-input-error' : ''}`}
+						rows={4}
+						value={value}
+						onChange={(e) => onChange(path, e.target.value)}
+						placeholder="Ej: Durante este mes, [Nombre] ha mostrado un gran avance en..."
+					/>
+					{!value.trim() && <small style={{ color: '#d00', fontWeight: 500 }}>Este comentario es obligatorio para individualizar el informe.</small>}
+				</label>
+			</div>
+		);
+	};
+
 	if (loadingFormData) {
 		return <div style={{ padding: 20, textAlign: 'center' }}>Cargando datos del formulario...</div>;
 	}
@@ -1220,6 +1265,20 @@ function FormContent() {
 						</div>
 					</div>
 				</div>
+				{(data?.circuloApoyo?.valoracion?.individual === 'ROJO' || data?.circuloApoyo?.valoracion?.individual === 'AMARILLO') && (
+					<div style={{ marginTop: 12, padding: 12, background: '#fffbeb', borderRadius: 8, border: '1px solid #fde68a' }}>
+						<label style={{ display: 'block' }}>
+							<b>¿Quiénes son las personas que no están participando adecuadamente?</b><br />
+							<input 
+								className="ga-input" 
+								value={data?.circuloApoyo?.valoracion?.nombresIndividual || ''} 
+								onChange={(e) => onChange('circuloApoyo.valoracion.nombresIndividual', e.target.value)}
+								placeholder="Ej: Padre Juan, Hermana María..."
+							/>
+						</label>
+					</div>
+				)}
+				<SectionComment path="circuloApoyo.comentario" />
 			</section>
 
 			<section className="ga-card" style={sectionStyle(2)}>
@@ -1260,6 +1319,7 @@ function FormContent() {
 					<strong>2.2 Estrategias:</strong> <strong>Debe especificar</strong> para cada estrategia seleccionada. Ejemplos: "Talleres con objetivos prácticos CUALES", "Actividades de la vida diaria CUALES", "Intervenciones en crisis/emergencias EN QUE SITUACION? QUIENES PARTICIPARON? Y CUAL FUE SU ABORDAJE?", etc. Use el lapicito para agregar detalles.
 				</p>
 				<CheckboxGroup label={<EditableText k="sec.2.estrategias" fallback="Estrategias implementadas" tag="span" />} path="objetivo.estrategias" options={objetivoEstrategias} />
+				<SectionComment path="objetivo.comentario" />
 			</section>
 
 			<section className="ga-card" style={sectionStyle(3)}>
@@ -1299,6 +1359,7 @@ function FormContent() {
 				<label><EditableText k="sec.3.otroEspecificar" fallback={'Si seleccionaste "Otro" en áreas de interés, especificar'} tag="span" /><br />
 					<textarea className="ga-input ga-textarea-large" value={data.escucha?.areasInteresOtro || ''} onChange={(e) => onChange('escucha.areasInteresOtro', e.target.value)} />
 				</label>
+				<SectionComment path="escucha.comentario" />
 			</section>
 
 			<section className="ga-card" style={sectionStyle(4)}>
@@ -1354,6 +1415,7 @@ function FormContent() {
 					<strong>Técnicas de autorregulación:</strong> Ejemplos para facilitadores: Usa respiración/pausas/cuenta mental, se aleja del estímulo voluntariamente, identifica y expresa lo que siente, recurre a referentes, utiliza apoyos visuales, emplea técnicas aprendidas (relajación, yoga), realiza movimientos corporales, usa objetos sensoriales, solicita momentos de silencio, avisa cuando se siente mal, escucha sugerencias y pone en práctica estrategias.
 				</p>
 				<CheckboxGroup label={<EditableText k="sec.4.autorregulacion" fallback="Técnicas de autorregulación (ejemplos)" tag="span" />} path="estadoEmocional.tecnicasAutorregulacion" options={tecnicasAutorregulacion} />
+				<SectionComment path="estadoEmocional.comentario" />
 			</section>
 
 			<section className="ga-card" style={sectionStyle(5)}>
@@ -1392,6 +1454,7 @@ function FormContent() {
 				</p>
 				<CheckboxGroup label={<EditableText k="sec.5.ajustes" fallback="Ajustes razonables" tag="span" />} path="apoyosAjustes.ajustes" options={ajustesOpciones} />
 				<CheckboxGroup label={<EditableText k="sec.5.contextos" fallback="Contextos de aplicación" tag="span" />} path="apoyosAjustes.contextos" options={contextosApoyo} />
+				<SectionComment path="apoyosAjustes.comentario" />
 			</section>
 
 			<section className="ga-card" style={sectionStyle(6)}>
@@ -1533,6 +1596,7 @@ function FormContent() {
 					<strong>8.2 Recursos necesarios:</strong> <strong>Marcar todos los que correspondan</strong>.
 				</p>
 				<CheckboxGroup label={<EditableText k="sec.8.recursos" fallback="Recursos necesarios" tag="span" />} path="suenosMetas.recursosNecesarios" options={recursosOpciones} />
+				<SectionComment path="suenosMetas.comentario" />
 			</section>
 
 			<section className="ga-card" style={sectionStyle(9)}>
@@ -1583,12 +1647,14 @@ function FormContent() {
 				<label><EditableText k="sec.9.detalle" fallback="Detalle (opcional)" tag="span" /><br />
 					<textarea className="ga-input ga-textarea-large" value={data.experiencias?.detalle || ''} onChange={(e) => onChange('experiencias.detalle', e.target.value)} />
 				</label>
+				<SectionComment path="experiencias.comentario" />
 			</section>
 
 			<section className="ga-card" style={sectionStyle(10)}>
 				<EditableText k="sec.10.titulo" fallback="Sugerencias y recomendaciones" tag="h2" />
 				<CheckboxGroup label={<EditableText k="sec.10.areas" fallback="Áreas prioritarias" tag="span" />} path="sugerencias.areasPrioritarias" options={areasPrioritarias} />
 				<CheckboxGroup label={<EditableText k="sec.10.recomendaciones" fallback="Recomendaciones" tag="span" />} path="sugerencias.recomendaciones" options={recomendacionesOpciones} />
+				<SectionComment path="sugerencias.comentario" />
 			</section>
 
 			<div style={{ marginTop: 12 }} className="ga-row">
@@ -1905,6 +1971,12 @@ function FormContent() {
 					</p>
 				</div>
 			</Modal>
+
+			<div className={`ga-save-status ${saving}`}>
+				{saving === 'saving' && <>⏳ Guardando cambios...</>}
+				{saving === 'saved' && <>✅ Cambios guardados</>}
+				{saving === 'error' && <>❌ Error al guardar</>}
+			</div>
 		</div>);
 }
 

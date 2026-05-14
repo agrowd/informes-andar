@@ -93,6 +93,23 @@ export default function Dashboard() {
     }
   };
 
+  const copyForm = async (formId: string) => {
+    if (!confirm('¿Deseas duplicar este formulario para crear uno nuevo basado en este?')) return;
+    try {
+      const res = await fetch(`/api/forms/${formId}/copy`, { method: 'POST' });
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({ error: 'Error duplicando formulario' }));
+        throw new Error(error.error || `HTTP ${res.status}`);
+      }
+      const data = await res.json();
+      alert('Formulario duplicado correctamente. Serás redirigido para editarlo.');
+      window.location.href = `/form?formId=${data.id}`;
+    } catch (error: any) {
+      console.error('Error al duplicar formulario:', error);
+      alert('Error: ' + (error.message || 'No se pudo duplicar el formulario'));
+    }
+  };
+
   // Agrupar informes por grupo
   const reportsByGroup = filteredReports.reduce((acc: any, report: any) => {
     const grupo = report.grupo || 'Sin grupo';
@@ -209,9 +226,19 @@ export default function Dashboard() {
           <EditableText k="dash.latestForms" fallback="Últimos formularios" tag="h3" />
           <ul>
             {forms.slice(0, 5).map((f) => (
-              <li key={f._id || f.id}>
+              <li key={f._id || f.id} style={{ marginBottom: 4 }}>
                 {f.periodo || '—'} — {f.status || 'BORRADOR'}
-                <a href={`/forms/${f._id || f.id}`} style={{ marginLeft: 8, fontSize: 12 }}>Ver</a>
+                <div style={{ display: 'inline-flex', gap: 8, marginLeft: 8 }}>
+                  <a href={`/form?formId=${f._id || f.id}`} style={{ fontSize: 12 }}>Editar</a>
+                  <button 
+                    onClick={() => copyForm(f._id || f.id)}
+                    className="ga-btn secondary"
+                    style={{ fontSize: 11, padding: '2px 6px' }}
+                    title="Duplicar formulario"
+                  >
+                    📋 Duplicar
+                  </button>
+                </div>
               </li>
             ))}
           </ul>

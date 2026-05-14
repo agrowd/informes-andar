@@ -24,15 +24,15 @@ export const integrantesCirculoTipos = [
 ];
 
 export const objetivoFocos = [
-	"Independencia en hogar y comunidad",
-	"Habilidades sociales",
-	"Reconocimiento y ejercicio de derechos",
-	"Participación en espacios comunitarios",
+	"Independencia en hogar y comunidad (hacer la cama, limpiar pisos, cocinar, rutinas)",
+	"Habilidades sociales (saludar, pedir permiso, respetar turnos, mirar a los ojos)",
+	"Reconocimiento y ejercicio de derechos (reflexión sobre sus derechos, hacerlos valer)",
+	"Participación en espacios comunitarios (ferias, eventos barriales, clubes)",
 	"Acceso a actividades recreativas/culturales",
 	"Desarrollo de intereses y proyectos",
-	"Acompañamiento en ámbito familiar",
+	"Acompañamiento en ámbito familiar (cómo lo acompañan en su hogar)",
 	"Mejora de la comunicación",
-	"Formulación de metas personales",
+	"Formulación de metas personales (planificar qué quiere hacer)",
 	"Planificación/organización/resolución de problemas",
 	"Manejo y regulación de emociones",
 	"Participación activa en decisiones",
@@ -42,11 +42,11 @@ export const objetivoFocos = [
 
 export const objetivoEstrategias = [
 	"Talleres con objetivos prácticos",
-	"Actividades de la vida diaria",
-	"Dispositivos de apoyo personalizados",
+	"Actividades de la vida diaria (Higiene, Cocina, Orden del espacio)",
+	"Dispositivos de apoyo personalizados (platos adaptados, agendas visuales)",
 	"Intervenciones en crisis/emergencias",
 	"Acompañamiento terapéutico externo",
-	"Trabajo en red con otras instituciones",
+	"Trabajo en red con otras instituciones (mateadas comunitarias, negocios del barrio)",
 	"Reuniones con el círculo de apoyo",
 	"Acciones en la comunidad",
 	"Participación en planificación de objetivos",

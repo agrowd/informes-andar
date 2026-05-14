@@ -59,6 +59,23 @@ export default function FormsList() {
     }
   };
 
+  const duplicateForm = async (id: string) => {
+    if (!confirm('¿Deseas duplicar este formulario para crear uno nuevo basado en este?')) return;
+    try {
+      const res = await fetch(`/api/forms/${id}/copy`, { method: 'POST' });
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({ error: 'Error duplicando formulario' }));
+        throw new Error(error.error || `HTTP ${res.status}`);
+      }
+      const data = await res.json();
+      alert('✅ Formulario duplicado correctamente. Serás redirigido para editarlo.');
+      window.location.href = `/form?formId=${data.id}`;
+    } catch (error: any) {
+      console.error('Error duplicando formulario:', error);
+      alert('Error: ' + (error.message || 'No se pudo duplicar el formulario'));
+    }
+  };
+
   return (
     <div>
       <h1>Formularios</h1>
@@ -146,8 +163,14 @@ export default function FormsList() {
                     >
                       📄 Generar
                     </button>
-                    <button className="ga-btn" onClick={() => changeStatus(it._id, 'EN_REVISION')} style={{ fontSize: 12, padding: '4px 8px', whiteSpace: 'nowrap' }}>Revisión</button>
-                    <button className="ga-btn accent" onClick={() => changeStatus(it._id, 'APROBADO')} style={{ fontSize: 12, padding: '4px 8px', whiteSpace: 'nowrap' }}>Aprobar</button>
+                    <button 
+                      className="ga-btn secondary" 
+                      onClick={() => duplicateForm(it._id)} 
+                      style={{ fontSize: 12, padding: '4px 8px', whiteSpace: 'nowrap' }}
+                      title="Crear una copia de este formulario"
+                    >
+                      📋 Duplicar
+                    </button>
                     <a href={`/api/forms/${it._id}/.json`} target="_blank" rel="noreferrer" style={{ fontSize: 12, padding: '4px 8px' }}>JSON</a>
                   </div>
                 </td>

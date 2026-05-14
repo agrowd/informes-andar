@@ -120,6 +120,40 @@ h3{font-size:16px;line-height:24px;margin:4px 0 6px;font-weight:700}
   /* Toasts responsive */
   .ga-toast-wrap{left:12px;right:12px;top:12px}
   .ga-toast{min-width:auto;max-width:100%}
+
+  /* Touch areas */
+  input[type="checkbox"], input[type="radio"] { width: 22px; height: 22px; }
+  .ga-chip { padding: 8px 14px; font-size: 14px; margin-bottom: 4px; }
+  .ga-form-grid label { padding: 14px 10px; }
+}
+
+/* Indicador de guardado estable */
+.ga-save-status {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: rgba(255, 255, 255, 0.95);
+  padding: 8px 16px;
+  border-radius: 999px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  z-index: 100;
+  border: 1px solid var(--border);
+  backdrop-filter: blur(4px);
+  pointer-events: none;
+  transition: all 0.3s ease;
+}
+.ga-save-status.saving { color: var(--primary); border-color: var(--primary); }
+.ga-save-status.saved { color: var(--success); border-color: var(--success); }
+.ga-save-status.error { color: var(--error); border-color: var(--error); }
+.ga-save-status.idle { opacity: 0; transform: translateY(10px); }
+
+@media (max-width: 768px) {
+  .ga-save-status { bottom: auto; top: 70px; right: 12px; font-size: 12px; padding: 6px 12px; }
 }
 
 /* Tablet */
