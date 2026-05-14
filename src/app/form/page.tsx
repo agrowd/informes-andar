@@ -54,7 +54,7 @@ const validate = ajv.compile(formSchema as any);
 
 const initialData: any = {
 	datosGenerales: { nombreCompleto: '', periodo: '', numeroLegajo: '', facilitadorNombre: '', metaSueño: '', fotoJoven: '' },
-	objetivo: { textoMarco: INITIAL_TEXT_MARCO, comentario: '' },
+	objetivo: { textoMarco: INITIAL_TEXT_MARCO, focosComentario: '', estrategiasComentario: '', comentario: '' },
 	escucha: { comentario: '' },
 	estadoEmocional: { comentario: '' },
 	apoyosAjustes: { comentario: '' },
@@ -77,7 +77,9 @@ const friendlyFieldNames: Record<string, string> = {
 	'circuloApoyo.participacion': 'Nivel de participación del círculo',
 	'circuloApoyo.acompanaronMayorCompromiso': 'Integrantes con mayor compromiso',
 	'objetivo.focos': 'Focos del acompañamiento',
+	'objetivo.focosComentario': 'Comentario sobre Focos',
 	'objetivo.estrategias': 'Estrategias implementadas',
+	'objetivo.estrategiasComentario': 'Comentario sobre Estrategias',
 	'escucha.preferencias': 'Preferencias / decisiones',
 	'escucha.areasInteres': 'Áreas de interés',
 	'estadoEmocional.prevalencias': 'Prevalencias emocionales',
@@ -90,33 +92,7 @@ const friendlyFieldNames: Record<string, string> = {
 	'sugerencias.recomendaciones': 'Recomendaciones'
 };
 
-const checkboxPathsRequireNotes = [
-	'circuloApoyo.acompanaronMayorCompromiso',
-	'circuloApoyo.respetoDecisiones',
-	'objetivo.focos',
-	'objetivo.estrategias',
-	'escucha.preferencias',
-	'escucha.areasInteres',
-	'estadoEmocional.prevalencias',
-	'estadoEmocional.expresionGeneral',
-	'estadoEmocional.vinculoEntorno',
-	'estadoEmocional.bienestarSubjetivo',
-	'estadoEmocional.regulacion',
-	'estadoEmocional.situacionesInfluyen',
-	'estadoEmocional.estrategias',
-	'estadoEmocional.tecnicasAutorregulacion',
-	'apoyosAjustes.apoyos',
-	'apoyosAjustes.ajustes',
-	'apoyosAjustes.contextos',
-	'logros',
-	'suenosMetas.metas',
-	'suenosMetas.recursosNecesarios',
-	'experiencias.tiposVividas',
-	'experiencias.tipoApoyo',
-	'experiencias.motivosNoParticipa',
-	'sugerencias.areasPrioritarias',
-	'sugerencias.recomendaciones'
-];
+const checkboxPathsRequireNotes: string[] = [];
 
 const normalizePath = (instancePath: string, error?: ErrorObject) => {
 	let path = instancePath.replace(/^\//, '').replace(/\//g, '.');
@@ -922,7 +898,7 @@ function FormContent() {
 		);
 	};
 
-	const CheckboxGroup = ({ label, path, options }: { label: ReactNode; path: string; options: string[] }) => {
+	const CheckboxGroup = ({ label, path, options, showNotes = false }: { label: ReactNode; path: string; options: string[]; showNotes?: boolean }) => {
 		const values: string[] = useMemo(() => {
 			const keys = path.split('.');
 			let cur: any = data;
@@ -1001,7 +977,7 @@ function FormContent() {
 									<span style={{ flex: 1 }}>{op}</span>
 									{getTooltip(op) && <span className="ga-help" title={getTooltip(op) || ''}>i</span>}
 								</label>
-								{isSelected && (
+								{isSelected && showNotes && (
 									<div>
 										<OptionNote path={path} option={op} value={note} />
 									</div>
@@ -1308,17 +1284,20 @@ function FormContent() {
 					</button>
 				</div>
 				<p style={{ color: '#666', fontSize: 12 }}><EditableText k="hint.objetivo" fallback={hints.objetivo || ''} tag="span" /></p>
-				<label><EditableText k="sec.2.textoMarco" fallback="Texto marco (opcional)" tag="span" /><br />
-					<textarea rows={3} style={{ width: '100%' }} value={data.objetivo?.textoMarco || ''} onChange={(e) => onChange('objetivo.textoMarco', e.target.value)} placeholder="Si no se completa, se usará el texto institucional por defecto" />
+				<label><EditableText k="sec.2.textoMarco" fallback="Texto marco" tag="span" /><br />
+					<textarea rows={6} style={{ width: '100%', fontSize: '14px', lineHeight: '1.5' }} value={data.objetivo?.textoMarco || ''} onChange={(e) => onChange('objetivo.textoMarco', e.target.value)} />
 				</label>
 				<p className="ga-hint" style={{ marginTop: 8, marginBottom: 8, fontSize: 13, color: '#555' }}>
-					<strong>2.1 Focos:</strong> Se promovieron experiencias que fortalecen su autonomía en la vida cotidiana. <strong>Especifique cuáles</strong> usando el lapicito junto a cada opción seleccionada.
+					<strong>2.1 Focos:</strong> Se promovieron experiencias que fortalecen su autonomía en la vida cotidiana. <strong>Especifique detalles</strong> en el comentario de abajo.
 				</p>
-				<CheckboxGroup label={<EditableText k="sec.2.focos" fallback="Focos del acompañamiento" tag="span" />} path="objetivo.focos" options={objetivoFocos} />
-				<p className="ga-hint" style={{ marginTop: 8, marginBottom: 8, fontSize: 13, color: '#555' }}>
-					<strong>2.2 Estrategias:</strong> <strong>Debe especificar</strong> para cada estrategia seleccionada. Ejemplos: "Talleres con objetivos prácticos CUALES", "Actividades de la vida diaria CUALES", "Intervenciones en crisis/emergencias EN QUE SITUACION? QUIENES PARTICIPARON? Y CUAL FUE SU ABORDAJE?", etc. Use el lapicito para agregar detalles.
+				<CheckboxGroup label={<EditableText k="sec.2.focos" fallback="Focos del acompañamiento" tag="span" />} path="objetivo.focos" options={objetivoFocos} showNotes={false} />
+				<SectionComment path="objetivo.focosComentario" label="Comentario sobre Focos del acompañamiento (Obligatorio)" />
+				
+				<p className="ga-hint" style={{ marginTop: 16, marginBottom: 8, fontSize: 13, color: '#555' }}>
+					<strong>2.2 Estrategias:</strong> <strong>Especifique detalles</strong> sobre las estrategias implementadas en el comentario de abajo.
 				</p>
-				<CheckboxGroup label={<EditableText k="sec.2.estrategias" fallback="Estrategias implementadas" tag="span" />} path="objetivo.estrategias" options={objetivoEstrategias} />
+				<CheckboxGroup label={<EditableText k="sec.2.estrategias" fallback="Estrategias implementadas" tag="span" />} path="objetivo.estrategias" options={objetivoEstrategias} showNotes={false} />
+				<SectionComment path="objetivo.estrategiasComentario" label="Comentario sobre Estrategias implementadas (Obligatorio)" />
 				<SectionComment path="objetivo.comentario" />
 			</section>
 
@@ -1349,11 +1328,12 @@ function FormContent() {
 					</button>
 				</div>
 				<p style={{ color: '#666', fontSize: 12 }}><EditableText k="hint.escucha" fallback={hints.escucha || ''} tag="span" /></p>
-				<CheckboxGroup label={<EditableText k="sec.3.preferencias" fallback="Preferencias / decisiones" tag="span" />} path="escucha.preferencias" options={escuchaPreferencias} />
+				<CheckboxGroup label={<EditableText k="sec.3.preferencias" fallback="Preferencias / decisiones" tag="span" />} path="escucha.preferencias" options={escuchaPreferencias} showNotes={false} />
 				<p className="ga-hint" style={{ marginTop: 8, marginBottom: 8, fontSize: 13, color: '#555' }}>
-					<strong>3.2 Áreas de interés:</strong> <strong>Se debe marcar todas las opciones necesarias y especificar</strong> usando el lapicito. Ejemplos: "Actividades de la vida cotidiana CUAL", "Oficios CUAL", "Viajes o salidas recreativas CUALES A DONDE?", "Participación social o comunitaria QUE ACTIVIDADES Y DONDE?", etc.
+					<strong>3.2 Áreas de interés:</strong> <strong>Especifique detalles</strong> en el comentario de abajo.
 				</p>
-				<CheckboxGroup label={<EditableText k="sec.3.areasInteres" fallback="Áreas de interés" tag="span" />} path="escucha.areasInteres" options={escuchaAreasInteres} />
+				<CheckboxGroup label={<EditableText k="sec.3.areasInteres" fallback="Áreas de interés" tag="span" />} path="escucha.areasInteres" options={escuchaAreasInteres} showNotes={false} />
+				<SectionComment path="escucha.comentario" label="Comentario general de Escucha y Autodeterminación (Obligatorio)" />
 				<Select label={<EditableText k="sec.3.nivelAutonomia" fallback="Nivel de autonomía" tag="span" />} path="escucha.nivelAutonomia" options={nivelesAutonomia} />
 				<p className="ga-hint"><EditableText k="hint.autonomia" fallback="Aclaraciones: niveles orientativos para describir la autonomía percibida en actividades y decisiones cotidianas." tag="span" /></p>
 				<label><EditableText k="sec.3.otroEspecificar" fallback={'Si seleccionaste "Otro" en áreas de interés, especificar'} tag="span" /><br />
@@ -1389,33 +1369,18 @@ function FormContent() {
 					</button>
 				</div>
 				<p style={{ color: '#666', fontSize: 12 }}><EditableText k="hint.estadoEmocional" fallback={hints.estadoEmocional || ''} tag="span" /></p>
-				<CheckboxGroup label={<EditableText k="sec.4.prevalencias" fallback="Prevalencia de estados emocionales" tag="span" />} path="estadoEmocional.prevalencias" options={prevalenciasEmocionales} />
-				<CheckboxGroup label={<EditableText k="sec.4.expresionGeneral" fallback="Expresión emocional general (Marca la opción correspondiente)" tag="span" />} path="estadoEmocional.expresionGeneral" options={expresionEmocionalGeneral} />
+				<CheckboxGroup label={<EditableText k="sec.4.prevalencias" fallback="Prevalencia de estados emocionales" tag="span" />} path="estadoEmocional.prevalencias" options={prevalenciasEmocionales} showNotes={false} />
+				<CheckboxGroup label={<EditableText k="sec.4.expresionGeneral" fallback="Expresión emocional general" tag="span" />} path="estadoEmocional.expresionGeneral" options={expresionEmocionalGeneral} showNotes={false} />
 				<p className="ga-hint" style={{ marginTop: 8, marginBottom: 8, fontSize: 13, color: '#555' }}>
-					<strong>Vínculo con el entorno:</strong> <strong>Se debe marcar todas las opciones necesarias y especificar</strong>. Ejemplo: "Se siente cómodo/a en los espacios que frecuenta CUALES". Use el lapicito para agregar detalles.
+					<strong>Vínculo con el entorno y Bienestar:</strong> <strong>Especifique detalles</strong> en el comentario de abajo.
 				</p>
-				<CheckboxGroup label={<EditableText k="sec.4.vinculo" fallback="Vínculo con el entorno" tag="span" />} path="estadoEmocional.vinculoEntorno" options={vinculoEntorno} />
-				<p className="ga-hint" style={{ marginTop: 8, marginBottom: 8, fontSize: 13, color: '#555' }}>
-					<strong>Bienestar subjetivo:</strong> Percepción interna del propio bienestar. <strong>TAMBIÉN DEBE ESPECIFICAR Y MARCAR LO QUE CORRESPONDA</strong>. Para opciones como "En ocasiones muestra falta de interés" o "Verbaliza preocupaciones o miedos", especifica las situaciones o cuáles son esas preocupaciones usando el lapicito.
-				</p>
-				<CheckboxGroup label={<EditableText k="sec.4.bienestar" fallback="Bienestar subjetivo" tag="span" />} path="estadoEmocional.bienestarSubjetivo" options={bienestarSubjetivo} />
-				<p className="ga-hint" style={{ marginTop: 8, marginBottom: 8, fontSize: 13, color: '#555' }}>
-					<strong>Regulación emocional:</strong> Marca la opción correspondiente.
-				</p>
-				<CheckboxGroup label={<EditableText k="sec.4.regulacion" fallback="Regulación emocional" tag="span" />} path="estadoEmocional.regulacion" options={regulacionEmocional} />
-				<p className="ga-hint" style={{ marginTop: 8, marginBottom: 8, fontSize: 13, color: '#555' }}>
-					<strong>4.1 y 4.2 Situaciones que influyeron:</strong> <strong>Marcar todas las que correspondan</strong>.
-				</p>
-				<CheckboxGroup label={<EditableText k="sec.4.situaciones" fallback="Situaciones que influyeron" tag="span" />} path="estadoEmocional.situacionesInfluyen" options={situacionesInfluyen} />
-				<p className="ga-hint" style={{ marginTop: 8, marginBottom: 8, fontSize: 13, color: '#555' }}>
-					<strong>4.3 Estrategias de acompañamiento:</strong> <strong>Marcar todas las que correspondan. Especificar</strong> usando el lapicito.
-				</p>
-				<CheckboxGroup label={<EditableText k="sec.4.estrategias" fallback="Estrategias de acompañamiento" tag="span" />} path="estadoEmocional.estrategias" options={estrategiasAcompanamiento} />
-				<p className="ga-hint" style={{ marginTop: 8, marginBottom: 8, fontSize: 13, color: '#555' }}>
-					<strong>Técnicas de autorregulación:</strong> Ejemplos para facilitadores: Usa respiración/pausas/cuenta mental, se aleja del estímulo voluntariamente, identifica y expresa lo que siente, recurre a referentes, utiliza apoyos visuales, emplea técnicas aprendidas (relajación, yoga), realiza movimientos corporales, usa objetos sensoriales, solicita momentos de silencio, avisa cuando se siente mal, escucha sugerencias y pone en práctica estrategias.
-				</p>
-				<CheckboxGroup label={<EditableText k="sec.4.autorregulacion" fallback="Técnicas de autorregulación (ejemplos)" tag="span" />} path="estadoEmocional.tecnicasAutorregulacion" options={tecnicasAutorregulacion} />
-				<SectionComment path="estadoEmocional.comentario" />
+				<CheckboxGroup label={<EditableText k="sec.4.vinculo" fallback="Vínculo con el entorno" tag="span" />} path="estadoEmocional.vinculoEntorno" options={vinculoEntorno} showNotes={false} />
+				<CheckboxGroup label={<EditableText k="sec.4.bienestar" fallback="Bienestar subjetivo" tag="span" />} path="estadoEmocional.bienestarSubjetivo" options={bienestarSubjetivo} showNotes={false} />
+				<CheckboxGroup label={<EditableText k="sec.4.regulacion" fallback="Regulación emocional" tag="span" />} path="estadoEmocional.regulacion" options={regulacionEmocional} showNotes={false} />
+				<CheckboxGroup label={<EditableText k="sec.4.situaciones" fallback="Situaciones que influyeron" tag="span" />} path="estadoEmocional.situacionesInfluyen" options={situacionesInfluyen} showNotes={false} />
+				<CheckboxGroup label={<EditableText k="sec.4.estrategias" fallback="Estrategias de acompañamiento" tag="span" />} path="estadoEmocional.estrategias" options={estrategiasAcompanamiento} showNotes={false} />
+				<CheckboxGroup label={<EditableText k="sec.4.autorregulacion" fallback="Técnicas de autorregulación" tag="span" />} path="estadoEmocional.tecnicasAutorregulacion" options={tecnicasAutorregulacion} showNotes={false} />
+				<SectionComment path="estadoEmocional.comentario" label="Comentario general de Estado Emocional (Obligatorio)" />
 			</section>
 
 			<section className="ga-card" style={sectionStyle(5)}>
@@ -1447,14 +1412,13 @@ function FormContent() {
 				<p style={{ color: '#666', fontSize: 12 }}><EditableText k="hint.apoyosAjustes" fallback={hints.apoyosAjustes || ''} tag="span" /></p>
 				<p className="ga-hint" style={{ marginBottom: 12, fontSize: 13, color: '#555' }}>
 					<strong>5.1 Apoyos:</strong> <strong>Marcar todos los que correspondan</strong>, considerando necesidades, intereses and preferencias de la persona. Use el lapicito para especificar detalles cuando sea necesario.
-				</p>
-				<CheckboxGroup label={<EditableText k="sec.5.apoyos" fallback="Apoyos" tag="span" />} path="apoyosAjustes.apoyos" options={apoyosOpciones} />
 				<p className="ga-hint" style={{ marginTop: 8, marginBottom: 8, fontSize: 13, color: '#555' }}>
-					<strong>5.3 Ajustes razonables:</strong> Marcar o describir según corresponda. Use el lapicito para especificar detalles.
+					<strong>Apoyos y Ajustes:</strong> <strong>Especifique detalles</strong> en el comentario de abajo.
 				</p>
-				<CheckboxGroup label={<EditableText k="sec.5.ajustes" fallback="Ajustes razonables" tag="span" />} path="apoyosAjustes.ajustes" options={ajustesOpciones} />
-				<CheckboxGroup label={<EditableText k="sec.5.contextos" fallback="Contextos de aplicación" tag="span" />} path="apoyosAjustes.contextos" options={contextosApoyo} />
-				<SectionComment path="apoyosAjustes.comentario" />
+				<CheckboxGroup label={<EditableText k="sec.5.apoyos" fallback="Apoyos" tag="span" />} path="apoyosAjustes.apoyos" options={apoyosOpciones} showNotes={false} />
+				<CheckboxGroup label={<EditableText k="sec.5.ajustes" fallback="Ajustes razonables" tag="span" />} path="apoyosAjustes.ajustes" options={ajustesOpciones} showNotes={false} />
+				<CheckboxGroup label={<EditableText k="sec.5.contextos" fallback="Contextos de aplicación" tag="span" />} path="apoyosAjustes.contextos" options={contextosApoyo} showNotes={false} />
+				<SectionComment path="apoyosAjustes.comentario" label="Comentario general de Apoyos y Ajustes (Obligatorio)" />
 			</section>
 
 			<section className="ga-card" style={sectionStyle(6)}>
@@ -1633,28 +1597,22 @@ function FormContent() {
 					Si seleccionó "Sí, participó con apoyo o acompañamiento": Se sumó a las experiencias con cierto grado de apoyo, mostrando disposición parcial o requerimientos específicos para involucrarse.
 				</p>
 				<p className="ga-hint" style={{ marginTop: 8, marginBottom: 8, fontSize: 13, color: '#555' }}>
-					<strong>Tipos de experiencias vividas:</strong> <strong>Marcar todas las que correspondan</strong>.
+					<strong>Experiencias:</strong> <strong>Especifique detalles</strong> en el comentario de abajo.
 				</p>
-				<CheckboxGroup label={<EditableText k="sec.9.tiposVividas" fallback="Tipos de experiencias vividas" tag="span" />} path="experiencias.tiposVividas" options={nuevasExperiencias} />
-				<p className="ga-hint" style={{ marginTop: 8, marginBottom: 8, fontSize: 13, color: '#555' }}>
-					<strong>Tipo de apoyo brindado:</strong> <strong>Marcar todos los que correspondan</strong>. Ejemplos: Apoyo emocional (motivación, contención, refuerzo de seguridad), Apoyo físico o técnico (acompañamiento en desplazamientos, ayudas técnicas), Facilitación comunicacional (uso de SAAC, apoyo en la comprensión o interacción), Adaptaciones en la actividad (materiales, tiempos, roles, estructura).
-				</p>
-				<CheckboxGroup label={<EditableText k="sec.9.tipoApoyo" fallback="Tipo de apoyo brindado" tag="span" />} path="experiencias.tipoApoyo" options={tipoApoyoExperiencias} />
-				<p className="ga-hint" style={{ marginTop: 8, marginBottom: 8, fontSize: 13, color: '#555' }}>
-					Si seleccionó "No participó por decisión propia": Se le ofrecieron oportunidades de participar, pero expresó rechazo o falta de interés. <strong>Marcar los motivos que correspondan</strong>.
-				</p>
-				<CheckboxGroup label={<EditableText k="sec.9.motivos" fallback="Motivos si no participó" tag="span" />} path="experiencias.motivosNoParticipa" options={motivosNoParticipa} />
-				<label><EditableText k="sec.9.detalle" fallback="Detalle (opcional)" tag="span" /><br />
-					<textarea className="ga-input ga-textarea-large" value={data.experiencias?.detalle || ''} onChange={(e) => onChange('experiencias.detalle', e.target.value)} />
-				</label>
-				<SectionComment path="experiencias.comentario" />
+				<CheckboxGroup label={<EditableText k="sec.9.tiposVividas" fallback="Tipos de experiencias vividas" tag="span" />} path="experiencias.tiposVividas" options={nuevasExperiencias} showNotes={false} />
+				<CheckboxGroup label={<EditableText k="sec.9.tipoApoyo" fallback="Tipo de apoyo brindado" tag="span" />} path="experiencias.tipoApoyo" options={tipoApoyoExperiencias} showNotes={false} />
+				<CheckboxGroup label={<EditableText k="sec.9.motivos" fallback="Motivos si no participó" tag="span" />} path="experiencias.motivosNoParticipa" options={motivosNoParticipa} showNotes={false} />
+				<SectionComment path="experiencias.comentario" label="Comentario sobre Experiencias significativas (Obligatorio)" />
 			</section>
 
 			<section className="ga-card" style={sectionStyle(10)}>
 				<EditableText k="sec.10.titulo" fallback="Sugerencias y recomendaciones" tag="h2" />
-				<CheckboxGroup label={<EditableText k="sec.10.areas" fallback="Áreas prioritarias" tag="span" />} path="sugerencias.areasPrioritarias" options={areasPrioritarias} />
-				<CheckboxGroup label={<EditableText k="sec.10.recomendaciones" fallback="Recomendaciones" tag="span" />} path="sugerencias.recomendaciones" options={recomendacionesOpciones} />
-				<SectionComment path="sugerencias.comentario" />
+				<p className="ga-hint" style={{ marginTop: 8, marginBottom: 8, fontSize: 13, color: '#555' }}>
+					<strong>Sugerencias:</strong> <strong>Especifique detalles</strong> en el comentario de abajo.
+				</p>
+				<CheckboxGroup label={<EditableText k="sec.10.areas" fallback="Áreas prioritarias" tag="span" />} path="sugerencias.areasPrioritarias" options={areasPrioritarias} showNotes={false} />
+				<CheckboxGroup label={<EditableText k="sec.10.recomendaciones" fallback="Recomendaciones" tag="span" />} path="sugerencias.recomendaciones" options={recomendacionesOpciones} showNotes={false} />
+				<SectionComment path="sugerencias.comentario" label="Comentario sobre Sugerencias y recomendaciones (Obligatorio)" />
 			</section>
 
 			<div style={{ marginTop: 12 }} className="ga-row">
