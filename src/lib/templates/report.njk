@@ -129,26 +129,78 @@
     <div class="kv">C?rculo de Apoyo: {{ report.datosGenerales.circuloApoyo | join(', ') }}</div>
   {% endif %}
 
-  {% macro renderSection(title, items) %}
+  {% macro renderNarrativeSection(title, items) %}
     <div class="section">
       <h2>{{ title }}</h2>
       {% if items and items.length > 0 %}
-        <ul>
+        <p>
           {% for it in items %}
-            <li>{{ it.texto }}</li>
+            {{ it.texto }}
+            {% if not loop.last %} {% endif %}
           {% endfor %}
-        </ul>
+        </p>
       {% else %}
         <p class="muted">No informado</p>
       {% endif %}
     </div>
   {% endmacro %}
 
-  {{ renderSection(institutional.titles.objetivo, report.secciones.objetivo) }}
-  {{ renderSection(institutional.titles.escucha, report.secciones.escucha) }}
-  {{ renderSection('Abordaje del período', report.secciones.abordaje) }}
-  {{ renderSection(institutional.titles.estadoEmocional, report.secciones.estadoEmocional) }}
-  {{ renderSection(institutional.titles.apoyosAjustes, report.secciones.apoyosAjustes) }}
+  {% macro renderLogrosSection(title, items) %}
+    <div class="section">
+      <h2>{{ title }}</h2>
+      {% if items and items.length > 0 %}
+        {# Definir contenedores para categorización #}
+        {% set practicas = [] %}
+        {% set emocionales = [] %}
+        {% set decisiones = [] %}
+        {% set experiencias = [] %}
+
+        {% for it in items %}
+          {% set t = it.texto | lower %}
+          {% if 'autónom' in t or 'manipular' in t or 'sujetar' in t or 'hidratar' in t or 'independencia' in t or 'cuchara' in t or 'vaso' in t or 'funcional' in t or 'práctica' in t %}
+            {% set practicas = (practicas.push(it.texto), practicas) %}
+          {% elif 'emocional' in t or 'tolerancia' in t or 'regulación' in t or 'social' in t or 'vínculo' in t or 'relación' in t or 'convivencia' in t %}
+            {% set emocionales = (emocionales.push(it.texto), emocionales) %}
+          {% elif 'preferencia' in t or 'elección' in t or 'decisión' in t or 'manifestar' in t or 'expresar' in t %}
+            {% set decisiones = (decisiones.push(it.texto), decisiones) %}
+          {% elif 'salida' in t or 'evento' in t or 'experiencia' in t or 'participó' in t or 'disfrute' in t or 'boliche' in t or 'taller' in t or 'actividad' in t %}
+            {% set experiencias = (experiencias.push(it.texto), experiencias) %}
+          {% else %}
+            {% set practicas = (practicas.push(it.texto), practicas) %}
+          {% endif %}
+        {% endfor %}
+
+        {% if practicas.length > 0 %}
+          <div style="margin-top:10px;"><strong>Habilidades prácticas o funcionales</strong></div>
+          <p>{{ practicas | join(' ') }}</p>
+        {% endif %}
+
+        {% if emocionales.length > 0 %}
+          <div style="margin-top:10px;"><strong>Habilidades emocionales y sociales</strong></div>
+          <p>{{ emocionales | join(' ') }}</p>
+        {% endif %}
+
+        {% if decisiones.length > 0 %}
+          <div style="margin-top:10px;"><strong>Participación en decisiones</strong></div>
+          <p>{{ decisiones | join(' ') }}</p>
+        {% endif %}
+
+        {% if experiencias.length > 0 %}
+          <div style="margin-top:10px;"><strong>Nuevas experiencias u oportunidades aprovechadas</strong></div>
+          <p>{{ experiencias | join(' ') }}</p>
+        {% endif %}
+
+      {% else %}
+        <p class="muted">No informado</p>
+      {% endif %}
+    </div>
+  {% endmacro %}
+
+  {{ renderNarrativeSection(institutional.titles.objetivo, report.secciones.objetivo) }}
+  {{ renderNarrativeSection(institutional.titles.escucha, report.secciones.escucha) }}
+  {{ renderNarrativeSection('Abordaje del período', report.secciones.abordaje) }}
+  {{ renderNarrativeSection(institutional.titles.estadoEmocional, report.secciones.estadoEmocional) }}
+  {{ renderNarrativeSection(institutional.titles.apoyosAjustes, report.secciones.apoyosAjustes) }}
 
   <div class="section">
     <h2>{{ institutional.titles.evaluacion }}</h2>
@@ -172,10 +224,20 @@
     </table>
   </div>
 
-  {{ renderSection(institutional.titles.logros, report.secciones.logros) }}
-  {{ renderSection(institutional.titles.suenosMetas, report.secciones.suenosMetas) }}
-  {{ renderSection(institutional.titles.circuloApoyo, report.secciones.circuloApoyo) }}
-  {{ renderSection(institutional.titles.sugerencias, report.secciones.sugerencias) }}
+  {{ renderLogrosSection(institutional.titles.logros, report.secciones.logros) }}
+  {{ renderNarrativeSection(institutional.titles.suenosMetas, report.secciones.suenosMetas) }}
+  {{ renderNarrativeSection(institutional.titles.circuloApoyo, report.secciones.circuloApoyo) }}
+  
+  <div class="section">
+    <h2>{{ institutional.titles.sugerencias }}</h2>
+    {% if report.secciones.sugerencias and report.secciones.sugerencias.length > 0 %}
+      {% for it in report.secciones.sugerencias %}
+        <p>{{ it.texto }}</p>
+      {% endfor %}
+    {% else %}
+      <p class="muted">No informado</p>
+    {% endif %}
+  </div>
 
 </body>
 </html>

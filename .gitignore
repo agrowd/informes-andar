@@ -62,9 +62,10 @@ public/reports/*.pdf
 public/uploads/
 !public/uploads/.gitkeep
 
-# Exclude large data files but keep documentation
+# Exclude large data files but keep documentation and prompts
 *.md
 !README.md
+!src/lib/prompts/*.md
 !ANALISIS_COMPLETO_FALTANTE.md
 !CHECKLIST_PRUEBAS.md
 !COMO_USAR_POSTGRES_VERCEL.md

@@ -199,11 +199,11 @@ function renderMarkdownText(report: any, institutional: any, originalForm?: any)
   lines.push(`**2. ${institutional.titles.objetivo.toUpperCase()}**`);
   lines.push('');
   if (report.secciones.objetivo && report.secciones.objetivo.length > 0) {
-    report.secciones.objetivo.forEach((frag: any) => {
-      if (frag.texto && frag.texto !== 'No informado') {
-        lines.push(frag.texto);
-      }
-    });
+    const text = report.secciones.objetivo
+      .map((frag: any) => frag.texto)
+      .filter((t: string) => t && t !== 'No informado')
+      .join(' ');
+    lines.push(text || 'No informado');
   } else {
     lines.push('No informado');
   }
@@ -213,11 +213,11 @@ function renderMarkdownText(report: any, institutional: any, originalForm?: any)
   lines.push(`**3. ${institutional.titles.escucha.toUpperCase()}**`);
   lines.push('');
   if (report.secciones.escucha && report.secciones.escucha.length > 0) {
-    report.secciones.escucha.forEach((frag: any) => {
-      if (frag.texto && frag.texto !== 'No informado') {
-        lines.push(frag.texto);
-      }
-    });
+    const text = report.secciones.escucha
+      .map((frag: any) => frag.texto)
+      .filter((t: string) => t && t !== 'No informado')
+      .join(' ');
+    lines.push(text || 'No informado');
   } else {
     lines.push('No informado');
   }
@@ -227,11 +227,11 @@ function renderMarkdownText(report: any, institutional: any, originalForm?: any)
   lines.push(`**4. ${institutional.titles.estadoEmocional.toUpperCase()}**`);
   lines.push('');
   if (report.secciones.estadoEmocional && report.secciones.estadoEmocional.length > 0) {
-    report.secciones.estadoEmocional.forEach((frag: any) => {
-      if (frag.texto && frag.texto !== 'No informado') {
-        lines.push(frag.texto);
-      }
-    });
+    const text = report.secciones.estadoEmocional
+      .map((frag: any) => frag.texto)
+      .filter((t: string) => t && t !== 'No informado')
+      .join(' ');
+    lines.push(text || 'No informado');
   } else {
     lines.push('No informado');
   }
@@ -241,11 +241,11 @@ function renderMarkdownText(report: any, institutional: any, originalForm?: any)
   lines.push(`**5. ${institutional.titles.apoyosAjustes.toUpperCase()}**`);
   lines.push('');
   if (report.secciones.apoyosAjustes && report.secciones.apoyosAjustes.length > 0) {
-    report.secciones.apoyosAjustes.forEach((frag: any) => {
-      if (frag.texto && frag.texto !== 'No informado') {
-        lines.push(frag.texto);
-      }
-    });
+    const text = report.secciones.apoyosAjustes
+      .map((frag: any) => frag.texto)
+      .filter((t: string) => t && t !== 'No informado')
+      .join(' ');
+    lines.push(text || 'No informado');
   } else {
     lines.push('No informado');
   }
@@ -283,11 +283,11 @@ function renderMarkdownText(report: any, institutional: any, originalForm?: any)
   logrosTextos.forEach((texto: string) => {
     const lower = texto.toLowerCase();
     if (lower.includes('autónom') || lower.includes('manipular') || lower.includes('sujetar') || 
-        lower.includes('hidratar') || lower.includes('cuchara') || lower.includes('vaso') ||
+        lower.includes('hidratar') || lower.includes('independencia') || lower.includes('cuchara') || lower.includes('vaso') ||
         lower.includes('funcional') || lower.includes('práctica')) {
       habilidadesPracticas.push(texto);
     } else if (lower.includes('emocional') || lower.includes('tolerancia') || lower.includes('regulación') ||
-               lower.includes('social') || lower.includes('vínculo') || lower.includes('relación')) {
+               lower.includes('social') || lower.includes('vínculo') || lower.includes('relación') || lower.includes('convivencia')) {
       habilidadesEmocionales.push(texto);
     } else if (lower.includes('preferencia') || lower.includes('elección') || lower.includes('decisión') ||
                lower.includes('manifestar') || lower.includes('expresar')) {
@@ -297,36 +297,35 @@ function renderMarkdownText(report: any, institutional: any, originalForm?: any)
                lower.includes('taller') || lower.includes('actividad')) {
       nuevasExperiencias.push(texto);
     } else {
-      // Si no encaja en ninguna categoría, ponerlo en habilidades prácticas por defecto
       habilidadesPracticas.push(texto);
     }
   });
-  
+
   if (habilidadesPracticas.length > 0) {
     lines.push('Habilidades prácticas o funcionales');
     lines.push('');
-    habilidadesPracticas.forEach((texto) => lines.push(texto));
+    lines.push(habilidadesPracticas.join(' '));
     lines.push('');
   }
-  
+
   if (habilidadesEmocionales.length > 0) {
     lines.push('Habilidades emocionales y sociales');
     lines.push('');
-    habilidadesEmocionales.forEach((texto) => lines.push(texto));
+    lines.push(habilidadesEmocionales.join(' '));
     lines.push('');
   }
-  
+
   if (participacionDecisiones.length > 0) {
     lines.push('Participación en decisiones');
     lines.push('');
-    participacionDecisiones.forEach((texto) => lines.push(texto));
+    lines.push(participacionDecisiones.join(' '));
     lines.push('');
   }
-  
+
   if (nuevasExperiencias.length > 0) {
     lines.push('Nuevas experiencias u oportunidades aprovechadas');
     lines.push('');
-    nuevasExperiencias.forEach((texto) => lines.push(texto));
+    lines.push(nuevasExperiencias.join(' '));
     lines.push('');
   }
   
@@ -339,11 +338,11 @@ function renderMarkdownText(report: any, institutional: any, originalForm?: any)
   lines.push(`**8. ${institutional.titles.suenosMetas.toUpperCase()}**`);
   lines.push('');
   if (report.secciones.suenosMetas && report.secciones.suenosMetas.length > 0) {
-    report.secciones.suenosMetas.forEach((frag: any) => {
-      if (frag.texto && frag.texto !== 'No informado') {
-        lines.push(frag.texto);
-      }
-    });
+    const text = report.secciones.suenosMetas
+      .map((frag: any) => frag.texto)
+      .filter((t: string) => t && t !== 'No informado')
+      .join(' ');
+    lines.push(text || 'No informado');
   } else {
     lines.push('No informado');
   }
@@ -353,11 +352,11 @@ function renderMarkdownText(report: any, institutional: any, originalForm?: any)
   lines.push(`**9. ${institutional.titles.circuloApoyo.toUpperCase()}**`);
   lines.push('');
   if (report.secciones.circuloApoyo && report.secciones.circuloApoyo.length > 0) {
-    report.secciones.circuloApoyo.forEach((frag: any) => {
-      if (frag.texto && frag.texto !== 'No informado' && !frag.texto.toLowerCase().includes('no se convocó')) {
-        lines.push(frag.texto);
-      }
-    });
+    const text = report.secciones.circuloApoyo
+      .map((frag: any) => frag.texto)
+      .filter((t: string) => t && t !== 'No informado' && !t.toLowerCase().includes('no se convocó'))
+      .join(' ');
+    lines.push(text || 'No informado');
   } else {
     lines.push('No informado');
   }
