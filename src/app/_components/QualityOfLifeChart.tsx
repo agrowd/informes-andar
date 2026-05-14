@@ -118,8 +118,9 @@ export default function QualityOfLifeChart({ periods }: Props) {
                       cy={y}
                       r="4"
                       fill={color.point}
-                      title={`${p.periodo}: ${d.dimension} (${d.evolucion})`}
-                    />
+                    >
+                      <title>{`${p.periodo}: ${d.dimension} (${d.evolucion})`}</title>
+                    </circle>
                   );
                 })}
               </g>
