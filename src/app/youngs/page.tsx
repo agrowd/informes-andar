@@ -278,7 +278,7 @@ export default function YoungsPage() {
           <button className={`ga-tab ${activeTab === 'perfil' ? 'active' : ''}`} onClick={() => setActiveTab('perfil')}>Ficha Técnica</button>
           <button className={`ga-tab ${activeTab === 'asignaciones' ? 'active' : ''}`} onClick={() => setActiveTab('asignaciones')}>Seguimiento</button>
           <button className={`ga-tab ${activeTab === 'historial' ? 'active' : ''}`} onClick={() => setActiveTab('historial')}>Historial</button>
-          <button className={`ga-tab ${activeTab === 'analiticas' ? 'active' : ''}`} onClick={() => setActiveTab('analiticas')}>Analíticas 📊</button>
+          <button className={`ga-tab ${activeTab === 'analiticas' ? 'active' : ''}`} onClick={() => setActiveTab('analiticas')}>Analíticas</button>
         </div>
 
         {activeTab === 'perfil' && (
