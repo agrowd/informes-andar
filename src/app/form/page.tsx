@@ -1031,17 +1031,22 @@ function FormContent() {
 	};
 
 	if (loadingFormData) {
-		return <div style={{ padding: 20, textAlign: 'center' }}>Cargando datos del formulario...</div>;
+		return (
+			<div style={{ padding: 20, textAlign: 'center' }}>
+				Cargando datos del formulario...
+			</div>
+		);
 	}
 
-	return (<div>
+	return (
+		<div>
 			<EditableText k="form.titulo" fallback="Formulario del Informe Evolutivo" tag="h1" />
 			<div className="ga-wizard-nav">
 				{steps.map((s, i) => (
-					<button key={s} className={`ga-chip ${i===step?'active':''}`} onClick={() => handleStepChange(i)}>{s}</button>
+					<button key={s} className={`ga-chip ${i === step ? 'active' : ''}`} onClick={() => handleStepChange(i)}>{s}</button>
 				))}
 			</div>
-			<div className="ga-progress"><span style={{ width: `${(step+1)*100/steps.length}%` }} /></div>
+			<div className="ga-progress"><span style={{ width: `${(step + 1) * 100 / steps.length}%` }} /></div>
 			<section className="ga-card" style={sectionStyle(0)}>
 				<EditableText k="sec.1.titulo" fallback="Datos Generales" tag="h2" />
 				<div className="ga-form-grid">
@@ -1411,7 +1416,8 @@ function FormContent() {
 				</div>
 				<p style={{ color: '#666', fontSize: 12 }}><EditableText k="hint.apoyosAjustes" fallback={hints.apoyosAjustes || ''} tag="span" /></p>
 				<p className="ga-hint" style={{ marginBottom: 12, fontSize: 13, color: '#555' }}>
-					<strong>5.1 Apoyos:</strong> <strong>Marcar todos los que correspondan</strong>, considerando necesidades, intereses and preferencias de la persona. Use el lapicito para especificar detalles cuando sea necesario.
+					<strong>5.1 Apoyos:</strong> <strong>Marcar todos los que correspondan</strong>, considerando necesidades, intereses and preferencias de la persona.
+				</p>
 				<p className="ga-hint" style={{ marginTop: 8, marginBottom: 8, fontSize: 13, color: '#555' }}>
 					<strong>Apoyos y Ajustes:</strong> <strong>Especifique detalles</strong> en el comentario de abajo.
 				</p>
