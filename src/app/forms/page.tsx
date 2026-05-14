@@ -26,9 +26,9 @@ export default function FormsList() {
       setPage(pageNum);
       setLoading(false);
     } catch (err) {
-      console.error('Error cargando formularios:', err);
+      console.error('Error cargando borradores:', err);
       setLoading(false);
-      alert('Error al cargar formularios');
+      alert('Error al cargar borradores');
     }
   };
 
@@ -43,7 +43,7 @@ export default function FormsList() {
       'BORRADOR': 'Marcar como borrador'
     };
     const action = statusMessages[status] || 'Cambiar estado';
-    if (!confirm(`¿Estás seguro de que deseas ${action.toLowerCase()} este formulario?`)) return;
+    if (!confirm(`¿Estás seguro de que deseas ${action.toLowerCase()} este borrador?`)) return;
     
     try {
       const res = await fetch(`/api/forms/${id}/status`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }) });
@@ -60,7 +60,7 @@ export default function FormsList() {
   };
 
   const duplicateForm = async (id: string) => {
-    if (!confirm('¿Deseas duplicar este formulario para crear uno nuevo basado en este?')) return;
+    if (!confirm('¿Deseas duplicar este borrador para crear uno nuevo basado en este?')) return;
     try {
       const res = await fetch(`/api/forms/${id}/copy`, { method: 'POST' });
       if (!res.ok) {
@@ -68,17 +68,17 @@ export default function FormsList() {
         throw new Error(error.error || `HTTP ${res.status}`);
       }
       const data = await res.json();
-      alert('✅ Formulario duplicado correctamente. Serás redirigido para editarlo.');
+      alert('✅ Borrador duplicado correctamente. Serás redirigido para editarlo.');
       window.location.href = `/form?formId=${data.id}`;
     } catch (error: any) {
-      console.error('Error duplicando formulario:', error);
-      alert('Error: ' + (error.message || 'No se pudo duplicar el formulario'));
+      console.error('Error duplicando borrador:', error);
+      alert('Error: ' + (error.message || 'No se pudo duplicar el borrador'));
     }
   };
 
   return (
     <div>
-      <h1>Formularios</h1>
+      <h1>Borradores</h1>
       <div className="ga-card" style={{ marginBottom: 12 }}>
         <div style={{ display:'flex', gap:8, flexWrap: 'wrap' }}>
           <label style={{ flex:1, minWidth: 200 }}>
@@ -156,10 +156,10 @@ export default function FormsList() {
                       className="ga-btn primary" 
                       style={{ fontSize: 12, padding: '4px 8px', whiteSpace: 'nowrap' }}
                       onClick={async () => {
-                        if (!confirm('¿Deseas generar un informe desde este formulario? Se abrirá en el formulario para generar.')) return;
+                        if (!confirm('¿Deseas generar un informe desde este borrador? Se abrirá en el formulario para generar.')) return;
                         window.location.href = `/form?formId=${it._id}`;
                       }}
-                      title="Generar informe desde este formulario"
+                      title="Generar informe desde este borrador"
                     >
                       📄 Generar
                     </button>
@@ -167,7 +167,7 @@ export default function FormsList() {
                       className="ga-btn secondary" 
                       onClick={() => duplicateForm(it._id)} 
                       style={{ fontSize: 12, padding: '4px 8px', whiteSpace: 'nowrap' }}
-                      title="Crear una copia de este formulario"
+                      title="Crear una copia de este borrador"
                     >
                       📋 Duplicar
                     </button>
@@ -189,7 +189,7 @@ export default function FormsList() {
               const matchesFilter = !filter || String(it.periodo || '').toLowerCase().includes(filter.toLowerCase());
               const matchesDraft = !showDraftsOnly || it.status === 'BORRADOR';
               return matchesSearch && matchesFilter && matchesDraft;
-            }).length} de {total} formularios
+            }).length} de {total} borradores
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <button 

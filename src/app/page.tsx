@@ -24,7 +24,7 @@ export default function Dashboard() {
             return r.json();
           })
           .catch((err) => {
-            console.error('Error cargando formularios:', err);
+            console.error('Error cargando borradores:', err);
             return { items: [] };
           }),
         fetch('/api/reports')
@@ -94,19 +94,19 @@ export default function Dashboard() {
   };
 
   const copyForm = async (formId: string) => {
-    if (!confirm('¿Deseas duplicar este formulario para crear uno nuevo basado en este?')) return;
+    if (!confirm('¿Deseas duplicar este borrador para crear uno nuevo basado en este?')) return;
     try {
       const res = await fetch(`/api/forms/${formId}/copy`, { method: 'POST' });
       if (!res.ok) {
-        const error = await res.json().catch(() => ({ error: 'Error duplicando formulario' }));
+        const error = await res.json().catch(() => ({ error: 'Error duplicando borrador' }));
         throw new Error(error.error || `HTTP ${res.status}`);
       }
       const data = await res.json();
-      alert('Formulario duplicado correctamente. Serás redirigido para editarlo.');
+      alert('Borrador duplicado correctamente. Serás redirigido para editarlo.');
       window.location.href = `/form?formId=${data.id}`;
     } catch (error: any) {
-      console.error('Error al duplicar formulario:', error);
-      alert('Error: ' + (error.message || 'No se pudo duplicar el formulario'));
+      console.error('Error al duplicar borrador:', error);
+      alert('Error: ' + (error.message || 'No se pudo duplicar el borrador'));
     }
   };
 
@@ -145,8 +145,8 @@ export default function Dashboard() {
               <button className="ga-btn secondary" onClick={() => exportData('reports')} title="Exportar informes a CSV">
                 📊 Exportar informes
               </button>
-              <button className="ga-btn secondary" onClick={() => exportData('forms')} title="Exportar formularios a CSV">
-                📝 Exportar formularios
+              <button className="ga-btn secondary" onClick={() => exportData('forms')} title="Exportar borradores a CSV">
+                📝 Exportar borradores
               </button>
               <button className="ga-btn secondary" onClick={() => exportData('youngs')} title="Exportar jóvenes a CSV">
                 👥 Exportar jóvenes
@@ -158,7 +158,7 @@ export default function Dashboard() {
       {!canViewGeneralDashboard && (
         <div className="ga-card" style={{ marginBottom: 12, padding: 16, background: '#f0f7ff', border: '1px solid #bfdbfe' }}>
           <p style={{ margin: 0, color: '#1e40af' }}>
-            <strong>Vista de facilitador:</strong> Solo puedes ver tus propios formularios e informes.
+            <strong>Vista de facilitador:</strong> Solo puedes ver tus propios borradores e informes.
           </p>
         </div>
       )}
@@ -175,13 +175,13 @@ export default function Dashboard() {
             {stats?.missingReports || 0}
           </div>
           {stats?.missingReports > 0 && (
-            <span style={{ fontSize: 12, color: '#666' }}>Formularios sin informe</span>
+            <span style={{ fontSize: 12, color: '#666' }}>Borradores sin informe</span>
           )}
         </div>
         <div className="ga-card">
-          <div style={{ fontSize: 12, color: '#666' }}>Formularios pendientes</div>
+          <div style={{ fontSize: 12, color: '#666' }}>Borradores pendientes</div>
           <div style={{ fontSize: 28, fontWeight: 700 }}>{stats?.formsPending || forms.filter((f: any) => f.status === 'BORRADOR').length}</div>
-          <a href="/forms">Ver formularios</a>
+          <a href="/forms">Ver borradores</a>
         </div>
         <div className="ga-card">
           <div style={{ fontSize: 12, color: '#666' }}>Jóvenes</div>
@@ -194,7 +194,7 @@ export default function Dashboard() {
         <div className="ga-card" style={{ marginTop: 12, border: '2px solid #f59e0b', background: '#FFF7ED' }}>
           <h3 style={{ color: '#f59e0b', marginTop: 0 }}>⚠️ Informes faltantes</h3>
           <p style={{ fontSize: 14, color: '#666', marginBottom: 12 }}>
-            Los siguientes formularios aún no tienen informe asociado:
+            Los siguientes borradores aún no tienen informe asociado:
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {stats.missingReportsList.map((item: any, idx: number) => (
@@ -213,7 +213,7 @@ export default function Dashboard() {
                   className="ga-btn secondary"
                   style={{ alignSelf: 'flex-start', fontSize: 13 }}
                 >
-                  Ver formulario →
+                  Ver borrador →
                 </a>
               </div>
             ))}
@@ -223,7 +223,7 @@ export default function Dashboard() {
 
       <div className="ga-card-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12, marginTop: 12 }}>
         <div className="ga-card">
-          <EditableText k="dash.latestForms" fallback="Últimos formularios" tag="h3" />
+          <EditableText k="dash.latestForms" fallback="Últimos borradores" tag="h3" />
           <ul>
             {forms.slice(0, 5).map((f) => (
               <li key={f._id || f.id} style={{ marginBottom: 4 }}>
@@ -234,7 +234,7 @@ export default function Dashboard() {
                     onClick={() => copyForm(f._id || f.id)}
                     className="ga-btn secondary"
                     style={{ fontSize: 11, padding: '2px 6px' }}
-                    title="Duplicar formulario"
+                    title="Duplicar borrador"
                   >
                     📋 Duplicar
                   </button>
