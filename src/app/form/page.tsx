@@ -46,7 +46,7 @@ import {
 } from '@/lib/form/options';
 import { getTooltip } from '@/lib/form/tooltips';
 
-const INITIAL_TEXT_MARCO = `Desde una perspectiva central, las personas de reconocimiento del valor de cada proyecto de vida, se acompañan jóvenes en el proceso de identificación, construcción y desarrollo de sus metas personales. Este acompañamiento se realiza considerando de manera integral. Se acompaña al joven en el logro de sus metas personales, considerando las dimensiones de calidad de vida y brindando los apoyos necesarios para el desarrollo de las habilidades como la toma de decisiones, la planificación, la autoregulación emocional y la participación activa. Este proceso se realiza de manera progresiva, respetando sus tiempos, promoviendo su autonomía y fortaleciendo su protagonismo en la toma de decisiones sobre su vida.`;
+const INITIAL_TEXT_MARCO = `Se acompaña al joven en la construcción y logro de sus metas personales, considerando las dimensiones de su calidad de vida y brindando los apoyos necesarios para el desarrollo de habilidades como la toma de decisiones, la planificación, la autorregulación emocional y la participación activa. Este proceso se realiza de manera progresiva, respetando sus tiempos, promoviendo su autonomía y fortaleciendo su protagonismo en la toma de decisiones sobre su vida.`;
 
 const ajv = new Ajv2020({ allErrors: true });
 addFormats(ajv);
