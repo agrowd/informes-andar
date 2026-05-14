@@ -46,6 +46,223 @@ import {
 } from '@/lib/form/options';
 import { getTooltip } from '@/lib/form/tooltips';
 
+// --- Subcomponentes extraídos para evitar pérdida de foco ---
+
+const OptionNote = ({ path, option, value, data, onChange }: { path: string; option: string; value: string, data: any, onChange: (path: string, val: any) => void }) => {
+	const [editing, setEditing] = useState(false);
+	const [note, setNote] = useState(value || '');
+	const [mounted, setMounted] = useState(false);
+	const [error, setError] = useState('');
+	const notesPath = path + 'Notas';
+	const noteKey = option;
+
+	useEffect(() => {
+		setMounted(true);
+	}, []);
+
+	useEffect(() => {
+		if (mounted) {
+			setNote(value || '');
+		}
+	}, [value, mounted]);
+
+	const closeModal = () => {
+		setEditing(false);
+		setNote(value || '');
+		setError('');
+	};
+
+	const onSave = () => {
+		if (!note.trim()) {
+			setError('Este detalle es obligatorio.');
+			return;
+		}
+		const keys = notesPath.split('.');
+		let currentNotes: any = {};
+		let cur: any = data;
+		for (const k of keys) {
+			cur = cur?.[k];
+		}
+		if (cur && typeof cur === 'object') {
+			currentNotes = { ...cur };
+		}
+		currentNotes[noteKey] = note.trim();
+		onChange(notesPath, currentNotes);
+		setEditing(false);
+		setError('');
+	};
+
+	const onDelete = () => {
+		const keys = notesPath.split('.');
+		let currentNotes: any = {};
+		let cur: any = data;
+		for (const k of keys) {
+			cur = cur?.[k];
+		}
+		if (cur && typeof cur === 'object') {
+			currentNotes = { ...cur };
+		}
+		delete currentNotes[noteKey];
+		if (Object.keys(currentNotes).length > 0) {
+			onChange(notesPath, currentNotes);
+		} else {
+			onChange(notesPath, {});
+		}
+		setEditing(false);
+		setNote('');
+		setError('');
+	};
+
+	if (!mounted) return null;
+
+	if (!editing) {
+		return (
+			<span style={{ display: 'inline-flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
+				{value && (
+					<span style={{ background: '#eef2ff', color: '#4338ca', borderRadius: 6, padding: '4px 8px', fontSize: 13, lineHeight: 1.3, whiteSpace: 'pre-line' }}>
+						{value}
+					</span>
+				)}
+				<button
+					type="button"
+					onClick={() => setEditing(true)}
+					style={{ background: '#fff', border: '1px solid rgba(79,70,229,0.4)', borderRadius: 999, cursor: 'pointer', padding: '4px 10px', fontSize: 12, color: '#4338ca', display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 500 }}
+					title={value ? 'Editar detalle' : 'Agregar detalle'}
+				>
+					<span aria-hidden="true">✎</span>
+					<span>{value ? 'Editar detalle' : 'Agregar detalle'}</span>
+				</button>
+				{!value && <span style={{ fontSize: 12, color: '#b91c1c' }}>Completar el detalle para esta selección.</span>}
+			</span>
+		);
+	}
+
+	return (
+		<>
+			<div className="option-note-modal" onClick={(e) => { if (e.currentTarget === e.target) { closeModal(); } }}>
+				<div className="ga-card" style={{ padding: 12, minWidth: 300, maxWidth: 500 }}>
+					<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+						<b>Agregar nota: {option}</b>
+						<button type="button" className="ga-btn" onClick={closeModal}>✕</button>
+					</div>
+					<textarea value={note} onChange={(e) => setNote(e.target.value)} className="ga-textarea-large" placeholder="Agrega detalles adicionales..." rows={4} />
+					{error && <div style={{ color: '#b91c1c', marginTop: 4, fontSize: 13 }}>{error}</div>}
+					<div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+						<button type="button" className="ga-btn primary" onClick={onSave}>Guardar</button>
+						{value && <button type="button" className="ga-btn" onClick={onDelete} style={{ background: '#fee' }}>Eliminar</button>}
+						<button type="button" className="ga-btn" onClick={closeModal}>Cancelar</button>
+					</div>
+				</div>
+			</div>
+			<style>{`.option-note-modal{position:fixed;inset:0;background:rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;z-index:1000}`}</style>
+		</>
+	);
+};
+
+const CheckboxGroup = ({ label, path, options, showNotes = false, data, onChange, setOtroModal, otroPaths }: { label: ReactNode; path: string; options: string[]; showNotes?: boolean, data: any, onChange: (path: string, val: any) => void, setOtroModal: any, otroPaths: any }) => {
+	const values: string[] = useMemo(() => {
+		const keys = path.split('.');
+		let cur: any = data;
+		for (const k of keys) cur = cur?.[k];
+		return Array.isArray(cur) ? cur : [];
+	}, [data, path]);
+	
+	const getNote = (opt: string) => {
+		const notesPath = path + 'Notas';
+		const keys = notesPath.split('.');
+		let cur: any = data;
+		for (const k of keys) cur = cur?.[k];
+		return cur?.[opt] || '';
+	};
+
+	const getOtroValue = () => {
+		const otroPath = otroPaths[path];
+		if (!otroPath) return '';
+		const keys = otroPath.split('.');
+		let cur: any = data;
+		for (const k of keys) cur = cur?.[k];
+		return typeof cur === 'string' ? cur : '';
+	};
+	
+	const toggle = (opt: string) => {
+		const isOtro = opt === 'Otro' || opt === 'Otra' || opt === 'Otro/Observaciones';
+		if (isOtro && !values.includes(opt)) {
+			const otroPath = otroPaths[path];
+			if (otroPath) {
+				setOtroModal({ path: otroPath, option: opt, isOpen: true, value: getOtroValue() });
+				return;
+			}
+		}
+		const next = values.includes(opt) ? values.filter((v) => v !== opt) : [...values, opt];
+		onChange(path, next);
+		if (isOtro && !next.includes(opt)) {
+			const otroPath = otroPaths[path];
+			if (otroPath) onChange(otroPath, '');
+		}
+	};
+	
+	return (
+		<div style={{ margin: '8px 0' }}>
+			<b>{label}</b>
+			<div className="ga-form-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 10, marginTop: 6 }}>
+				{options.map((op, idx) => {
+					const id = `${path.replace(/\./g,'-')}-${idx}`;
+					const isSelected = values.includes(op);
+					const note = getNote(op);
+					return (
+						<div key={op} style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: 10, borderRadius: 10, border: isSelected ? '1px solid #93c5fd' : '1px solid var(--border)', background: isSelected ? '#f0f7ff' : '#fff', boxShadow: isSelected ? '0 0 0 1px rgba(59,130,246,0.15)' : 'none' }}>
+							<label htmlFor={id} style={{ cursor: 'pointer', flex: 1, display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+								<input id={id} type="checkbox" checked={isSelected} onChange={() => toggle(op)} style={{ marginTop: 4 }} />
+								<span style={{ flex: 1 }}>{op}</span>
+								{getTooltip(op) && <span className="ga-help" title={getTooltip(op) || ''}>i</span>}
+							</label>
+							{isSelected && showNotes && (
+								<div>
+									<OptionNote path={path} option={op} value={note} data={data} onChange={onChange} />
+								</div>
+							)}
+						</div>
+					);
+				})}
+			</div>
+		</div>
+	);
+};
+
+const Select = ({ label, path, options, data, onChange, canEditFields }: { label: ReactNode; path: string; options: string[], data: any, onChange: (path: string, val: any) => void, canEditFields: boolean }) => {
+	const isDisabled = !canEditFields && path.startsWith('datosGenerales.');
+	const value: string = useMemo(() => {
+		const keys = path.split('.');
+		let cur: any = data;
+		for (const k of keys) cur = cur?.[k];
+		return typeof cur === 'string' ? cur : '';
+	}, [data, path]);
+	return (
+		<label style={{ display: 'block', margin: '8px 0' }}>{label}<br />
+			<select className="ga-select" value={value} onChange={(e) => onChange(path, e.target.value)} disabled={isDisabled}>
+				<option value="">Seleccione…</option>
+				{options.map((op) => <option key={op} value={op}>{op}</option>)}
+			</select>
+		</label>
+	);
+};
+
+const SectionComment = ({ path, label, data, onChange }: { path: string, label?: string, data: any, onChange: (path: string, val: any) => void }) => {
+	const value = getValueByPath(data, path) || '';
+	return (
+		<div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid #eee' }}>
+			<label style={{ display: 'block' }}>
+				<b style={{ color: '#1a365d' }}>{label || 'Comentario de personalización (Obligatorio)'}</b>
+				<p style={{ fontSize: 12, color: '#666', marginTop: 4, marginBottom: 8 }}>
+					Agregue una descripción personalizada de este período para el joven. Evite frases genéricas.
+				</p>
+				<textarea className={`ga-textarea-large ${!value.trim() ? 'ga-input-error' : ''}`} rows={4} value={value} onChange={(e) => onChange(path, e.target.value)} placeholder="Ej: Durante este mes, [Nombre] ha mostrado un gran avance en..." />
+				{!value.trim() && <small style={{ color: '#d00', fontWeight: 500 }}>Este comentario es obligatorio para individualizar el informe.</small>}
+			</label>
+		</div>
+	);
+};
+
 const INITIAL_TEXT_MARCO = `Se acompaña al joven en la construcción y logro de sus metas personales, considerando las dimensiones de su calidad de vida y brindando los apoyos necesarios para el desarrollo de habilidades como la toma de decisiones, la planificación, la autorregulación emocional y la participación activa. Este proceso se realiza de manera progresiva, respetando sus tiempos, promoviendo su autonomía y fortaleciendo su protagonismo en la toma de decisiones sobre su vida.`;
 
 const ajv = new Ajv2020({ allErrors: true });
@@ -794,278 +1011,6 @@ function FormContent() {
 		}
 	};
 
-	const OptionNote = ({ path, option, value }: { path: string; option: string; value: string }) => {
-		const [editing, setEditing] = useState(false);
-		const [note, setNote] = useState(value || '');
-		const [mounted, setMounted] = useState(false);
-		const [error, setError] = useState('');
-		const notesPath = path + 'Notas';
-		const noteKey = option;
-
-		useEffect(() => {
-			setMounted(true);
-		}, []);
-
-		useEffect(() => {
-			if (mounted) {
-				setNote(value || '');
-			}
-		}, [value, mounted]);
-
-		const closeModal = () => {
-			setEditing(false);
-			setNote(value || '');
-			setError('');
-		};
-
-		const onSave = () => {
-			if (!note.trim()) {
-				setError('Este detalle es obligatorio.');
-				return;
-			}
-			const keys = notesPath.split('.');
-			let currentNotes: any = {};
-			let cur: any = data;
-			for (const k of keys) {
-				cur = cur?.[k];
-			}
-			if (cur && typeof cur === 'object') {
-				currentNotes = { ...cur };
-			}
-			currentNotes[noteKey] = note.trim();
-			onChange(notesPath, currentNotes);
-			setEditing(false);
-			setError('');
-		};
-
-		const onDelete = () => {
-			const keys = notesPath.split('.');
-			let currentNotes: any = {};
-			let cur: any = data;
-			for (const k of keys) {
-				cur = cur?.[k];
-			}
-			if (cur && typeof cur === 'object') {
-				currentNotes = { ...cur };
-			}
-			delete currentNotes[noteKey];
-			if (Object.keys(currentNotes).length > 0) {
-				onChange(notesPath, currentNotes);
-			} else {
-				onChange(notesPath, {});
-			}
-			setEditing(false);
-			setNote('');
-			setError('');
-		};
-
-		if (!mounted) {
-			return null;
-		}
-
-		if (!editing) {
-			return (
-				<span style={{ display: 'inline-flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
-					{value && (
-						<span
-							style={{
-								background: '#eef2ff',
-								color: '#4338ca',
-								borderRadius: 6,
-								padding: '4px 8px',
-								fontSize: 13,
-								lineHeight: 1.3,
-								whiteSpace: 'pre-line'
-							}}
-						>
-							{value}
-						</span>
-					)}
-					<button
-						type="button"
-						onClick={() => setEditing(true)}
-						style={{
-							background: '#fff',
-							border: '1px solid rgba(79,70,229,0.4)',
-							borderRadius: 999,
-							cursor: 'pointer',
-							padding: '4px 10px',
-							fontSize: 12,
-							color: '#4338ca',
-							display: 'inline-flex',
-							alignItems: 'center',
-							gap: 6,
-							fontWeight: 500
-						}}
-						title={value ? 'Editar detalle' : 'Agregar detalle'}
-					>
-						<span aria-hidden="true">✎</span>
-						<span>{value ? 'Editar detalle' : 'Agregar detalle'}</span>
-					</button>
-					{!value && <span style={{ fontSize: 12, color: '#b91c1c' }}>Completar el detalle para esta selección.</span>}
-				</span>
-			);
-		}
-
-		return (
-			<>
-				<div className="option-note-modal" onClick={(e) => { if (e.currentTarget === e.target) { closeModal(); } }}>
-					<div className="ga-card" style={{ padding: 12, minWidth: 300, maxWidth: 500 }}>
-						<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-							<b>Agregar nota: {option}</b>
-							<button type="button" className="ga-btn" onClick={closeModal}>✕</button>
-						</div>
-						<textarea
-							value={note}
-							onChange={(e) => setNote(e.target.value)}
-							className="ga-textarea-large"
-							placeholder="Agrega detalles adicionales..."
-							rows={4}
-						/>
-						{error && <div style={{ color: '#b91c1c', marginTop: 4, fontSize: 13 }}>{error}</div>}
-						<div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
-							<button type="button" className="ga-btn primary" onClick={onSave}>Guardar</button>
-							{value && <button type="button" className="ga-btn" onClick={onDelete} style={{ background: '#fee' }}>Eliminar</button>}
-							<button type="button" className="ga-btn" onClick={closeModal}>Cancelar</button>
-						</div>
-					</div>
-				</div>
-				<style>{`.option-note-modal{position:fixed;inset:0;background:rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;z-index:1000}`}</style>
-			</>
-		);
-	};
-
-	const CheckboxGroup = ({ label, path, options, showNotes = false }: { label: ReactNode; path: string; options: string[]; showNotes?: boolean }) => {
-		const values: string[] = useMemo(() => {
-			const keys = path.split('.');
-			let cur: any = data;
-			for (const k of keys) cur = cur?.[k];
-			return Array.isArray(cur) ? cur : [];
-		}, [data, path]);
-		
-		const getNote = (opt: string) => {
-			const notesPath = path + 'Notas';
-			const keys = notesPath.split('.');
-			let cur: any = data;
-			for (const k of keys) cur = cur?.[k];
-			return cur?.[opt] || '';
-		};
-
-		const getOtroValue = () => {
-			const otroPath = otroPaths[path];
-			if (!otroPath) return '';
-			const keys = otroPath.split('.');
-			let cur: any = data;
-			for (const k of keys) cur = cur?.[k];
-			return typeof cur === 'string' ? cur : '';
-		};
-		
-		const toggle = (opt: string) => {
-			const isOtro = opt === 'Otro' || opt === 'Otra' || opt === 'Otro/Observaciones';
-			
-			if (isOtro && !values.includes(opt)) {
-				const otroPath = otroPaths[path];
-				if (otroPath) {
-					setOtroModal({
-						path: otroPath,
-						option: opt,
-						isOpen: true,
-						value: getOtroValue()
-					});
-					return;
-				}
-			}
-			
-			const next = values.includes(opt) ? values.filter((v) => v !== opt) : [...values, opt];
-			onChange(path, next);
-			
-			if (isOtro && !next.includes(opt)) {
-				const otroPath = otroPaths[path];
-				if (otroPath) {
-					onChange(otroPath, '');
-				}
-			}
-		};
-		
-		return (
-			<div style={{ margin: '8px 0' }}>
-				<b>{label}</b>
-				<div className="ga-form-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 10, marginTop: 6 }}>
-					{options.map((op, idx) => {
-						const id = `${path.replace(/\./g,'-')}-${idx}`;
-						const isSelected = values.includes(op);
-						const note = getNote(op);
-						return (
-							<div
-								key={op}
-								style={{
-									display: 'flex',
-									flexDirection: 'column',
-									gap: 6,
-									padding: 10,
-									borderRadius: 10,
-									border: isSelected ? '1px solid #93c5fd' : '1px solid var(--border)',
-									background: isSelected ? '#f0f7ff' : '#fff',
-									boxShadow: isSelected ? '0 0 0 1px rgba(59,130,246,0.15)' : 'none'
-								}}
-							>
-								<label htmlFor={id} style={{ cursor: 'pointer', flex: 1, display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-									<input id={id} type="checkbox" checked={isSelected} onChange={() => toggle(op)} style={{ marginTop: 4 }} />
-									<span style={{ flex: 1 }}>{op}</span>
-									{getTooltip(op) && <span className="ga-help" title={getTooltip(op) || ''}>i</span>}
-								</label>
-								{isSelected && showNotes && (
-									<div>
-										<OptionNote path={path} option={op} value={note} />
-									</div>
-								)}
-							</div>
-						);
-					})}
-				</div>
-			</div>
-		);
-	};
-
-	const Select = ({ label, path, options }: { label: ReactNode; path: string; options: string[] }) => {
-		const isDisabled = !canEditFields && path.startsWith('datosGenerales.');
-		const value: string = useMemo(() => {
-			const keys = path.split('.');
-			let cur: any = data;
-			for (const k of keys) cur = cur?.[k];
-			return typeof cur === 'string' ? cur : '';
-		}, [data, path]);
-		return (
-			<label style={{ display: 'block', margin: '8px 0' }}>{label}<br />
-				<select className="ga-select" value={value} onChange={(e) => onChange(path, e.target.value)} disabled={isDisabled}>
-					<option value="">Seleccione…</option>
-					{options.map((op) => <option key={op} value={op}>{op}</option>)}
-				</select>
-			</label>
-		);
-	};
-
-	const SectionComment = ({ path, label }: { path: string, label?: string }) => {
-		const value = getValueByPath(data, path) || '';
-		return (
-			<div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid #eee' }}>
-				<label style={{ display: 'block' }}>
-					<b style={{ color: '#1a365d' }}>{label || 'Comentario de personalización (Obligatorio)'}</b>
-					<p style={{ fontSize: 12, color: '#666', marginTop: 4, marginBottom: 8 }}>
-						Agregue una descripción personalizada de este período para el joven. Evite frases genéricas.
-					</p>
-					<textarea 
-						className={`ga-textarea-large ${!value.trim() ? 'ga-input-error' : ''}`}
-						rows={4}
-						value={value}
-						onChange={(e) => onChange(path, e.target.value)}
-						placeholder="Ej: Durante este mes, [Nombre] ha mostrado un gran avance en..."
-					/>
-					{!value.trim() && <small style={{ color: '#d00', fontWeight: 500 }}>Este comentario es obligatorio para individualizar el informe.</small>}
-				</label>
-			</div>
-		);
-	};
 
 	if (loadingFormData) {
 		return (
@@ -1261,10 +1206,10 @@ function FormContent() {
 						Primero elegí el vínculo (Madre, Hermana, etc.) y luego completá el nombre propio (ej: Cristina).
 					</p>
 				</div>
-				<CheckboxGroup label={<EditableText k="sec.1x.acompanaron" fallback="¿Quiénes lo acompañaron con mayor compromiso? (Marcar todos los que correspondan. Menciona el nombre de las personas)" tag="span" />} path="circuloApoyo.acompanaronMayorCompromiso" options={acompanaronMayorCompromiso} />
-				<Select label={<EditableText k="sec.1x.participacion" fallback="Nivel de participación" tag="span" />} path="circuloApoyo.participacion" options={participacionCirculoOptions} />
-				<Select label={<EditableText k="sec.1x.involucramiento" fallback="Grado de involucramiento general" tag="span" />} path="circuloApoyo.gradoInvolucramiento" options={involucramientoCirculo} />
-				<CheckboxGroup label={<EditableText k="sec.1x.respeto" fallback="¿El círculo respetó sus elecciones y decisiones?" tag="span" />} path="circuloApoyo.respetoDecisiones" options={respetoDecisionesOpciones} />
+				<CheckboxGroup data={data} onChange={onChange} setOtroModal={setOtroModal} otroPaths={otroPaths} label={<EditableText k="sec.1x.acompanaron" fallback="¿Quiénes lo acompañaron con mayor compromiso? (Marcar todos los que correspondan. Menciona el nombre de las personas)" tag="span" />} path="circuloApoyo.acompanaronMayorCompromiso" options={acompanaronMayorCompromiso} />
+				<Select data={data} onChange={onChange} canEditFields={canEditFields} label={<EditableText k="sec.1x.participacion" fallback="Nivel de participación" tag="span" />} path="circuloApoyo.participacion" options={participacionCirculoOptions} />
+				<Select data={data} onChange={onChange} canEditFields={canEditFields} label={<EditableText k="sec.1x.involucramiento" fallback="Grado de involucramiento general" tag="span" />} path="circuloApoyo.gradoInvolucramiento" options={involucramientoCirculo} />
+				<CheckboxGroup data={data} onChange={onChange} setOtroModal={setOtroModal} otroPaths={otroPaths} label={<EditableText k="sec.1x.respeto" fallback="¿El círculo respetó sus elecciones y decisiones?" tag="span" />} path="circuloApoyo.respetoDecisiones" options={respetoDecisionesOpciones} />
 				<div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
 					<div>
 						<b>Participación grupal</b><br />
@@ -1296,7 +1241,7 @@ function FormContent() {
 						</label>
 					</div>
 				)}
-				<SectionComment path="circuloApoyo.comentario" />
+				<SectionComment data={data} onChange={onChange} path="circuloApoyo.comentario" />
 			</section>
 
 			<section className="ga-card" style={sectionStyle(2)}>
@@ -1339,15 +1284,15 @@ function FormContent() {
 				<p className="ga-hint" style={{ marginTop: 8, marginBottom: 8, fontSize: 13, color: '#555' }}>
 					<strong>2.1 Focos:</strong> Se promovieron experiencias que fortalecen su autonomía en la vida cotidiana. <strong>Especifique detalles</strong> en el comentario de abajo.
 				</p>
-				<CheckboxGroup label={<EditableText k="sec.2.focos" fallback="Focos del acompañamiento" tag="span" />} path="objetivo.focos" options={objetivoFocos} showNotes={false} />
-				<SectionComment path="objetivo.focosComentario" label="Comentario sobre Focos del acompañamiento (Obligatorio)" />
+				<CheckboxGroup data={data} onChange={onChange} setOtroModal={setOtroModal} otroPaths={otroPaths} label={<EditableText k="sec.2.focos" fallback="Focos del acompañamiento" tag="span" />} path="objetivo.focos" options={objetivoFocos} showNotes={false} />
+				<SectionComment data={data} onChange={onChange} path="objetivo.focosComentario" label="Comentario sobre Focos del acompañamiento (Obligatorio)" />
 				
 				<p className="ga-hint" style={{ marginTop: 16, marginBottom: 8, fontSize: 13, color: '#555' }}>
 					<strong>2.2 Estrategias:</strong> <strong>Especifique detalles</strong> sobre las estrategias implementadas en el comentario de abajo.
 				</p>
-				<CheckboxGroup label={<EditableText k="sec.2.estrategias" fallback="Estrategias implementadas" tag="span" />} path="objetivo.estrategias" options={objetivoEstrategias} showNotes={false} />
-				<SectionComment path="objetivo.estrategiasComentario" label="Comentario sobre Estrategias implementadas (Obligatorio)" />
-				<SectionComment path="objetivo.comentario" />
+				<CheckboxGroup data={data} onChange={onChange} setOtroModal={setOtroModal} otroPaths={otroPaths} label={<EditableText k="sec.2.estrategias" fallback="Estrategias implementadas" tag="span" />} path="objetivo.estrategias" options={objetivoEstrategias} showNotes={false} />
+				<SectionComment data={data} onChange={onChange} path="objetivo.estrategiasComentario" label="Comentario sobre Estrategias implementadas (Obligatorio)" />
+				<SectionComment data={data} onChange={onChange} path="objetivo.comentario" />
 			</section>
 
 			<section className="ga-card" style={sectionStyle(3)}>
@@ -1380,21 +1325,21 @@ function FormContent() {
 				<p className="ga-hint" style={{ marginTop: 8, marginBottom: 8, fontSize: 13, color: '#555' }}>
 					<strong>3.1 Preferencias / decisiones:</strong> <strong>Especifique detalles</strong> en el comentario de abajo.
 				</p>
-				<CheckboxGroup label={<EditableText k="sec.3.preferencias" fallback="Preferencias / decisiones" tag="span" />} path="escucha.preferencias" options={escuchaPreferencias} showNotes={false} />
-				<SectionComment path="escucha.preferenciasComentario" label="Comentario sobre Preferencias / decisiones (Obligatorio)" />
+				<CheckboxGroup data={data} onChange={onChange} setOtroModal={setOtroModal} otroPaths={otroPaths} label={<EditableText k="sec.3.preferencias" fallback="Preferencias / decisiones" tag="span" />} path="escucha.preferencias" options={escuchaPreferencias} showNotes={false} />
+				<SectionComment data={data} onChange={onChange} path="escucha.preferenciasComentario" label="Comentario sobre Preferencias / decisiones (Obligatorio)" />
 				
 				<p className="ga-hint" style={{ marginTop: 16, marginBottom: 8, fontSize: 13, color: '#555' }}>
 					<strong>3.2 Áreas de interés:</strong> <strong>Especifique detalles</strong> en el comentario de abajo.
 				</p>
-				<CheckboxGroup label={<EditableText k="sec.3.areasInteres" fallback="Áreas de interés" tag="span" />} path="escucha.areasInteres" options={escuchaAreasInteres} showNotes={false} />
-				<SectionComment path="escucha.areasInteresComentario" label="Comentario sobre Áreas de interés (Obligatorio)" />
+				<CheckboxGroup data={data} onChange={onChange} setOtroModal={setOtroModal} otroPaths={otroPaths} label={<EditableText k="sec.3.areasInteres" fallback="Áreas de interés" tag="span" />} path="escucha.areasInteres" options={escuchaAreasInteres} showNotes={false} />
+				<SectionComment data={data} onChange={onChange} path="escucha.areasInteresComentario" label="Comentario sobre Áreas de interés (Obligatorio)" />
 				
-				<Select label={<EditableText k="sec.3.nivelAutonomia" fallback="Nivel de autonomía" tag="span" />} path="escucha.nivelAutonomia" options={nivelesAutonomia} />
+				<Select data={data} onChange={onChange} canEditFields={canEditFields} label={<EditableText k="sec.3.nivelAutonomia" fallback="Nivel de autonomía" tag="span" />} path="escucha.nivelAutonomia" options={nivelesAutonomia} />
 				<p className="ga-hint"><EditableText k="hint.autonomia" fallback="Aclaraciones: niveles orientativos para describir la autonomía percibida en actividades y decisiones cotidianas." tag="span" /></p>
 				<label><EditableText k="sec.3.otroEspecificar" fallback={'Si seleccionaste "Otro" en áreas de interés, especificar'} tag="span" /><br />
 					<textarea className="ga-input ga-textarea-large" value={data.escucha?.areasInteresOtro || ''} onChange={(e) => onChange('escucha.areasInteresOtro', e.target.value)} />
 				</label>
-				<SectionComment path="escucha.comentario" />
+				<SectionComment data={data} onChange={onChange} path="escucha.comentario" />
 			</section>
 
 			<section className="ga-card" style={sectionStyle(4)}>
@@ -1424,38 +1369,38 @@ function FormContent() {
 					</button>
 				</div>
 				<p style={{ color: '#666', fontSize: 12 }}><EditableText k="hint.estadoEmocional" fallback={hints.estadoEmocional || ''} tag="span" /></p>
-				<CheckboxGroup label={<EditableText k="sec.4.prevalencias" fallback="Prevalencia de estados emocionales" tag="span" />} path="estadoEmocional.prevalencias" options={prevalenciasEmocionales} showNotes={false} />
-				<CheckboxGroup label={<EditableText k="sec.4.expresionGeneral" fallback="Expresión emocional general" tag="span" />} path="estadoEmocional.expresionGeneral" options={expresionEmocionalGeneral} showNotes={false} />
+				<CheckboxGroup data={data} onChange={onChange} setOtroModal={setOtroModal} otroPaths={otroPaths} label={<EditableText k="sec.4.prevalencias" fallback="Prevalencia de estados emocionales" tag="span" />} path="estadoEmocional.prevalencias" options={prevalenciasEmocionales} showNotes={false} />
+				<CheckboxGroup data={data} onChange={onChange} setOtroModal={setOtroModal} otroPaths={otroPaths} label={<EditableText k="sec.4.expresionGeneral" fallback="Expresión emocional general" tag="span" />} path="estadoEmocional.expresionGeneral" options={expresionEmocionalGeneral} showNotes={false} />
 				<p className="ga-hint" style={{ marginTop: 8, marginBottom: 8, fontSize: 13, color: '#555' }}>
 					<strong>Vínculo con el entorno y Bienestar:</strong> <strong>Especifique detalles</strong> en el comentario de abajo.
 				</p>
-				<CheckboxGroup label={<EditableText k="sec.4.vinculo" fallback="Vínculo con el entorno" tag="span" />} path="estadoEmocional.vinculoEntorno" options={vinculoEntorno} showNotes={false} />
-				<CheckboxGroup label={<EditableText k="sec.4.bienestar" fallback="Bienestar subjetivo" tag="span" />} path="estadoEmocional.bienestarSubjetivo" options={bienestarSubjetivo} showNotes={false} />
+				<CheckboxGroup data={data} onChange={onChange} setOtroModal={setOtroModal} otroPaths={otroPaths} label={<EditableText k="sec.4.vinculo" fallback="Vínculo con el entorno" tag="span" />} path="estadoEmocional.vinculoEntorno" options={vinculoEntorno} showNotes={false} />
+				<CheckboxGroup data={data} onChange={onChange} setOtroModal={setOtroModal} otroPaths={otroPaths} label={<EditableText k="sec.4.bienestar" fallback="Bienestar subjetivo" tag="span" />} path="estadoEmocional.bienestarSubjetivo" options={bienestarSubjetivo} showNotes={false} />
 				
 				<p className="ga-hint" style={{ marginTop: 16, marginBottom: 8, fontSize: 13, color: '#555' }}>
 					<strong>Regulación emocional:</strong> <strong>Especifique detalles</strong> en el comentario de abajo.
 				</p>
-				<CheckboxGroup label={<EditableText k="sec.4.regulacion" fallback="Regulación emocional" tag="span" />} path="estadoEmocional.regulacion" options={regulacionEmocional} showNotes={false} />
+				<CheckboxGroup data={data} onChange={onChange} setOtroModal={setOtroModal} otroPaths={otroPaths} label={<EditableText k="sec.4.regulacion" fallback="Regulación emocional" tag="span" />} path="estadoEmocional.regulacion" options={regulacionEmocional} showNotes={false} />
 				
 				<p className="ga-hint" style={{ marginTop: 16, marginBottom: 8, fontSize: 13, color: '#555' }}>
 					<strong>Situaciones que influyeron:</strong> <strong>Especifique detalles</strong> en el comentario de abajo.
 				</p>
-				<CheckboxGroup label={<EditableText k="sec.4.situaciones" fallback="Situaciones que influyeron" tag="span" />} path="estadoEmocional.situacionesInfluyen" options={situacionesInfluyen} showNotes={false} />
-				<SectionComment path="estadoEmocional.situacionesComentario" label="Comentario sobre Situaciones que influyeron (Obligatorio)" />
+				<CheckboxGroup data={data} onChange={onChange} setOtroModal={setOtroModal} otroPaths={otroPaths} label={<EditableText k="sec.4.situaciones" fallback="Situaciones que influyeron" tag="span" />} path="estadoEmocional.situacionesInfluyen" options={situacionesInfluyen} showNotes={false} />
+				<SectionComment data={data} onChange={onChange} path="estadoEmocional.situacionesComentario" label="Comentario sobre Situaciones que influyeron (Obligatorio)" />
 				
 				<p className="ga-hint" style={{ marginTop: 16, marginBottom: 8, fontSize: 13, color: '#555' }}>
 					<strong>Estrategias de acompañamiento:</strong> <strong>Especifique detalles</strong> en el comentario de abajo.
 				</p>
-				<CheckboxGroup label={<EditableText k="sec.4.estrategias" fallback="Estrategias de acompañamiento" tag="span" />} path="estadoEmocional.estrategias" options={estrategiasAcompanamiento} showNotes={false} />
-				<SectionComment path="estadoEmocional.estrategiasComentario" label="Comentario sobre Estrategias de acompañamiento (Obligatorio)" />
+				<CheckboxGroup data={data} onChange={onChange} setOtroModal={setOtroModal} otroPaths={otroPaths} label={<EditableText k="sec.4.estrategias" fallback="Estrategias de acompañamiento" tag="span" />} path="estadoEmocional.estrategias" options={estrategiasAcompanamiento} showNotes={false} />
+				<SectionComment data={data} onChange={onChange} path="estadoEmocional.estrategiasComentario" label="Comentario sobre Estrategias de acompañamiento (Obligatorio)" />
 				
 				<p className="ga-hint" style={{ marginTop: 16, marginBottom: 8, fontSize: 13, color: '#555' }}>
 					<strong>Técnicas de autorregulación:</strong> <strong>Especifique detalles</strong> en el comentario de abajo.
 				</p>
-				<CheckboxGroup label={<EditableText k="sec.4.autorregulacion" fallback="Técnicas de autorregulación" tag="span" />} path="estadoEmocional.tecnicasAutorregulacion" options={tecnicasAutorregulacion} showNotes={false} />
-				<SectionComment path="estadoEmocional.autorregulacionComentario" label="Comentario sobre Técnicas de autorregulación (Obligatorio)" />
+				<CheckboxGroup data={data} onChange={onChange} setOtroModal={setOtroModal} otroPaths={otroPaths} label={<EditableText k="sec.4.autorregulacion" fallback="Técnicas de autorregulación" tag="span" />} path="estadoEmocional.tecnicasAutorregulacion" options={tecnicasAutorregulacion} showNotes={false} />
+				<SectionComment data={data} onChange={onChange} path="estadoEmocional.autorregulacionComentario" label="Comentario sobre Técnicas de autorregulación (Obligatorio)" />
 				
-				<SectionComment path="estadoEmocional.comentario" />
+				<SectionComment data={data} onChange={onChange} path="estadoEmocional.comentario" />
 			</section>
 
 			<section className="ga-card" style={sectionStyle(5)}>
@@ -1488,20 +1433,20 @@ function FormContent() {
 				<p className="ga-hint" style={{ marginTop: 8, marginBottom: 8, fontSize: 13, color: '#555' }}>
 					<strong>5.1 Apoyos:</strong> <strong>Especifique detalles</strong> en el comentario de abajo.
 				</p>
-				<CheckboxGroup label={<EditableText k="sec.5.apoyos" fallback="Apoyos" tag="span" />} path="apoyosAjustes.apoyos" options={apoyosOpciones} showNotes={false} />
-				<SectionComment path="apoyosAjustes.apoyosComentario" label="Comentario sobre Apoyos (Obligatorio)" />
+				<CheckboxGroup data={data} onChange={onChange} setOtroModal={setOtroModal} otroPaths={otroPaths} label={<EditableText k="sec.5.apoyos" fallback="Apoyos" tag="span" />} path="apoyosAjustes.apoyos" options={apoyosOpciones} showNotes={false} />
+				<SectionComment data={data} onChange={onChange} path="apoyosAjustes.apoyosComentario" label="Comentario sobre Apoyos (Obligatorio)" />
 				
 				<p className="ga-hint" style={{ marginTop: 16, marginBottom: 8, fontSize: 13, color: '#555' }}>
 					<strong>5.3 Ajustes razonables:</strong> <strong>Especifique detalles</strong> en el comentario de abajo.
 				</p>
-				<CheckboxGroup label={<EditableText k="sec.5.ajustes" fallback="Ajustes razonables" tag="span" />} path="apoyosAjustes.ajustes" options={ajustesOpciones} showNotes={false} />
-				<SectionComment path="apoyosAjustes.ajustesComentario" label="Comentario sobre Ajustes razonables (Obligatorio)" />
+				<CheckboxGroup data={data} onChange={onChange} setOtroModal={setOtroModal} otroPaths={otroPaths} label={<EditableText k="sec.5.ajustes" fallback="Ajustes razonables" tag="span" />} path="apoyosAjustes.ajustes" options={ajustesOpciones} showNotes={false} />
+				<SectionComment data={data} onChange={onChange} path="apoyosAjustes.ajustesComentario" label="Comentario sobre Ajustes razonables (Obligatorio)" />
 				
 				<p className="ga-hint" style={{ marginTop: 16, marginBottom: 8, fontSize: 13, color: '#555' }}>
 					<strong>Contextos de aplicación:</strong> Marcar todas las que correspondan.
 				</p>
-				<CheckboxGroup label={<EditableText k="sec.5.contextos" fallback="Contextos de aplicación" tag="span" />} path="apoyosAjustes.contextos" options={contextosApoyo} showNotes={false} />
-				<SectionComment path="apoyosAjustes.comentario" />
+				<CheckboxGroup data={data} onChange={onChange} setOtroModal={setOtroModal} otroPaths={otroPaths} label={<EditableText k="sec.5.contextos" fallback="Contextos de aplicación" tag="span" />} path="apoyosAjustes.contextos" options={contextosApoyo} showNotes={false} />
+				<SectionComment data={data} onChange={onChange} path="apoyosAjustes.comentario" />
 			</section>
 
 			<section className="ga-card" style={sectionStyle(6)}>
@@ -1547,8 +1492,8 @@ function FormContent() {
 				<p className="ga-hint" style={{ marginTop: 8, marginBottom: 8, fontSize: 13, color: '#555' }}>
 					<strong>Logros:</strong> <strong>Especifique detalles</strong> en el comentario de abajo.
 				</p>
-				<CheckboxGroup label={<EditableText k="sec.7.logros" fallback="Logros" tag="span" />} path="logros.items" options={logrosOpciones} showNotes={false} />
-				<SectionComment path="logros.comentario" label="Comentario sobre Logros y habilidades (Obligatorio)" />
+				<CheckboxGroup data={data} onChange={onChange} setOtroModal={setOtroModal} otroPaths={otroPaths} label={<EditableText k="sec.7.logros" fallback="Logros" tag="span" />} path="logros.items" options={logrosOpciones} showNotes={false} />
+				<SectionComment data={data} onChange={onChange} path="logros.comentario" label="Comentario sobre Logros y habilidades (Obligatorio)" />
 				<div style={{ marginTop: 16 }}>
 					<label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>
 						<EditableText k="sec.7.imagenes" fallback="Imágenes de logros (opcional)" tag="span" />
@@ -1645,16 +1590,16 @@ function FormContent() {
 				<p className="ga-hint" style={{ marginTop: 8, marginBottom: 8, fontSize: 13, color: '#555' }}>
 					<strong>8.1 Metas:</strong> <strong>Especifique detalles</strong> en el comentario de abajo.
 				</p>
-				<CheckboxGroup label={<EditableText k="sec.8.metas" fallback="Metas" tag="span" />} path="suenosMetas.metas" options={metasOpciones} showNotes={false} />
-				<SectionComment path="suenosMetas.metasComentario" label="Comentario sobre Metas (Obligatorio)" />
+				<CheckboxGroup data={data} onChange={onChange} setOtroModal={setOtroModal} otroPaths={otroPaths} label={<EditableText k="sec.8.metas" fallback="Metas" tag="span" />} path="suenosMetas.metas" options={metasOpciones} showNotes={false} />
+				<SectionComment data={data} onChange={onChange} path="suenosMetas.metasComentario" label="Comentario sobre Metas (Obligatorio)" />
 				
 				<p className="ga-hint" style={{ marginTop: 16, marginBottom: 8, fontSize: 13, color: '#555' }}>
 					<strong>8.2 Recursos necesarios:</strong> <strong>Especifique detalles</strong> en el comentario de abajo.
 				</p>
-				<CheckboxGroup label={<EditableText k="sec.8.recursos" fallback="Recursos necesarios" tag="span" />} path="suenosMetas.recursosNecesarios" options={recursosOpciones} showNotes={false} />
-				<SectionComment path="suenosMetas.recursosComentario" label="Comentario sobre Recursos necesarios (Obligatorio)" />
+				<CheckboxGroup data={data} onChange={onChange} setOtroModal={setOtroModal} otroPaths={otroPaths} label={<EditableText k="sec.8.recursos" fallback="Recursos necesarios" tag="span" />} path="suenosMetas.recursosNecesarios" options={recursosOpciones} showNotes={false} />
+				<SectionComment data={data} onChange={onChange} path="suenosMetas.recursosComentario" label="Comentario sobre Recursos necesarios (Obligatorio)" />
 				
-				<SectionComment path="suenosMetas.comentario" />
+				<SectionComment data={data} onChange={onChange} path="suenosMetas.comentario" />
 			</section>
 
 			<section className="ga-card" style={sectionStyle(9)}>
@@ -1683,7 +1628,7 @@ function FormContent() {
 						?
 					</button>
 				</div>
-				<Select label={<EditableText k="sec.9.participacion" fallback="Participación" tag="span" />} path="experiencias.participacion" options={participacionExperienciasOptions} />
+				<Select data={data} onChange={onChange} canEditFields={canEditFields} label={<EditableText k="sec.9.participacion" fallback="Participación" tag="span" />} path="experiencias.participacion" options={participacionExperienciasOptions} />
 				<p className="ga-hint" style={{ marginTop: 8, marginBottom: 8, fontSize: 13, color: '#555' }}>
 					Si seleccionó "Sí, participó con entusiasmo y de manera activa": Se involucró de forma autónoma, con interés y disfrute. Mostró iniciativa, alegría y apertura a la experiencia.
 				</p>
@@ -1693,20 +1638,20 @@ function FormContent() {
 				<p className="ga-hint" style={{ marginTop: 8, marginBottom: 8, fontSize: 13, color: '#555' }}>
 					<strong>Experiencias vividas:</strong> <strong>Especifique detalles</strong> en el comentario de abajo.
 				</p>
-				<CheckboxGroup label={<EditableText k="sec.9.tiposVividas" fallback="Tipos de experiencias vividas" tag="span" />} path="experiencias.tiposVividas" options={nuevasExperiencias} showNotes={false} />
-				<SectionComment path="experiencias.tiposComentario" label="Comentario sobre Experiencias vividas (Obligatorio)" />
+				<CheckboxGroup data={data} onChange={onChange} setOtroModal={setOtroModal} otroPaths={otroPaths} label={<EditableText k="sec.9.tiposVividas" fallback="Tipos de experiencias vividas" tag="span" />} path="experiencias.tiposVividas" options={nuevasExperiencias} showNotes={false} />
+				<SectionComment data={data} onChange={onChange} path="experiencias.tiposComentario" label="Comentario sobre Experiencias vividas (Obligatorio)" />
 				
 				<p className="ga-hint" style={{ marginTop: 16, marginBottom: 8, fontSize: 13, color: '#555' }}>
 					<strong>Tipo de apoyo brindado:</strong> <strong>Especifique detalles</strong> en el comentario de abajo.
 				</p>
-				<CheckboxGroup label={<EditableText k="sec.9.tipoApoyo" fallback="Tipo de apoyo brindado" tag="span" />} path="experiencias.tipoApoyo" options={tipoApoyoExperiencias} showNotes={false} />
-				<SectionComment path="experiencias.apoyoComentario" label="Comentario sobre Apoyo recibido (Obligatorio)" />
+				<CheckboxGroup data={data} onChange={onChange} setOtroModal={setOtroModal} otroPaths={otroPaths} label={<EditableText k="sec.9.tipoApoyo" fallback="Tipo de apoyo brindado" tag="span" />} path="experiencias.tipoApoyo" options={tipoApoyoExperiencias} showNotes={false} />
+				<SectionComment data={data} onChange={onChange} path="experiencias.apoyoComentario" label="Comentario sobre Apoyo recibido (Obligatorio)" />
 				
 				<p className="ga-hint" style={{ marginTop: 16, marginBottom: 8, fontSize: 13, color: '#555' }}>
 					<strong>Motivos si no participó:</strong> Marcar todos los que correspondan.
 				</p>
-				<CheckboxGroup label={<EditableText k="sec.9.motivos" fallback="Motivos si no participó" tag="span" />} path="experiencias.motivosNoParticipa" options={motivosNoParticipa} showNotes={false} />
-				<SectionComment path="experiencias.comentario" />
+				<CheckboxGroup data={data} onChange={onChange} setOtroModal={setOtroModal} otroPaths={otroPaths} label={<EditableText k="sec.9.motivos" fallback="Motivos si no participó" tag="span" />} path="experiencias.motivosNoParticipa" options={motivosNoParticipa} showNotes={false} />
+				<SectionComment data={data} onChange={onChange} path="experiencias.comentario" />
 			</section>
 
 			<section className="ga-card" style={sectionStyle(10)}>
@@ -1714,16 +1659,16 @@ function FormContent() {
 				<p className="ga-hint" style={{ marginTop: 8, marginBottom: 8, fontSize: 13, color: '#555' }}>
 					<strong>10.1 Áreas prioritarias:</strong> <strong>Especifique detalles</strong> en el comentario de abajo.
 				</p>
-				<CheckboxGroup label={<EditableText k="sec.10.areas" fallback="Áreas prioritarias" tag="span" />} path="sugerencias.areasPrioritarias" options={areasPrioritarias} showNotes={false} />
-				<SectionComment path="sugerencias.areasComentario" label="Comentario sobre Áreas prioritarias (Obligatorio)" />
+				<CheckboxGroup data={data} onChange={onChange} setOtroModal={setOtroModal} otroPaths={otroPaths} label={<EditableText k="sec.10.areas" fallback="Áreas prioritarias" tag="span" />} path="sugerencias.areasPrioritarias" options={areasPrioritarias} showNotes={false} />
+				<SectionComment data={data} onChange={onChange} path="sugerencias.areasComentario" label="Comentario sobre Áreas prioritarias (Obligatorio)" />
 				
 				<p className="ga-hint" style={{ marginTop: 16, marginBottom: 8, fontSize: 13, color: '#555' }}>
 					<strong>10.2 Recomendaciones:</strong> <strong>Especifique detalles</strong> en el comentario de abajo.
 				</p>
-				<CheckboxGroup label={<EditableText k="sec.10.recomendaciones" fallback="Recomendaciones" tag="span" />} path="sugerencias.recomendaciones" options={recomendacionesOpciones} showNotes={false} />
-				<SectionComment path="sugerencias.recomendacionesComentario" label="Comentario sobre Recomendaciones (Obligatorio)" />
+				<CheckboxGroup data={data} onChange={onChange} setOtroModal={setOtroModal} otroPaths={otroPaths} label={<EditableText k="sec.10.recomendaciones" fallback="Recomendaciones" tag="span" />} path="sugerencias.recomendaciones" options={recomendacionesOpciones} showNotes={false} />
+				<SectionComment data={data} onChange={onChange} path="sugerencias.recomendacionesComentario" label="Comentario sobre Recomendaciones (Obligatorio)" />
 				
-				<SectionComment path="sugerencias.comentario" />
+				<SectionComment data={data} onChange={onChange} path="sugerencias.comentario" />
 			</section>
 
 			<div style={{ marginTop: 12 }} className="ga-row">
