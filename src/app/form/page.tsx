@@ -385,8 +385,11 @@ function FormContent() {
 					if (!r.ok) throw new Error(`HTTP ${r.status}`);
 					const result = await r.json();
 					if (result.formData) {
-						setData(result.formData);
-						lastSavedDataRef.current = JSON.stringify(result.formData);
+						const repaired = { ...result.formData };
+						if (!repaired.objetivo) repaired.objetivo = {};
+						if (!repaired.objetivo.textoMarco) repaired.objetivo.textoMarco = INITIAL_TEXT_MARCO;
+						setData(repaired);
+						lastSavedDataRef.current = JSON.stringify(repaired);
 						localStorage.setItem('formData', lastSavedDataRef.current);
 						addToast(`Informe cargado. Período: ${result.periodo || 'N/A'}`, 'success');
 					}
@@ -396,8 +399,11 @@ function FormContent() {
 					if (!r.ok) throw new Error(`HTTP ${r.status}`);
 					const result = await r.json();
 					if (result.data) {
-						setData(result.data);
-						lastSavedDataRef.current = JSON.stringify(result.data);
+						const repaired = { ...result.data };
+						if (!repaired.objetivo) repaired.objetivo = {};
+						if (!repaired.objetivo.textoMarco) repaired.objetivo.textoMarco = INITIAL_TEXT_MARCO;
+						setData(repaired);
+						lastSavedDataRef.current = JSON.stringify(repaired);
 						localStorage.setItem('formData', lastSavedDataRef.current);
 						addToast(`Formulario cargado. Período: ${result.periodo || 'N/A'}`, 'success');
 					}
@@ -408,9 +414,12 @@ function FormContent() {
 					if (result.items && result.items.length > 0) {
 						const lastForm = result.items[0];
 						if (lastForm.data) {
-							setData(lastForm.data);
+							const repaired = { ...lastForm.data };
+							if (!repaired.objetivo) repaired.objetivo = {};
+							if (!repaired.objetivo.textoMarco) repaired.objetivo.textoMarco = INITIAL_TEXT_MARCO;
+							setData(repaired);
 							setCurrentFormId(lastForm._id || lastForm.id);
-							lastSavedDataRef.current = JSON.stringify(lastForm.data);
+							lastSavedDataRef.current = JSON.stringify(repaired);
 							localStorage.setItem('formData', lastSavedDataRef.current);
 							addToast(`Último borrador cargado. Período: ${lastForm.periodo || 'N/A'}`, 'info');
 						}
@@ -418,8 +427,10 @@ function FormContent() {
 						const saved = localStorage.getItem('formData');
 						if (saved) {
 							const parsed = JSON.parse(saved);
+							if (!parsed.objetivo) parsed.objetivo = {};
+							if (!parsed.objetivo.textoMarco) parsed.objetivo.textoMarco = INITIAL_TEXT_MARCO;
 							setData(parsed);
-							lastSavedDataRef.current = saved;
+							lastSavedDataRef.current = JSON.stringify(parsed);
 						}
 					}
 				}
@@ -1315,8 +1326,15 @@ function FormContent() {
 					</button>
 				</div>
 				<p style={{ color: '#666', fontSize: 12 }}><EditableText k="hint.objetivo" fallback={hints.objetivo || ''} tag="span" /></p>
-				<label><EditableText k="sec.2.textoMarco" fallback="Texto marco" tag="span" /><br />
-					<textarea rows={6} style={{ width: '100%', fontSize: '14px', lineHeight: '1.5' }} value={data.objetivo?.textoMarco || ''} onChange={(e) => onChange('objetivo.textoMarco', e.target.value)} />
+				<label>
+					<strong><EditableText k="sec.2.label" fallback="Texto Marco Institucional (Se adapta si es necesario):" tag="span" /></strong><br />
+					<textarea 
+						rows={6} 
+						style={{ width: '100%', fontSize: '14px', lineHeight: '1.5', padding: '10px', marginTop: '8px' }} 
+						value={data.objetivo?.textoMarco || ''} 
+						onChange={(e) => onChange('objetivo.textoMarco', e.target.value)} 
+						placeholder={INITIAL_TEXT_MARCO}
+					/>
 				</label>
 				<p className="ga-hint" style={{ marginTop: 8, marginBottom: 8, fontSize: 13, color: '#555' }}>
 					<strong>2.1 Focos:</strong> Se promovieron experiencias que fortalecen su autonomía en la vida cotidiana. <strong>Especifique detalles</strong> en el comentario de abajo.
