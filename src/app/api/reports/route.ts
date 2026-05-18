@@ -207,9 +207,9 @@ export async function GET(req: NextRequest) {
     }
     
     return NextResponse.json({ items: [], total: 0, page: 1, pageSize: 20 });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching reports:', error);
-    return NextResponse.json({ items: [], total: 0, page: 1, pageSize: 20 });
+    return NextResponse.json({ items: [], total: 0, page: 1, pageSize: 20, error: error?.message || String(error) });
   }
 }
 
