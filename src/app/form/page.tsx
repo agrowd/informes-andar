@@ -1012,6 +1012,11 @@ function FormContent() {
 				message = json?.pdfUrl ? '✅ Informe generado y PDF disponible.' : '✅ Informe generado.';
 			}
 			addToast(message, 'success');
+			
+			// Redirigir al usuario a la lista de informes para que pueda ver/descargar el PDF
+			setTimeout(() => {
+				router.push('/reports');
+			}, 1500);
 		} catch (err: any) {
 			console.error('Error al generar informe:', err);
 			addToast(err.message || 'Error al generar informe', 'error');
