@@ -3,6 +3,7 @@ import { connectToDB, sql } from '@/lib/db';
 import { AuditLogModel } from '@/models/AuditLog';
 
 export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
 
 export async function GET(req: NextRequest) {
   try {

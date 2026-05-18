@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectToDB, sql } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
 export const runtime = 'nodejs';
 
 export async function GET(req: NextRequest) {
