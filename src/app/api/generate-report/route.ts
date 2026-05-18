@@ -45,8 +45,7 @@ export async function POST(req: NextRequest) {
     const filename = `informe-${timestamp}.pdf`;
     const filePath = path.join(reportsDir, filename);
     await fs.promises.writeFile(filePath, pdfBuffer);
-    const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:8000';
-    const pdfUrl = `${baseUrl}/reports/${filename}`;
+    const pdfUrl = `/reports/${filename}`;
 
     // Guardar también el Markdown
     const markdownFilename = `informe-${timestamp}.md`;
@@ -54,7 +53,7 @@ export async function POST(req: NextRequest) {
     if (result.markdown) {
       await fs.promises.writeFile(markdownFilePath, result.markdown, 'utf8');
     }
-    const markdownUrl = result.markdown ? `${baseUrl}/reports/${markdownFilename}` : null;
+    const markdownUrl = result.markdown ? `/reports/${markdownFilename}` : null;
 
     // Persistir en DB si está configurada (MongoDB o Postgres)
     let finalVersion = 1;
