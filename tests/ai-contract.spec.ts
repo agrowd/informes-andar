@@ -7,15 +7,15 @@ const minimalForm = {
     periodo: 'Enero–Junio 2025',
     circuloApoyo: [{ nombre: 'Familiar A', vinculo: 'Madre' }]
   },
-  objetivo: { focos: ['Comunicación'], estrategias: ['Apoyo visual'] },
-  escucha: { nivelAutonomia: 'Media' },
-  estadoEmocional: { regulacion: ['Maneja adecuadamente situaciones de frustración o cambios'] },
-  apoyosAjustes: { apoyos: ['Tutoría'], ajustes: ['Adaptación de materiales'] },
+  objetivo: { focos: ['Comunicación'], estrategias: ['Apoyo visual'], focosComentario: 'Comentario objetivo focos', estrategiasComentario: 'Comentario estrategias' },
+  escucha: { nivelAutonomia: 'Media', preferenciasComentario: 'Comentario preferencias', areasInteresComentario: 'Comentario areas interes' },
+  estadoEmocional: { regulacion: ['Maneja adecuadamente situaciones de frustración o cambios'], situacionesComentario: 'Comentario situaciones', estrategiasComentario: 'Comentario estrategias emocionales', autorregulacionComentario: 'Comentario autorregulacion' },
+  apoyosAjustes: { apoyos: ['Tutoría'], ajustes: ['Adaptación de materiales'], apoyosComentario: 'Comentario apoyos', ajustesComentario: 'Comentario ajustes' },
   evaluacion: { dimensiones: [{ dimension: 'Autonomía', evolucion: '✔', observacion: 'Avances sostenidos' }] },
-  logros: ['Participación activa en taller'],
-  suenosMetas: { metas: ['Mayor independencia'] },
-  circuloApoyo: { participacion: 'Alta', miembros: [{ nombre: 'Familiar A', vinculo: 'Madre' }], respetoDecisiones: ['Sí, siempre'], gradoInvolucramiento: 'Muy alto' },
-  sugerencias: { areasPrioritarias: ['Habilidades de vida diaria'], recomendaciones: ['Rutinas con apoyos visuales'] }
+  logros: { items: ['Participación activa en taller'], comentario: 'Comentario logros' },
+  suenosMetas: { metas: ['Mayor independencia'], metasComentario: 'Comentario metas', recursosComentario: 'Comentario recursos' },
+  circuloApoyo: { participacion: 'Alta', miembros: [{ nombre: 'Familiar A', vinculo: 'Madre' }], respetoDecisiones: ['Sí, siempre'], gradoInvolucramiento: 'Muy alto', comentario: 'Comentario circulo de apoyo' },
+  sugerencias: { areasPrioritarias: ['Habilidades de vida diaria'], recomendaciones: ['Rutinas con apoyos visuales'], areasComentario: 'Comentario areas', recomendacionesComentario: 'Comentario recomendaciones' }
 };
 
 describe('Contrato de salida IA/fallback', () => {

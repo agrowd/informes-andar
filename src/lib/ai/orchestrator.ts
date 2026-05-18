@@ -518,7 +518,7 @@ function renderFromForm(form: any) {
     logros: [
       ...toFragments(
         [
-          ...(form?.logros || []),
+          ...(form?.logros?.items || []),
           // Integrar experiencias significativas (7.2) como parte de logros del período
           ...(form?.experiencias?.tiposVividas || []),
           ...(form?.experiencias?.tipoApoyo || []),
