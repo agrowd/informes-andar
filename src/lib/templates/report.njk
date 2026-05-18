@@ -21,23 +21,6 @@
       padding: 0;
     }
     
-    /* Membrete fijo en todas las páginas */
-    .page-header {
-      position: fixed;
-      top: -28mm;
-      left: 0;
-      right: 0;
-      height: 22mm;
-      text-align: center;
-      z-index: 1000;
-    }
-    .page-header img {
-      height: 100%;
-      width: auto;
-      max-width: 100%;
-      display: inline-block;
-    }
-    
     .header { 
       text-align: center; 
       margin-bottom: 24pt; 
@@ -123,14 +106,8 @@
 </head>
 <body>
 
-  <!-- Membrete oficial de la Asociación Civil Andar -->
-  {% if headerLogoBase64 %}
-    <div class="page-header">
-      <img src="{{ headerLogoBase64 }}" alt="Membrete Asociación Civil Andar" />
-    </div>
-  {% endif %}
-
   <div class="header">
+
     <h1>{{ institutional.titles.mainTitle }}</h1>
     <p class="subtitle">(Modelo Social de la Discapacidad – Calidad de Vida – Planificación Centrada en la Persona)</p>
   </div>

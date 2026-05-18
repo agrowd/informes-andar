@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { chromium } from 'playwright';
 import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'docx';
 
@@ -6,7 +8,40 @@ export async function htmlToPdfBuffer(html: string): Promise<Buffer> {
   try {
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: 'networkidle' });
-    const buffer = await page.pdf({ format: 'A4', printBackground: true });
+    
+    // Leer el membrete para la cabecera nativa de Playwright
+    let headerLogoBase64 = '';
+    try {
+      const logoPath = path.join(process.cwd(), 'public', 'images', 'header-logo.jpg');
+      if (fs.existsSync(logoPath)) {
+        const buffer = fs.readFileSync(logoPath);
+        headerLogoBase64 = `data:image/jpeg;base64,${buffer.toString('base64')}`;
+      }
+    } catch (e) {
+      console.error('Error al leer el logo del membrete para Playwright:', e);
+    }
+
+    const buffer = await page.pdf({ 
+      format: 'A4', 
+      printBackground: true,
+      displayHeaderFooter: true,
+      headerTemplate: `
+        <div style="width: 100%; text-align: center; margin: 0; padding: 25px 0 0 0; -webkit-print-color-adjust: exact;box-sizing: border-box;">
+          ${headerLogoBase64 ? `<img src="${headerLogoBase64}" style="height: 62px; width: auto; max-width: 100%; display: block; margin: 0 auto;" />` : ''}
+        </div>
+      `,
+      footerTemplate: `
+        <div style="width: 100%; text-align: right; font-family: 'Georgia', 'Times New Roman', serif; font-size: 8.5pt; color: #555; padding-right: 25.4mm; margin-bottom: 10px; -webkit-print-color-adjust: exact;">
+          Pág. <span class="pageNumber"></span> de <span class="totalPages"></span>
+        </div>
+      `,
+      margin: {
+        top: '38mm',
+        right: '25.4mm',
+        bottom: '25.4mm',
+        left: '25.4mm'
+      }
+    });
     return buffer as Buffer;
   } finally {
     await browser.close();
