@@ -403,6 +403,12 @@ function mergeDatosGeneralesFromForm(report: any, originalForm?: any) {
   const target = report.datosGenerales;
   const formDG = originalForm?.datosGenerales || {};
   const formCirculo = originalForm?.circuloApoyo || {};
+  
+  // Siempre restaurar/sobrescribir los datos reales del joven desde el formulario original
+  if (formDG.nombreCompleto) target.nombreCompleto = formDG.nombreCompleto;
+  if (formDG.dni !== undefined) target.dni = formDG.dni;
+  if (formDG.periodo) target.periodo = formDG.periodo;
+  
   if (formDG.numeroLegajo) target.numeroLegajo = formDG.numeroLegajo;
   if (formDG.facilitadorNombre) target.facilitadorNombre = formDG.facilitadorNombre;
   if (formDG.obraSocial) target.obraSocial = formDG.obraSocial;
@@ -426,6 +432,7 @@ function mergeDatosGeneralesFromForm(report: any, originalForm?: any) {
     ...(valoracion?.individual ? { individual: valoracion.individual } : {})
   };
 }
+
 
 function renderFromForm(form: any) {
   // Construcción 100% extractiva a la estructura de salida
