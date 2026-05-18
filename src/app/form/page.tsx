@@ -594,6 +594,21 @@ function FormContent() {
 		const reportId = urlParams.get('reportId');
 		const formId = urlParams.get('formId');
 		
+		const repairData = (rawData: any) => {
+			if (!rawData) return initialData;
+			const repaired = { ...rawData };
+			if (!repaired.objetivo) repaired.objetivo = {};
+			if (!repaired.objetivo.textoMarco) repaired.objetivo.textoMarco = INITIAL_TEXT_MARCO;
+			
+			// Migrar esquema de logros (antes era array de strings, ahora es objeto con items y comentario)
+			if (Array.isArray(repaired.logros)) {
+				repaired.logros = { items: repaired.logros, comentario: '' };
+			} else if (!repaired.logros || typeof repaired.logros !== 'object') {
+				repaired.logros = { items: [], comentario: '' };
+			}
+			return repaired;
+		};
+
 		const loadInitialData = async () => {
 			setLoadingFormData(true);
 			try {
@@ -602,9 +617,7 @@ function FormContent() {
 					if (!r.ok) throw new Error(`HTTP ${r.status}`);
 					const result = await r.json();
 					if (result.formData) {
-						const repaired = { ...result.formData };
-						if (!repaired.objetivo) repaired.objetivo = {};
-						if (!repaired.objetivo.textoMarco) repaired.objetivo.textoMarco = INITIAL_TEXT_MARCO;
+						const repaired = repairData(result.formData);
 						setData(repaired);
 						lastSavedDataRef.current = JSON.stringify(repaired);
 						localStorage.setItem('formData', lastSavedDataRef.current);
@@ -616,9 +629,7 @@ function FormContent() {
 					if (!r.ok) throw new Error(`HTTP ${r.status}`);
 					const result = await r.json();
 					if (result.data) {
-						const repaired = { ...result.data };
-						if (!repaired.objetivo) repaired.objetivo = {};
-						if (!repaired.objetivo.textoMarco) repaired.objetivo.textoMarco = INITIAL_TEXT_MARCO;
+						const repaired = repairData(result.data);
 						setData(repaired);
 						lastSavedDataRef.current = JSON.stringify(repaired);
 						localStorage.setItem('formData', lastSavedDataRef.current);
@@ -631,9 +642,7 @@ function FormContent() {
 					if (result.items && result.items.length > 0) {
 						const lastForm = result.items[0];
 						if (lastForm.data) {
-							const repaired = { ...lastForm.data };
-							if (!repaired.objetivo) repaired.objetivo = {};
-							if (!repaired.objetivo.textoMarco) repaired.objetivo.textoMarco = INITIAL_TEXT_MARCO;
+							const repaired = repairData(lastForm.data);
 							setData(repaired);
 							setCurrentFormId(lastForm._id || lastForm.id);
 							lastSavedDataRef.current = JSON.stringify(repaired);
@@ -644,10 +653,9 @@ function FormContent() {
 						const saved = localStorage.getItem('formData');
 						if (saved) {
 							const parsed = JSON.parse(saved);
-							if (!parsed.objetivo) parsed.objetivo = {};
-							if (!parsed.objetivo.textoMarco) parsed.objetivo.textoMarco = INITIAL_TEXT_MARCO;
-							setData(parsed);
-							lastSavedDataRef.current = JSON.stringify(parsed);
+							const repaired = repairData(parsed);
+							setData(repaired);
+							lastSavedDataRef.current = JSON.stringify(repaired);
 						}
 					}
 				}
@@ -658,8 +666,9 @@ function FormContent() {
 					const saved = localStorage.getItem('formData');
 					if (saved) {
 						const parsed = JSON.parse(saved);
-						setData(parsed);
-						lastSavedDataRef.current = saved;
+						const repaired = repairData(parsed);
+						setData(repaired);
+						lastSavedDataRef.current = JSON.stringify(repaired);
 					}
 				} catch (e) {}
 			} finally {
@@ -678,7 +687,7 @@ function FormContent() {
 		'apoyosAjustes.apoyos': 'apoyosAjustes.apoyosOtro',
 		'apoyosAjustes.ajustes': 'apoyosAjustes.ajustesOtro',
 		'apoyosAjustes.contextos': 'apoyosAjustes.contextosOtro',
-		'logros': 'logrosOtro',
+		'logros.items': 'logrosOtro',
 		'experiencias.tiposVividas': 'experiencias.tiposVividasOtro',
 		'experiencias.tipoApoyo': 'experiencias.tipoApoyoOtro',
 		'experiencias.motivosNoParticipa': 'experiencias.motivosNoParticipaOtro',
