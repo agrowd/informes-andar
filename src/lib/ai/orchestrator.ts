@@ -141,6 +141,11 @@ export async function renderMarkdown(report: any, originalForm?: any) {
 function renderMarkdownText(report: any, institutional: any, originalForm?: any) {
   const lines: string[] = [];
   
+  const titleWithNumber = (title: string, num: string) => {
+    if (/^\d+\./.test(title)) return title;
+    return `${num} ${title}`;
+  };
+  
   // Título principal
   lines.push(`**${institutional.titles.mainTitle}**`);
   lines.push('');
@@ -196,7 +201,7 @@ function renderMarkdownText(report: any, institutional: any, originalForm?: any)
   }
   
   // 2. OBJETIVO DEL PROCESO
-  lines.push(`**2. ${institutional.titles.objetivo.toUpperCase()}**`);
+  lines.push(`**${titleWithNumber(institutional.titles.objetivo, '2.').toUpperCase()}**`);
   lines.push('');
   if (report.secciones.objetivo && report.secciones.objetivo.length > 0) {
     const text = report.secciones.objetivo
@@ -210,7 +215,7 @@ function renderMarkdownText(report: any, institutional: any, originalForm?: any)
   lines.push('');
   
   // 3. ESCUCHA ACTIVA Y AUTODETERMINACIÓN
-  lines.push(`**3. ${institutional.titles.escucha.toUpperCase()}**`);
+  lines.push(`**${titleWithNumber(institutional.titles.escucha, '3.').toUpperCase()}**`);
   lines.push('');
   if (report.secciones.escucha && report.secciones.escucha.length > 0) {
     const text = report.secciones.escucha
@@ -224,7 +229,7 @@ function renderMarkdownText(report: any, institutional: any, originalForm?: any)
   lines.push('');
   
   // 4. ESTADO EMOCIONAL Y BIENESTAR SUBJETIVO
-  lines.push(`**4. ${institutional.titles.estadoEmocional.toUpperCase()}**`);
+  lines.push(`**${titleWithNumber(institutional.titles.estadoEmocional, '4.').toUpperCase()}**`);
   lines.push('');
   if (report.secciones.estadoEmocional && report.secciones.estadoEmocional.length > 0) {
     const text = report.secciones.estadoEmocional
@@ -238,7 +243,7 @@ function renderMarkdownText(report: any, institutional: any, originalForm?: any)
   lines.push('');
   
   // 5. APOYOS Y AJUSTES BRINDADOS
-  lines.push(`**5. ${institutional.titles.apoyosAjustes.toUpperCase()}**`);
+  lines.push(`**${titleWithNumber(institutional.titles.apoyosAjustes, '5.').toUpperCase()}**`);
   lines.push('');
   if (report.secciones.apoyosAjustes && report.secciones.apoyosAjustes.length > 0) {
     const text = report.secciones.apoyosAjustes
@@ -252,7 +257,7 @@ function renderMarkdownText(report: any, institutional: any, originalForm?: any)
   lines.push('');
   
   // 6. EVALUACIÓN DE LAS DIMENSIONES DE CALIDAD DE VIDA
-  lines.push(`**6. ${institutional.titles.evaluacion.toUpperCase()}**`);
+  lines.push(`**${titleWithNumber(institutional.titles.evaluacion, '6.').toUpperCase()}**`);
   lines.push('');
   lines.push('Usar escala: ✔ Mejoró / ➖ Mantuvo / ❌ Dificultad');
   lines.push('');
@@ -268,7 +273,7 @@ function renderMarkdownText(report: any, institutional: any, originalForm?: any)
   lines.push('');
   
   // 7. LOGROS DESTACADOS Y HABILIDADES ADQUIRIDAS
-  lines.push(`**7. ${institutional.titles.logros.toUpperCase()}**`);
+  lines.push(`**${titleWithNumber(institutional.titles.logros, '7.').toUpperCase()}**`);
   lines.push('');
   
   // Organizar logros en subcategorías (basado en el contenido)
@@ -335,7 +340,7 @@ function renderMarkdownText(report: any, institutional: any, originalForm?: any)
   }
   
   // 8. SUEÑOS Y METAS A FUTURO
-  lines.push(`**8. ${institutional.titles.suenosMetas.toUpperCase()}**`);
+  lines.push(`**${titleWithNumber(institutional.titles.suenosMetas, '8.').toUpperCase()}**`);
   lines.push('');
   if (report.secciones.suenosMetas && report.secciones.suenosMetas.length > 0) {
     const text = report.secciones.suenosMetas
@@ -349,7 +354,7 @@ function renderMarkdownText(report: any, institutional: any, originalForm?: any)
   lines.push('');
   
   // 9. VALORACIÓN DEL CÍRCULO DE APOYO
-  lines.push(`**9. ${institutional.titles.circuloApoyo.toUpperCase()}**`);
+  lines.push(`**${titleWithNumber(institutional.titles.circuloApoyo, '9.').toUpperCase()}**`);
   lines.push('');
   if (report.secciones.circuloApoyo && report.secciones.circuloApoyo.length > 0) {
     const text = report.secciones.circuloApoyo
@@ -363,7 +368,7 @@ function renderMarkdownText(report: any, institutional: any, originalForm?: any)
   lines.push('');
   
   // 10. SUGERENCIAS O RECOMENDACIONES
-  lines.push(`**10. ${institutional.titles.sugerencias.toUpperCase()}**.`);
+  lines.push(`**${titleWithNumber(institutional.titles.sugerencias, '10.').toUpperCase()}**.`);
   lines.push('');
   if (report.secciones.sugerencias && report.secciones.sugerencias.length > 0) {
     report.secciones.sugerencias.forEach((frag: any) => {

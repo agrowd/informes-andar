@@ -22,16 +22,16 @@ function normalize(str: string) {
 
 export function getInstitutionalConfig() {
   const defaults = {
-    mainTitle: 'Informe Evolutivo – Abordaje Centrado en la Persona',
-    objetivo: 'Objetivo del Proceso',
-    escucha: 'Escucha Activa y Autodeterminación',
-    estadoEmocional: 'Estado Emocional y Bienestar Subjetivo',
-    apoyosAjustes: 'Apoyos y Ajustes Brindados',
-    evaluacion: 'Evaluación de las Dimensiones de Calidad de Vida',
-    logros: 'Logros Destacados y Habilidades Adquiridas',
-    suenosMetas: 'Sueños y Metas a Futuro',
-    circuloApoyo: 'Valoración del Círculo de Apoyo',
-    sugerencias: 'Sugerencias o Recomendaciones'
+    mainTitle: 'INFORME EVOLUTIVO – ABORDAJE CENTRADO EN LA PERSONA',
+    objetivo: '2. OBJETIVO DEL PROCESO',
+    escucha: '3. ESCUCHA ACTIVA Y AUTODETERMINACIÓN',
+    estadoEmocional: '4. ESTADO EMOCIONAL Y BIENESTAR SUBJETIVO',
+    apoyosAjustes: '5. APOYOS Y AJUSTES BRINDADOS',
+    evaluacion: '6. EVALUACIÓN DE LAS DIMENSIONES DE CALIDAD DE VIDA',
+    logros: '7. LOGROS DESTACADOS Y HABILIDADES ADQUIRIDAS',
+    suenosMetas: '8. SUEÑOS Y METAS A FUTURO',
+    circuloApoyo: '9. VALORACIÓN DEL CÍRCULO DE APOYO',
+    sugerencias: '10. SUGERENCIAS O RECOMENDACIONES'
   } as const;
 
   const informe = loadParsed('informe');

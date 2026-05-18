@@ -46,7 +46,7 @@
     <div class="brand">
       <div class="title">
         <h1>{{ institutional.titles.mainTitle }}</h1>
-        <div class="muted">Informe institucional</div>
+        <div class="muted">(Modelo Social de la Discapacidad – Calidad de Vida – Planificación Centrada en la Persona)</div>
       </div>
     </div>
     <div style="margin-left:auto; text-align:right;">
@@ -103,7 +103,7 @@
       </div>
       <div class="kv-grid" style="margin-bottom:8px;">
         <div>
-          <span class="label">Participaci?n</span>
+          <span class="label">Participación</span>
           <div>{{ report.datosGenerales.circuloApoyoParticipacion or 'No informado' }}</div>
         </div>
         <div>
@@ -111,11 +111,11 @@
           <div>{{ report.datosGenerales.circuloApoyoInvolucramiento or 'No informado' }}</div>
         </div>
         <div>
-          <span class="label">Valoraci?n grupal</span>
+          <span class="label">Valoración grupal</span>
           <div>{{ report.datosGenerales.circuloApoyoValoracion.grupal or 'No informado' }}</div>
         </div>
         <div>
-          <span class="label">Valoraci?n individual</span>
+          <span class="label">Valoración individual</span>
           <div>{{ report.datosGenerales.circuloApoyoValoracion.individual or 'No informado' }}</div>
         </div>
       </div>
@@ -126,7 +126,7 @@
       </ul>
     </div>
   {% else %}
-    <div class="kv">C?rculo de Apoyo: {{ report.datosGenerales.circuloApoyo | join(', ') }}</div>
+    <div class="kv">Círculo de Apoyo: {{ report.datosGenerales.circuloApoyo | join(', ') }}</div>
   {% endif %}
 
   {% macro renderNarrativeSection(title, items) %}
@@ -198,7 +198,6 @@
 
   {{ renderNarrativeSection(institutional.titles.objetivo, report.secciones.objetivo) }}
   {{ renderNarrativeSection(institutional.titles.escucha, report.secciones.escucha) }}
-  {{ renderNarrativeSection('Abordaje del período', report.secciones.abordaje) }}
   {{ renderNarrativeSection(institutional.titles.estadoEmocional, report.secciones.estadoEmocional) }}
   {{ renderNarrativeSection(institutional.titles.apoyosAjustes, report.secciones.apoyosAjustes) }}
 
