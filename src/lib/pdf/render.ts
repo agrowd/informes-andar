@@ -26,7 +26,7 @@ export async function htmlToPdfBuffer(html: string): Promise<Buffer> {
       printBackground: true,
       displayHeaderFooter: true,
       headerTemplate: `
-        <div style="width: 100%; margin: 0; padding: 15px 0 0 0; -webkit-print-color-adjust: exact; box-sizing: border-box;">
+        <div style="width: 100%; margin: 0; padding: 10px 25.4mm 0 25.4mm; -webkit-print-color-adjust: exact; box-sizing: border-box;">
           ${headerLogoBase64 ? `<img src="${headerLogoBase64}" style="width: 100%; height: auto; display: block; margin: 0;" />` : ''}
         </div>
       `,

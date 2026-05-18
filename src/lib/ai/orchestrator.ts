@@ -48,7 +48,8 @@ export async function generateReport(formData: unknown, options: OrchestratorOpt
         model: options.model,
         temperature: options.temperature ?? 0
       });
-      const parsed = JSON.parse(jsonStr);
+      let parsed = JSON.parse(jsonStr);
+      parsed = restoreRealNameInText(parsed, originalForm?.datosGenerales?.nombreCompleto || '');
       mergeDatosGeneralesFromForm(parsed, originalForm);
       if (!validateReport(parsed)) {
         throw new Error('Salida IA inválida: ' + ajv.errorsText(validateReport.errors));
@@ -58,7 +59,8 @@ export async function generateReport(formData: unknown, options: OrchestratorOpt
       return { report: parsed, html, markdown, used: 'ia' as const };
     } catch (err) {
       // Fallback determinístico
-      const fallback = renderFromForm(normalized);
+      let fallback = renderFromForm(normalized);
+      fallback = restoreRealNameInText(fallback, originalForm?.datosGenerales?.nombreCompleto || '');
       mergeDatosGeneralesFromForm(fallback, originalForm);
       if (!validateReport(fallback)) {
         throw new Error('Fallback determinístico inválido: ' + ajv.errorsText(validateReport.errors));
@@ -70,7 +72,8 @@ export async function generateReport(formData: unknown, options: OrchestratorOpt
   }
 
   // IA deshabilitada → determinístico
-  const fallback = renderFromForm(normalized);
+  let fallback = renderFromForm(normalized);
+  fallback = restoreRealNameInText(fallback, originalForm?.datosGenerales?.nombreCompleto || '');
   mergeDatosGeneralesFromForm(fallback, originalForm);
   if (!validateReport(fallback)) {
     throw new Error('Fallback determinístico inválido: ' + ajv.errorsText(validateReport.errors));
@@ -639,4 +642,50 @@ function toFragments(values: any[], fuentesKeys: string[], notes?: Record<string
   });
   return fragments;
 }
+
+function restoreRealNameInText(obj: any, realName: string) {
+  if (!realName || realName === 'Persona') return obj;
+  
+  const firstName = realName.split(' ')[0];
+  
+  const replaceName = (text: string): string => {
+    if (!text) return text;
+    
+    // Reemplazar la palabra "Persona" cuando es nombre propio (sin preceder de "la", "una", "cada", etc.)
+    return text.replace(/\bPersona\b/g, (match, offset, fullText) => {
+      const before = fullText.slice(Math.max(0, offset - 15), offset).toLowerCase();
+      if (
+        before.endsWith('la ') || 
+        before.endsWith('una ') || 
+        before.endsWith('cada ') ||
+        before.endsWith('otra ') ||
+        before.endsWith('esta ') ||
+        before.endsWith('aquella ')
+      ) {
+        return match;
+      }
+      return firstName;
+    });
+  };
+
+  const traverse = (current: any): any => {
+    if (typeof current === 'string') {
+      return replaceName(current);
+    }
+    if (Array.isArray(current)) {
+      return current.map(item => traverse(item));
+    }
+    if (current !== null && typeof current === 'object') {
+      const copy: any = {};
+      for (const key of Object.keys(current)) {
+        copy[key] = traverse(current[key]);
+      }
+      return copy;
+    }
+    return current;
+  };
+
+  return traverse(obj);
+}
+
 
