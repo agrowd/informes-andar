@@ -13,15 +13,12 @@ export async function GET() {
     
     const countQuery = await sql`SELECT COUNT(*) as total FROM reports`;
     const reports = await sql`SELECT id, young_id, periodo FROM reports`;
-    const youngs = await sql`SELECT id, nombre_completo FROM youngs`;
     
     return NextResponse.json({
       dbUrl,
-      total: countQuery.rows[0].total,
+      countQueryRaw: countQuery,
       reportsCount: reports.rows.length,
-      reports: reports.rows,
-      youngsCount: youngs.rows.length,
-      youngs: youngs.rows
+      reports: reports.rows
     });
   } catch (err: any) {
     return NextResponse.json({ error: err.message, stack: err.stack });
