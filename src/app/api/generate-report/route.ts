@@ -39,13 +39,13 @@ export async function POST(req: NextRequest) {
 
     // Generar PDF y exponer URL pública
     const pdfBuffer = await htmlToPdfBuffer(result.html);
-    const reportsDir = path.join(process.cwd(), 'public', 'reports');
+    const reportsDir = path.join(process.cwd(), 'public', 'pdf-reports');
     await fs.promises.mkdir(reportsDir, { recursive: true });
     const timestamp = Date.now();
     const filename = `informe-${timestamp}.pdf`;
     const filePath = path.join(reportsDir, filename);
     await fs.promises.writeFile(filePath, pdfBuffer);
-    const pdfUrl = `/reports/${filename}`;
+    const pdfUrl = `/pdf-reports/${filename}`;
 
     // Guardar también el Markdown
     const markdownFilename = `informe-${timestamp}.md`;
@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
     if (result.markdown) {
       await fs.promises.writeFile(markdownFilePath, result.markdown, 'utf8');
     }
-    const markdownUrl = result.markdown ? `/reports/${markdownFilename}` : null;
+    const markdownUrl = result.markdown ? `/pdf-reports/${markdownFilename}` : null;
 
     // Persistir en DB si está configurada (MongoDB o Postgres)
     let finalVersion = 1;

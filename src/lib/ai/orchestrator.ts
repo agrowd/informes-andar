@@ -93,6 +93,18 @@ function normalizeInput(form: any, options: OrchestratorOptions) {
 export async function renderDeterministic(report: any) {
   const env = nunjucks.configure(path.join(process.cwd(), 'src/lib/templates'), { autoescape: true });
   const institutional = getInstitutionalConfig();
+  
+  let headerLogoBase64 = '';
+  try {
+    const logoPath = path.join(process.cwd(), 'public', 'images', 'header-logo.jpg');
+    if (fs.existsSync(logoPath)) {
+      const buffer = fs.readFileSync(logoPath);
+      headerLogoBase64 = `data:image/jpeg;base64,${buffer.toString('base64')}`;
+    }
+  } catch (e) {
+    console.error('Error al leer el logo del membrete:', e);
+  }
+
   // Mezclar títulos editables desde DB (si existen)
   try {
     const editable = await getEditableMapByPrefix('report.title.');
@@ -108,10 +120,10 @@ export async function renderDeterministic(report: any) {
     if (editable['report.title.circuloApoyo']) titles.circuloApoyo = editable['report.title.circuloApoyo'];
     if (editable['report.title.sugerencias']) titles.sugerencias = editable['report.title.sugerencias'];
     const institutionalOver = { ...institutional, titles };
-    const html = env.render('report.njk', { report, institutional: institutionalOver });
+    const html = env.render('report.njk', { report, institutional: institutionalOver, headerLogoBase64 });
     return html;
   } catch {
-    const html = env.render('report.njk', { report, institutional });
+    const html = env.render('report.njk', { report, institutional, headerLogoBase64 });
     return html;
   }
 }

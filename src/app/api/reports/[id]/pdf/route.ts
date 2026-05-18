@@ -36,14 +36,14 @@ export async function POST(_: Request, { params }: { params: { id: string } }) {
     
     const html = await renderDeterministic(repData);
     const pdfBuffer = await htmlToPdfBuffer(html);
-    const reportsDir = path.join(process.cwd(), 'public', 'reports');
+    const reportsDir = path.join(process.cwd(), 'public', 'pdf-reports');
     await fs.promises.mkdir(reportsDir, { recursive: true });
     
     const filename = `informe-${params.id}.pdf`;
     const filePath = path.join(reportsDir, filename);
     await fs.promises.writeFile(filePath, pdfBuffer);
     
-    const pdfUrl = `/reports/${filename}`;
+    const pdfUrl = `/pdf-reports/${filename}`;
     
     if (sql) {
       await sql`

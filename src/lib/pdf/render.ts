@@ -6,7 +6,7 @@ export async function htmlToPdfBuffer(html: string): Promise<Buffer> {
   try {
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: 'networkidle' });
-    const buffer = await page.pdf({ format: 'A4', printBackground: true, margin: { top: '16mm', right: '16mm', bottom: '16mm', left: '16mm' } });
+    const buffer = await page.pdf({ format: 'A4', printBackground: true });
     return buffer as Buffer;
   } finally {
     await browser.close();
