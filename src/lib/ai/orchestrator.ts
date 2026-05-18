@@ -51,6 +51,7 @@ export async function generateReport(formData: unknown, options: OrchestratorOpt
       let parsed = JSON.parse(jsonStr);
       parsed = restoreRealNameInText(parsed, originalForm?.datosGenerales?.nombreCompleto || '');
       mergeDatosGeneralesFromForm(parsed, originalForm);
+      parsed = sanitizeReport(parsed);
       if (!validateReport(parsed)) {
         throw new Error('Salida IA inválida: ' + ajv.errorsText(validateReport.errors));
       }
@@ -62,6 +63,7 @@ export async function generateReport(formData: unknown, options: OrchestratorOpt
       let fallback = renderFromForm(normalized);
       fallback = restoreRealNameInText(fallback, originalForm?.datosGenerales?.nombreCompleto || '');
       mergeDatosGeneralesFromForm(fallback, originalForm);
+      fallback = sanitizeReport(fallback);
       if (!validateReport(fallback)) {
         throw new Error('Fallback determinístico inválido: ' + ajv.errorsText(validateReport.errors));
       }
@@ -75,6 +77,7 @@ export async function generateReport(formData: unknown, options: OrchestratorOpt
   let fallback = renderFromForm(normalized);
   fallback = restoreRealNameInText(fallback, originalForm?.datosGenerales?.nombreCompleto || '');
   mergeDatosGeneralesFromForm(fallback, originalForm);
+  fallback = sanitizeReport(fallback);
   if (!validateReport(fallback)) {
     throw new Error('Fallback determinístico inválido: ' + ajv.errorsText(validateReport.errors));
   }
@@ -687,5 +690,53 @@ function restoreRealNameInText(obj: any, realName: string) {
 
   return traverse(obj);
 }
+
+function sanitizeReport(report: any) {
+  if (!report) return report;
+  
+  // 1. Sanitizar secciones (eliminar propiedades adicionales)
+  if (report.secciones && typeof report.secciones === 'object') {
+    const validKeys = [
+      'datosGenerales',
+      'objetivo',
+      'abordaje',
+      'escucha',
+      'estadoEmocional',
+      'apoyosAjustes',
+      'logros',
+      'suenosMetas',
+      'circuloApoyo',
+      'sugerencias'
+    ];
+    for (const key of Object.keys(report.secciones)) {
+      if (!validKeys.includes(key)) {
+        delete report.secciones[key];
+      }
+    }
+  }
+  
+  // 2. Sanitizar trazabilidad (asegurar que todo elemento de los arrays sea string y remover vacíos/nulls)
+  if (report.trazabilidad && typeof report.trazabilidad === 'object') {
+    const sanitized: Record<string, string[]> = {};
+    for (const [key, value] of Object.entries(report.trazabilidad)) {
+      if (Array.isArray(value)) {
+        sanitized[key] = value
+          .map((val: any) => {
+            if (val === null || val === undefined) return 'null';
+            return String(val);
+          })
+          .filter((val: string) => val !== 'null' && val !== '');
+      } else if (value !== null && value !== undefined) {
+        sanitized[key] = [String(value)];
+      } else {
+        sanitized[key] = [];
+      }
+    }
+    report.trazabilidad = sanitized;
+  }
+  
+  return report;
+}
+
 
 

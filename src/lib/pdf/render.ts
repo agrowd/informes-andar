@@ -36,7 +36,7 @@ export async function htmlToPdfBuffer(html: string): Promise<Buffer> {
         </div>
       `,
       margin: {
-        top: '38mm',
+        top: '45mm',
         right: '25.4mm',
         bottom: '25.4mm',
         left: '25.4mm'
