@@ -6,11 +6,6 @@ export const runtime = 'nodejs';
 
 export async function GET(req: NextRequest) {
   try {
-    // Si está en build time, retornar vacío
-    if (process.env.NEXT_PHASE === 'phase-production-build') {
-      return NextResponse.json({ items: [], total: 0, page: 1, pageSize: 20 });
-    }
-    
     await connectToDB();
     const url = new URL(req.url);
     const page = parseInt(url.searchParams.get('page') || '1');
