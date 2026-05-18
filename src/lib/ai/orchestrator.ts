@@ -181,6 +181,8 @@ function renderMarkdownText(report: any, institutional: any, originalForm?: any)
   }
   lines.push(`Período evaluado: ${report.datosGenerales.periodo}`);
   lines.push('');
+  lines.push(`Sueño de la persona: ${report.datosGenerales.metaSueño || 'No informado'}`);
+  lines.push('');
   
   // Participación del círculo de apoyo - usar datos del formulario original si está disponible
   let participacionCirculo: string | null = null;
@@ -414,6 +416,7 @@ function mergeDatosGeneralesFromForm(report: any, originalForm?: any) {
   if (formDG.nombreCompleto) target.nombreCompleto = formDG.nombreCompleto;
   if (formDG.dni !== undefined) target.dni = formDG.dni;
   if (formDG.periodo) target.periodo = formDG.periodo;
+  if (formDG.metaSueño !== undefined) target.metaSueño = formDG.metaSueño;
   
   if (formDG.numeroLegajo) target.numeroLegajo = formDG.numeroLegajo;
   if (formDG.facilitadorNombre) target.facilitadorNombre = formDG.facilitadorNombre;
