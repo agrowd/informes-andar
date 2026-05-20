@@ -233,7 +233,7 @@ export default function ReportReview({ params }: { params: { id: string } }) {
         )}
         
         <button className="ga-btn secondary" onClick={() => {
-          window.location.href = `/?reportId=${id}`;
+          window.location.href = `/form?reportId=${id}`;
         }} title="Cargar este informe en el formulario para editarlo">
           📋 Editar en formulario
         </button>

@@ -324,7 +324,7 @@ export default function ReportsList() {
                       }}>Aprobar</button>
                       <a className="ga-btn secondary" style={{ fontSize: 12, padding: '4px 8px', whiteSpace: 'nowrap' }} href={`/reports/${it.id}`}>Revisar</a>
                       <button className="ga-btn secondary" style={{ fontSize: 12, padding: '4px 8px', whiteSpace: 'nowrap' }} onClick={() => {
-                        window.location.href = `/?reportId=${it.id}`;
+                        window.location.href = `/form?reportId=${it.id}`;
                       }} title="Cargar en formulario para editar">
                         ✏️ Editar
                       </button>
