@@ -596,7 +596,7 @@ function FormContent() {
 						...prev,
 						datosGenerales: {
 							...prev.datosGenerales,
-							facilitadorNombre: session.user.name
+							facilitadorNombre: session?.user?.name || ''
 						}
 					};
 				}

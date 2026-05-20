@@ -1,0 +1,69 @@
+# Changelog
+
+## [1.5.0] - 2026-05-20
+### Added
+- Cabecera premium informativa en el editor de formulario (/form) con nombre del joven, facilitador, periodo evaluado e ID de borrador/formulario.
+- Incorporación destacada en la Sección 1 (DATOS GENERALES) de los informes en PDF y Markdown del nombre del joven, el facilitador, periodo, ID del Joven y ID del Informe.
+- Regeneración automática del PDF y Markdown con el ID definitivo de la base de datos tras su inserción persistente.
+- Auto-completado del facilitador asignado basado en la sesión de usuario activa.
+- Soporte para inicialización directa de un borrador para un joven específico vía query param (`/form?youngId=...`).
+
+### Fixed
+- Corrección de la pantalla en blanco (crash de carga) al editar un formulario desde un reporte, implementando recuperación robusta de `formData` desde la base de datos de origen de borradores, con reconstrucción determinística segura para reportes huérfanos/fusionados.
+- Solución definitiva a la comparación de IDs híbridos (String/ObjectId/Number) de jóvenes en el formulario.
+
+## [1.4.0] - 2026-05-14
+### Added
+- Nueva nomenclatura sistemática: "Formularios" ahora se denominan "**Borradores**".
+- Redacción narrativa fluida (párrafos) en informes generados por IA.
+- Categorización automática de logros (Prácticas, Emocionales, Sociales, etc.) en Markdown y PDF.
+- Soporte para múltiples comentarios obligatorios por subsección en el formulario.
+
+- Refactorización de la plantilla PDF (`report.njk`) refactorizada para alinearse con el modelo institucional de Analía Celis.
+- Prompts de IA refinados para evitar listas y favorecer prosa formal.
+- Renderizador de Markdown optimizado para unificar fragmentos de texto.
+- Alineación del **Texto Marco** institucional por defecto en el formulario y motor de IA.
+
+## [1.3.0] - 2026-05-14
+### Added
+- Gráfico de Radar comparativo para dimensiones de Calidad de Vida.
+- Pestaña "Analíticas" en el perfil del joven.
+- Funcionalidad de duplicación de formularios en Dashboard y lista.
+- Campo de nombres específicos en Círculo de Apoyo (Rojo/Amarillo).
+- Pre-carga de Texto Marco Institucional oficial.
+
+### Changed
+- Comentarios de personalización obligatorios por sección.
+- Validación de formulario actualizada (AJV + lógica personalizada).
+- Mejora de UI para móviles (targets táctiles y tipografía).
+- Estabilización visual del indicador de guardado automático.
+
+### Fixed
+- Flickering (parpadeo) durante el auto-save de formularios.
+- Consistencia de datos en la duplicación de formas.
+
+## [1.2.0] - 2026-05-05
+### Changed
+- Reorganización del frontend: El **Dashboard** ahora es la página de inicio (`/`).
+- El **Formulario de Carga** se movió a una ruta independiente (`/form`).
+- Actualización de la barra de navegación para reflejar la nueva jerarquía.
+- Redirecciones post-login ajustadas para apuntar a la raíz.
+
+### Fixed
+- Enlaces de edición y generación en la lista de formularios actualizados a la nueva ruta.
+- Eliminación de página redundante `/dashboard`.
+
+## [1.1.0] - 2024-04-28
+### Added
+- Soporte Postgres para la API de comentarios de informes.
+- Centralización de opciones de participación en `src/lib/form/options.ts`.
+
+### Fixed
+- Manejo de errores en fetches del frontend con avisos visuales (toasts).
+- Validación de participación "No participó por decisión propia" estandarizada.
+- Corrección de bugs de formato en `src/app/page.tsx` (OptionNote mangled).
+- Soporte dual DB (Mongo/Postgres) en endpoints críticos.
+
+## [1.0.0] - 2024-04-28
+- Inicialización del proyecto.
+- Auditoría inicial y detección de deuda técnica.
