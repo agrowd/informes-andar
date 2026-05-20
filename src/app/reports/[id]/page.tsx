@@ -3,6 +3,20 @@ import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import EditableText from '../../_components/EditableText';
 
+const REPORT_TYPE_LABELS: Record<string, string> = {
+  'MENSUAL': '📄 Mensual',
+  'TRIMESTRAL': '📋 Trimestral',
+  'SEMESTRAL': '📑 Semestral',
+  'ANUAL': '📚 Anual',
+};
+
+const REPORT_TYPE_COLORS: Record<string, string> = {
+  'MENSUAL': '#3B82F6',
+  'TRIMESTRAL': '#8B5CF6',
+  'SEMESTRAL': '#F59E0B',
+  'ANUAL': '#10B981',
+};
+
 export default function ReportReview({ params }: { params: { id: string } }) {
   const { id } = params;
   const { data: session } = useSession();
@@ -13,6 +27,9 @@ export default function ReportReview({ params }: { params: { id: string } }) {
   const [toasts, setToasts] = useState<{ id: number; type: 'success'|'error'|'info'; text: string }[]>([]);
   const [auditHistory, setAuditHistory] = useState<any[]>([]);
   const [showHistory, setShowHistory] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [editedSections, setEditedSections] = useState<any>(null);
+  const [saving, setSaving] = useState(false);
   
   const userRole = (session?.user as any)?.role || 'FACILITADOR';
   const isAdmin = userRole === 'ADMIN';
@@ -42,7 +59,6 @@ export default function ReportReview({ params }: { params: { id: string } }) {
       .then(j => setComments(j.items || []))
       .catch((err) => {
         console.error('Error cargando comentarios:', err);
-        // No crítico, solo loguear
       });
     
     // Cargar historial de auditoría
@@ -54,26 +70,95 @@ export default function ReportReview({ params }: { params: { id: string } }) {
       .then(j => setAuditHistory(j.items || []))
       .catch((err) => {
         console.error('Error cargando historial:', err);
-        // No crítico
       });
   }, [id]);
+
+  const handleEditStart = () => {
+    if (!data?.data?.secciones) return;
+    setEditedSections(JSON.parse(JSON.stringify(data.data.secciones)));
+    setEditMode(true);
+  };
+
+  const handleEditCancel = () => {
+    setEditedSections(null);
+    setEditMode(false);
+  };
+
+  const handleFragmentChange = (sectionKey: string, fragIndex: number, newText: string) => {
+    setEditedSections((prev: any) => {
+      if (!prev) return prev;
+      const updated = { ...prev };
+      updated[sectionKey] = [...(updated[sectionKey] || [])];
+      updated[sectionKey][fragIndex] = { ...updated[sectionKey][fragIndex], texto: newText };
+      return updated;
+    });
+  };
+
+  const handleEditSave = async () => {
+    if (!editedSections) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/reports/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ secciones: editedSections })
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Error guardando' }));
+        throw new Error(err.error || `HTTP ${res.status}`);
+      }
+      const result = await res.json();
+      // Actualizar datos locales
+      setData((prev: any) => ({
+        ...prev,
+        data: { ...prev.data, secciones: editedSections },
+        version: result.version || prev.version
+      }));
+      setEditMode(false);
+      setEditedSections(null);
+      setToasts((t) => [{ id: Date.now(), type: 'success', text: `Informe actualizado (v${result.version}). PDF regenerado.` }, ...t]);
+    } catch (err: any) {
+      setToasts((t) => [{ id: Date.now(), type: 'error', text: err.message || 'Error al guardar' }, ...t]);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   if (loading) return <div>Cargando…</div>;
   if (!data?.data) return <div>No encontrado</div>;
 
   const rep = data.data;
-  const sections = rep.secciones || {};
+  const sections = editMode ? editedSections : (rep.secciones || {});
   const openCount = comments.filter((c) => c.status !== 'RESOLVED').length;
+  const reportType = data.reportType || rep.reportType || 'MENSUAL';
 
   return (
     <div>
       <EditableText k="report.review.title" fallback="Revisión de informe" tag="h1" />
-      <div><b><EditableText k="report.review.periodo" fallback="Período:" tag="span" /></b> {data.periodo}</div>
+      
+      <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginBottom: 8 }}>
+        <div><b><EditableText k="report.review.periodo" fallback="Período:" tag="span" /></b> {data.periodo}</div>
+        <span 
+          className="ga-badge"
+          style={{ 
+            background: REPORT_TYPE_COLORS[reportType] || '#3B82F6',
+            color: '#fff',
+            padding: '2px 10px',
+            borderRadius: 6,
+            fontSize: 12,
+            fontWeight: 600
+          }}
+        >
+          {REPORT_TYPE_LABELS[reportType] || reportType}
+        </span>
+      </div>
+      
       <div className="ga-row">
         <span><b><EditableText k="report.review.estado" fallback="Estado:" tag="span" /></b> {data.status}</span>
         <span><b>Versión:</b> {data.version || 1}</span>
         {openCount>0 && <span className="ga-badge review">{openCount} comentarios abiertos</span>}
       </div>
+      
       <div style={{ margin: '8px 0', display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
         {canReview && (
           <button className="ga-btn accent" disabled={comments.some((c) => c.status!=='RESOLVED')} onClick={async () => {
@@ -116,10 +201,41 @@ export default function ReportReview({ params }: { params: { id: string } }) {
             📝 Solicitar cambios
           </button>
         )}
+        
+        {/* Botón editar texto inline */}
+        {!editMode ? (
+          <button 
+            className="ga-btn" 
+            style={{ background: '#EFF6FF', borderColor: '#93C5FD', color: '#1E40AF' }}
+            onClick={handleEditStart}
+            title="Editar el texto narrativo del informe directamente"
+          >
+            ✏️ Editar texto
+          </button>
+        ) : (
+          <>
+            <button 
+              className="ga-btn accent"
+              onClick={handleEditSave}
+              disabled={saving}
+              title="Guardar cambios y regenerar PDF"
+            >
+              {saving ? '⏳ Guardando...' : '💾 Guardar cambios'}
+            </button>
+            <button 
+              className="ga-btn"
+              onClick={handleEditCancel}
+              disabled={saving}
+            >
+              ❌ Cancelar edición
+            </button>
+          </>
+        )}
+        
         <button className="ga-btn secondary" onClick={() => {
           window.location.href = `/?reportId=${id}`;
         }} title="Cargar este informe en el formulario para editarlo">
-          ✏️ Editar en formulario
+          📋 Editar en formulario
         </button>
         <button className="ga-btn secondary" onClick={async () => {
           try {
@@ -128,14 +244,15 @@ export default function ReportReview({ params }: { params: { id: string } }) {
               const error = await res.json().catch(() => ({ error: 'Error copiando informe' }));
               throw new Error(error.error || `HTTP ${res.status}`);
             }
-            const data = await res.json();
-            alert('Informe copiado. Redirigiendo al formulario...');
-            window.location.href = `/?reportId=${data.id}`;
+            const result = await res.json();
+            alert('Formulario duplicado. Redirigiendo para editar el nuevo mes...');
+            // Redirigir al formulario con los datos del borrador copiado
+            window.location.href = `/form?formId=${result.id}`;
           } catch (error: any) {
             alert('Error: ' + (error.message || 'No se pudo copiar el informe'));
           }
-        }} title="Copiar informe para crear uno nuevo">
-          📋 Copiar informe
+        }} title="Duplicar formulario para crear el informe del próximo mes">
+          📋 Duplicar para otro mes
         </button>
         <button className="ga-btn secondary" onClick={() => setShowHistory(!showHistory)}>
           📜 {showHistory ? 'Ocultar' : 'Ver'} historial
@@ -167,6 +284,14 @@ export default function ReportReview({ params }: { params: { id: string } }) {
         )}
         {comments.some((c) => c.status!=='RESOLVED') && <span style={{ marginLeft: 8, color: '#9A3412' }}>Hay comentarios abiertos</span>}
       </div>
+
+      {editMode && (
+        <div className="ga-card" style={{ marginTop: 8, background: '#EFF6FF', borderColor: '#93C5FD', padding: '8px 12px' }}>
+          <small style={{ color: '#1E40AF' }}>
+            ✏️ <strong>Modo edición activo.</strong> Editá los textos narrativos de cada sección. Al guardar, se regenerará automáticamente el PDF.
+          </small>
+        </div>
+      )}
 
       {showHistory && (
         <div className="ga-card" style={{ marginTop: 16 }}>
@@ -205,61 +330,82 @@ export default function ReportReview({ params }: { params: { id: string } }) {
           <ul>
             {(frags as any[]).map((f: any, i: number) => (
               <li key={f.id || i}>
-                <div>{f.texto}</div>
+                {editMode ? (
+                  <textarea
+                    style={{
+                      width: '100%',
+                      minHeight: 100,
+                      padding: 8,
+                      border: '2px solid #93C5FD',
+                      borderRadius: 6,
+                      fontFamily: 'inherit',
+                      fontSize: 14,
+                      lineHeight: 1.5,
+                      resize: 'vertical',
+                      background: '#F8FAFC'
+                    }}
+                    value={f.texto}
+                    onChange={(e) => handleFragmentChange(key, i, e.target.value)}
+                  />
+                ) : (
+                  <div>{f.texto}</div>
+                )}
                 {Array.isArray(f.fuentes) && f.fuentes.length > 0 && (
                   <div style={{ color: '#666', fontSize: 12 }}>fuentes: {f.fuentes.join(', ')}</div>
                 )}
                 {/* Comentarios */}
-                <div className="ga-card" style={{ marginTop: 6 }}>
-                  <div style={{ fontSize: 12, color: '#666' }}><EditableText k="report.review.comments.title" fallback="Comentarios de Coordinación" tag="span" /></div>
-                  <ul>
-                    {comments.filter((c) => c.sectionKey === key && (c.fragmentId === (f.id || String(i)))).map((c) => (
-                      <li key={c._id} style={{ fontSize: 14 }}>
-                        {c.text} {c.status==='RESOLVED' && <span className="ga-badge approved" style={{ marginLeft: 6 }}>resuelto</span>}
-                        {c.status!=='RESOLVED' && (
-                          <button className="ga-btn" style={{ marginLeft: 8 }} onClick={async () => {
-                            const res = await fetch(`/api/reports/${id}/comments`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ commentId: c._id, status: 'RESOLVED' }) });
-                            if (!res.ok) {
-                              setToasts((t) => [{ id: Date.now(), type: 'error', text: 'Error al marcar comentario como resuelto' }, ...t]);
-                              return;
-                            }
-                            const j = await fetch(`/api/reports/${id}/comments`)
-                              .then(r => {
-                                if (!r.ok) throw new Error(`HTTP ${r.status}`);
-                                return r.json();
-                              })
-                              .catch(() => ({ items: [] }));
-                            setComments(j.items || []);
-                            setToasts((t) => [{ id: Date.now(), type: 'success', text: 'Comentario marcado como resuelto' }, ...t]);
-                          }}>Marcar resuelto</button>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                  <div className="ga-row">
-                    <input className="ga-input" placeholder="Agregar comentario" value={newComment.key===key && newComment.frag===(f.id||String(i)) ? (newComment.text||'') : ''}
-                      onChange={(e) => setNewComment({ key, frag: f.id || String(i), text: e.target.value })} />
-                    <button className="ga-btn" onClick={async () => {
-                      const text = (newComment.key===key && newComment.frag===(f.id||String(i)) ? (newComment.text||'') : '').trim();
-                      if (!text) return;
-                      const r = await fetch(`/api/reports/${id}/comments`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sectionKey: key, fragmentId: f.id || String(i), text }) });
-                      if (!r.ok) {
-                        const error = await r.json().catch(() => ({ error: 'Error agregando comentario' }));
-                        setToasts((t) => [{ id: Date.now(), type: 'error', text: error.error || 'Error al agregar comentario' }, ...t]);
-                        return;
-                      }
-                      const j = await fetch(`/api/reports/${id}/comments`)
-                        .then(r => {
-                          if (!r.ok) throw new Error(`HTTP ${r.status}`);
-                          return r.json();
-                        })
-                        .catch(() => ({ items: [] }));
-                      setComments(j.items || []);
-                      setNewComment({});
-                      setToasts((t) => [{ id: Date.now(), type: 'info', text: 'Comentario agregado. Estado: CAMBIOS_SOLICITADOS' }, ...t]);
-                    }}>Guardar</button>
+                {!editMode && (
+                  <div className="ga-card" style={{ marginTop: 6 }}>
+                    <div style={{ fontSize: 12, color: '#666' }}><EditableText k="report.review.comments.title" fallback="Comentarios de Coordinación" tag="span" /></div>
+                    <ul>
+                      {comments.filter((c) => c.sectionKey === key && (c.fragmentId === (f.id || String(i)))).map((c) => (
+                        <li key={c._id} style={{ fontSize: 14 }}>
+                          {c.text} {c.status==='RESOLVED' && <span className="ga-badge approved" style={{ marginLeft: 6 }}>resuelto</span>}
+                          {c.status!=='RESOLVED' && (
+                            <button className="ga-btn" style={{ marginLeft: 8 }} onClick={async () => {
+                              const res = await fetch(`/api/reports/${id}/comments`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ commentId: c._id, status: 'RESOLVED' }) });
+                              if (!res.ok) {
+                                setToasts((t) => [{ id: Date.now(), type: 'error', text: 'Error al marcar comentario como resuelto' }, ...t]);
+                                return;
+                              }
+                              const j = await fetch(`/api/reports/${id}/comments`)
+                                .then(r => {
+                                  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                                  return r.json();
+                                })
+                                .catch(() => ({ items: [] }));
+                              setComments(j.items || []);
+                              setToasts((t) => [{ id: Date.now(), type: 'success', text: 'Comentario marcado como resuelto' }, ...t]);
+                            }}>Marcar resuelto</button>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                    <div className="ga-row">
+                      <input className="ga-input" placeholder="Agregar comentario" value={newComment.key===key && newComment.frag===(f.id||String(i)) ? (newComment.text||'') : ''}
+                        onChange={(e) => setNewComment({ key, frag: f.id || String(i), text: e.target.value })} />
+                      <button className="ga-btn" onClick={async () => {
+                        const text = (newComment.key===key && newComment.frag===(f.id||String(i)) ? (newComment.text||'') : '').trim();
+                        if (!text) return;
+                        const r = await fetch(`/api/reports/${id}/comments`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sectionKey: key, fragmentId: f.id || String(i), text }) });
+                        if (!r.ok) {
+                          const error = await r.json().catch(() => ({ error: 'Error agregando comentario' }));
+                          setToasts((t) => [{ id: Date.now(), type: 'error', text: error.error || 'Error al agregar comentario' }, ...t]);
+                          return;
+                        }
+                        const j = await fetch(`/api/reports/${id}/comments`)
+                          .then(r => {
+                            if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                            return r.json();
+                          })
+                          .catch(() => ({ items: [] }));
+                        setComments(j.items || []);
+                        setNewComment({});
+                        setToasts((t) => [{ id: Date.now(), type: 'info', text: 'Comentario agregado. Estado: CAMBIOS_SOLICITADOS' }, ...t]);
+                      }}>Guardar</button>
+                    </div>
                   </div>
-                </div>
+                )}
               </li>
             ))}
           </ul>
@@ -275,5 +421,3 @@ export default function ReportReview({ params }: { params: { id: string } }) {
     </div>
   );
 }
-
-

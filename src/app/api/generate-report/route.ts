@@ -163,7 +163,7 @@ export async function POST(req: NextRequest) {
           if (sql) {
             const insertResult = await sql`
               INSERT INTO reports (
-                young_id, form_id, periodo, data, html, pdf_url, trazabilidad, status, version, generated_by, created_at, updated_at
+                young_id, form_id, periodo, data, html, pdf_url, trazabilidad, status, report_type, version, generated_by, created_at, updated_at
               ) VALUES (
                 ${youngId ? parseInt(String(youngId)) : null},
                 ${formId ? parseInt(formId) : null},
@@ -173,6 +173,7 @@ export async function POST(req: NextRequest) {
                 ${pdfUrl},
                 ${JSON.stringify(report?.trazabilidad || {})}::jsonb,
                 'BORRADOR',
+                'MENSUAL',
                 1,
                 ${generatedBy},
                 NOW(),

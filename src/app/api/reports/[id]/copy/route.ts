@@ -19,13 +19,20 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
     // Obtener informe original
     let originalReport: any = null;
+    let originalFormData: any = null;
     
     if (sql) {
-      // Postgres
+      // Postgres: obtener el informe y su formulario asociado
       const result = await sql`
-        SELECT * FROM reports WHERE id = ${parseInt(reportId)}
+        SELECT r.*, f.data as form_data, f.id as form_id
+        FROM reports r
+        LEFT JOIN forms f ON r.form_id = f.id
+        WHERE r.id = ${parseInt(reportId)}
       `;
       originalReport = result.rows[0];
+      if (originalReport) {
+        originalFormData = originalReport.form_data;
+      }
     } else if (process.env.MONGODB_URI) {
       // MongoDB
       originalReport = await ReportModel.findById(reportId).lean();
@@ -35,46 +42,53 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       return NextResponse.json({ error: 'Informe no encontrado' }, { status: 404 });
     }
 
-    // Crear copia del informe
-    const newReportData = {
-      ...originalReport.data,
-      datosGenerales: {
-        ...originalReport.data?.datosGenerales,
-        periodo: '', // Limpiar período para que se complete de nuevo
-      }
-    };
+    // Si hay formulario asociado, duplicar el formulario
+    // Si no, usar los datos del report.data para reconstruir uno
+    const sourceFormData = originalFormData || originalReport.data || {};
+    
+    // Limpiar período para que se complete de nuevo, pero mantener todos los datos del joven
+    const newFormData = JSON.parse(JSON.stringify(sourceFormData));
+    if (newFormData.datosGenerales) {
+      newFormData.datosGenerales.periodo = ''; // Limpiar para que elija el nuevo período
+    }
+
+    // Crear nuevo formulario (borrador) con los datos copiados
+    const createdBy = Number((session.user as any).id);
 
     if (sql) {
-      const newReport = await sql`
-        INSERT INTO reports (young_id, periodo, data, status, generated_by)
+      const newForm = await sql`
+        INSERT INTO forms (young_id, periodo, data, created_by, status, created_at, updated_at)
         VALUES (
           ${originalReport.young_id},
-          ${newReportData.datosGenerales?.periodo || 'BORRADOR'},
-          ${JSON.stringify(newReportData)}::jsonb,
+          ${'BORRADOR (copia)'},
+          ${JSON.stringify(newFormData)}::jsonb,
+          ${createdBy},
           'BORRADOR',
-          ${(session.user as any)?.id || null}
+          NOW(),
+          NOW()
         )
-        RETURNING id, periodo, status, created_at
+        RETURNING id
       `;
+      const formId = String(newForm.rows[0].id);
+
       return NextResponse.json({ 
-        id: String(newReport.rows[0].id),
-        periodo: newReport.rows[0].periodo,
-        status: newReport.rows[0].status,
-        message: 'Informe copiado correctamente'
+        id: formId,
+        type: 'form',
+        message: 'Formulario duplicado correctamente. Redirigí al formulario para cambiar el período y los datos del nuevo mes.'
       });
     } else if (process.env.MONGODB_URI) {
-      const newReport = await ReportModel.create({
+      const { FormModel } = await import('@/models/Form');
+      const newForm = await FormModel.create({
         youngId: originalReport.youngId,
-        periodo: newReportData.datosGenerales?.periodo || 'BORRADOR',
-        data: newReportData,
-        status: 'BORRADOR',
-        generatedBy: (session.user as any)?.id
+        periodo: 'BORRADOR (copia)',
+        data: newFormData,
+        createdBy: (session.user as any)?.id,
+        status: 'BORRADOR'
       });
       return NextResponse.json({ 
-        id: String(newReport._id),
-        periodo: newReport.periodo,
-        status: newReport.status,
-        message: 'Informe copiado correctamente'
+        id: String(newForm._id),
+        type: 'form',
+        message: 'Formulario duplicado correctamente.'
       });
     }
 
@@ -84,4 +98,3 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     return NextResponse.json({ error: String(error?.message || error) }, { status: 500 });
   }
 }
-

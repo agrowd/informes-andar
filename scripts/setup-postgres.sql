@@ -48,6 +48,8 @@ CREATE TABLE IF NOT EXISTS reports (
   pdf_url VARCHAR(500),
   trazabilidad JSONB,
   status VARCHAR(50) DEFAULT 'BORRADOR' CHECK (status IN ('BORRADOR', 'EN_REVISION', 'CAMBIOS_SOLICITADOS', 'APROBADO')),
+  report_type VARCHAR(20) DEFAULT 'MENSUAL' CHECK (report_type IN ('MENSUAL', 'TRIMESTRAL', 'SEMESTRAL', 'ANUAL')),
+  source_report_ids INTEGER[] DEFAULT ARRAY[]::INTEGER[],
   version INTEGER DEFAULT 1,
   generated_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
   comments JSONB DEFAULT '[]'::jsonb,
@@ -83,6 +85,8 @@ CREATE INDEX IF NOT EXISTS idx_forms_status ON forms(status);
 CREATE INDEX IF NOT EXISTS idx_reports_young_id ON reports(young_id);
 CREATE INDEX IF NOT EXISTS idx_reports_form_id ON reports(form_id);
 CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status);
+CREATE INDEX IF NOT EXISTS idx_reports_type ON reports(report_type);
+CREATE INDEX IF NOT EXISTS idx_reports_young_type_periodo ON reports(young_id, report_type, periodo);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_entity ON audit_logs(entity_type, entity_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_user_id ON audit_logs(user_id);
 CREATE INDEX IF NOT EXISTS idx_youngs_assigned_facilitators ON youngs USING GIN(assigned_facilitators);
