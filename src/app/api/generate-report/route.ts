@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { generateReport } from '@/lib/ai/orchestrator';
+import { generateReport, renderMarkdown, renderDeterministic } from '@/lib/ai/orchestrator';
 import { GenerateReportRequest } from '@/types';
 import { htmlToPdfBuffer } from '@/lib/pdf/render';
 import { connectToDB, sql } from '@/lib/db';
@@ -16,6 +16,7 @@ export async function POST(req: NextRequest) {
       previewOnly?: boolean;
       updateExisting?: boolean;
       existingReportId?: string;
+      formId?: string;
     };
     const provider = process.env.LLM_PROVIDER || 'gemini';
     const usedEnv = {
@@ -25,6 +26,14 @@ export async function POST(req: NextRequest) {
       model: process.env.LLM_MODEL || (provider === 'gemini' ? 'gemini-1.5-flash' : 'gpt-4o-mini'),
       temperature: Number(process.env.LLM_TEMPERATURE ?? 0)
     };
+
+    if (body.form) {
+      if (body.existingReportId) {
+        (body.form as any).id = body.existingReportId;
+      } else if (body.formId) {
+        (body.form as any).id = body.formId;
+      }
+    }
 
     const result = await generateReport(body.form, usedEnv);
 
@@ -198,6 +207,36 @@ export async function POST(req: NextRequest) {
             reportId = String(created._id);
           } else {
             reportId = 'unknown';
+          }
+        }
+
+        // Regenerar HTML, PDF y Markdown con el ID real del informe para que los oficiales tengan el ID definitivo de la BD
+        if (reportId && reportId !== 'unknown') {
+          report.id = reportId;
+          try {
+            const finalHtml = await renderDeterministic(report);
+            const finalPdfBuffer = await htmlToPdfBuffer(finalHtml);
+            await fs.promises.writeFile(filePath, finalPdfBuffer);
+            
+            // Regenerar y guardar Markdown
+            const finalMarkdown = await renderMarkdown(report, form);
+            if (markdownFilePath) {
+              await fs.promises.writeFile(markdownFilePath, finalMarkdown, 'utf8');
+            }
+            
+            // Actualizar en DB
+            if (sql) {
+              await sql`UPDATE reports SET html = ${finalHtml} WHERE id = ${parseInt(reportId)}`;
+            } else if (process.env.MONGODB_URI) {
+              await ReportModel.updateOne({ _id: reportId }, { $set: { html: finalHtml } });
+            }
+            
+            // Reemplazar en la respuesta final el html/report/markdown
+            result.html = finalHtml;
+            result.report = report;
+            result.markdown = finalMarkdown;
+          } catch (regenErr) {
+            console.error('Error regenerando con ID final (no crítico):', regenErr);
           }
         }
 

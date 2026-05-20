@@ -179,7 +179,19 @@ function renderMarkdownText(report: any, institutional: any, originalForm?: any)
     lines.push(`DNI: ${report.datosGenerales.dni}`);
     lines.push('');
   }
+  if (report.datosGenerales.numeroLegajo) {
+    lines.push(`Número de legajo: ${report.datosGenerales.numeroLegajo}`);
+    lines.push('');
+  }
+  if (report.datosGenerales.youngId) {
+    lines.push(`ID del Joven: ${report.datosGenerales.youngId}`);
+    lines.push('');
+  }
+  lines.push(`Facilitador/a: ${report.datosGenerales.facilitadorNombre || 'No informado'}`);
+  lines.push('');
   lines.push(`Período evaluado: ${report.datosGenerales.periodo}`);
+  lines.push('');
+  lines.push(`ID del Informe / Borrador: ${report.id || report._id || 'Borrador'}`);
   lines.push('');
   lines.push(`Sueño de la persona: ${report.datosGenerales.metaSueño || 'No informado'}`);
   lines.push('');
@@ -422,6 +434,10 @@ function mergeDatosGeneralesFromForm(report: any, originalForm?: any) {
   if (formDG.facilitadorNombre) target.facilitadorNombre = formDG.facilitadorNombre;
   if (formDG.obraSocial) target.obraSocial = formDG.obraSocial;
   if (formDG.fotoJoven) target.fotoJoven = formDG.fotoJoven;
+  if (formDG.youngId) target.youngId = formDG.youngId;
+
+  if (originalForm.id) report.id = originalForm.id;
+  else if (originalForm._id) report.id = String(originalForm._id);
   const miembros = Array.isArray(formCirculo?.miembros) ? formCirculo.miembros : [];
   if (!target.circuloApoyo || target.circuloApoyo.length === 0) {
     target.circuloApoyo = miembros.map((m: any) => m?.nombre || 'No informado');
@@ -455,6 +471,7 @@ function renderFromForm(form: any) {
     facilitadorNombre: form?.datosGenerales?.facilitadorNombre || null,
     obraSocial: form?.datosGenerales?.obraSocial || null,
     fotoJoven: form?.datosGenerales?.fotoJoven || null,
+    youngId: form?.datosGenerales?.youngId || null,
     circuloApoyo: miembrosCirculo.map((m: any) => m?.nombre || 'No informado'),
     circuloApoyoDetalle: miembrosCirculo
       .filter((m: any) => m?.nombre || m?.vinculo)

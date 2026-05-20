@@ -34,6 +34,9 @@ export async function POST(_: Request, { params }: { params: { id: string } }) {
     if (!repData) return NextResponse.json({ error: 'not found' }, { status: 404 });
     if (repStatus !== 'APROBADO') return NextResponse.json({ error: 'Solo informes aprobados' }, { status: 400 });
     
+    // Inject the real persistent report ID
+    repData.id = params.id;
+    
     const html = await renderDeterministic(repData);
     const pdfBuffer = await htmlToPdfBuffer(html);
     const reportsDir = path.join(process.cwd(), 'public', 'pdf-reports');

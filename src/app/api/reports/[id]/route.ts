@@ -100,6 +100,9 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         secciones: secciones
       };
 
+      // Inject the real persistent report ID
+      updatedData.id = params.id;
+
       // Re-renderizar HTML con los datos actualizados
       let newHtml = '';
       let newPdfUrl = current.rows[0].pdf_url || null;
@@ -148,6 +151,9 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       const currentData = rep.data || {};
       const newVersion = (rep.version || 1) + 1;
       const updatedData = { ...currentData, secciones };
+
+      // Inject the real persistent report ID
+      updatedData.id = params.id;
 
       await ReportModel.updateOne(
         { _id: params.id },

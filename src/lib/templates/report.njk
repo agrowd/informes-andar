@@ -117,7 +117,15 @@
     <div class="datos-generales">
       <div class="datos-generales-row"><span class="datos-generales-label">Nombre completo:</span> {{ report.datosGenerales.nombreCompleto }}</div>
       <div class="datos-generales-row"><span class="datos-generales-label">DNI:</span> {{ report.datosGenerales.dni or 'No informado' }}</div>
+      {% if report.datosGenerales.numeroLegajo %}
+      <div class="datos-generales-row"><span class="datos-generales-label">Número de legajo:</span> {{ report.datosGenerales.numeroLegajo }}</div>
+      {% endif %}
+      {% if report.datosGenerales.youngId %}
+      <div class="datos-generales-row"><span class="datos-generales-label">ID del Joven:</span> {{ report.datosGenerales.youngId }}</div>
+      {% endif %}
+      <div class="datos-generales-row"><span class="datos-generales-label">Facilitador/a:</span> {{ report.datosGenerales.facilitadorNombre or 'No informado' }}</div>
       <div class="datos-generales-row"><span class="datos-generales-label">Período evaluado:</span> {{ report.datosGenerales.periodo }}</div>
+      <div class="datos-generales-row"><span class="datos-generales-label">ID del Informe / Borrador:</span> {{ report.id or report._id or 'Borrador' }}</div>
       <div class="datos-generales-row"><span class="datos-generales-label">Sueño de la persona:</span> {{ report.datosGenerales.metaSueño or 'No informado' }}</div>
       <div class="datos-generales-row">
         <span class="datos-generales-label">Participación del círculo de apoyo (Sí/No):</span> 

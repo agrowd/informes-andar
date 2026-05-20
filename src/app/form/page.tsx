@@ -541,7 +541,7 @@ function FormContent() {
 			return;
 		}
 
-		const selectedYoung = youngs.find((y: any) => (y._id || y.id) === youngId);
+		const selectedYoung = youngs.find((y: any) => y && String(y._id || y.id) === String(youngId));
 		if (selectedYoung) {
 			setData((prev: any) => {
 				const next = { ...prev };
@@ -587,6 +587,24 @@ function FormContent() {
 		}
 	}, [data?.datosGenerales?.youngId, youngs]);
 
+	// Auto-completar nombre del facilitador logueado si está vacío
+	useEffect(() => {
+		if (session?.user?.name) {
+			setData((prev: any) => {
+				if (prev && prev.datosGenerales && !prev.datosGenerales.facilitadorNombre) {
+					return {
+						...prev,
+						datosGenerales: {
+							...prev.datosGenerales,
+							facilitadorNombre: session.user.name
+						}
+					};
+				}
+				return prev;
+			});
+		}
+	}, [session?.user?.name]);
+
 	useEffect(() => {
 		if (typeof window === 'undefined') return;
 		
@@ -619,6 +637,9 @@ function FormContent() {
 					if (result.formData) {
 						const repaired = repairData(result.formData);
 						setData(repaired);
+						if (result.formId) {
+							setCurrentFormId(result.formId);
+						}
 						lastSavedDataRef.current = JSON.stringify(repaired);
 						localStorage.setItem('formData', lastSavedDataRef.current);
 						addToast(`Informe cargado. Período: ${result.periodo || 'N/A'}`, 'success');
@@ -635,6 +656,22 @@ function FormContent() {
 						localStorage.setItem('formData', lastSavedDataRef.current);
 						addToast(`Formulario cargado. Período: ${result.periodo || 'N/A'}`, 'success');
 					}
+				} else if (urlParams.get('youngId')) {
+					const youngIdParam = urlParams.get('youngId');
+					const repaired = repairData(initialData);
+					if (!repaired.datosGenerales) repaired.datosGenerales = {};
+					repaired.datosGenerales.youngId = youngIdParam;
+					
+					// Auto-completar facilitador si está logueado
+					if (session?.user?.name) {
+						repaired.datosGenerales.facilitadorNombre = session.user.name;
+					}
+					
+					setData(repaired);
+					setCurrentFormId(null);
+					lastSavedDataRef.current = JSON.stringify(repaired);
+					localStorage.setItem('formData', lastSavedDataRef.current);
+					addToast('Iniciando nuevo borrador para el joven', 'info');
 				} else {
 					const r = await fetch('/api/forms?page=1&pageSize=1');
 					if (!r.ok) throw new Error(`HTTP ${r.status}`);
@@ -925,7 +962,7 @@ function FormContent() {
 			const res = await fetch('/api/generate-report', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ form: data, previewOnly: true })
+				body: JSON.stringify({ form: data, previewOnly: true, formId: currentFormId })
 			});
 			if (!res.ok) {
 				const error = await res.json().catch(() => ({ error: 'Error generando vista previa' }));
@@ -994,7 +1031,8 @@ function FormContent() {
 				body: JSON.stringify({ 
 					form: data,
 					updateExisting,
-					existingReportId: existingReport?.id
+					existingReportId: existingReport?.id,
+					formId: currentFormId
 				})
 			});
 			if (!res.ok) {
@@ -1037,6 +1075,71 @@ function FormContent() {
 	return (
 		<div>
 			<EditableText k="form.titulo" fallback="Formulario del Informe Evolutivo" tag="h1" />
+
+			{/* Banner de Información Premium del Joven y Formulario */}
+			<div className="ga-form-info-banner" style={{
+				background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
+				border: '1px solid #e2e8f0',
+				borderRadius: '12px',
+				padding: '16px 20px',
+				marginBottom: '24px',
+				boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)',
+				display: 'grid',
+				gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+				gap: '16px',
+				alignItems: 'center',
+				transition: 'all 0.2s ease',
+			}}>
+				<div>
+					<span style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', fontWeight: 600, display: 'block', marginBottom: '4px' }}>
+						Joven / Concurrente
+					</span>
+					<span style={{ fontSize: '15px', fontWeight: 700, color: '#1e293b' }}>
+						{data.datosGenerales?.nombreCompleto || <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>No seleccionado</span>}
+					</span>
+					{data.datosGenerales?.youngId && (
+						<span style={{ fontSize: '12px', color: '#64748b', display: 'block', marginTop: '2px' }}>
+							ID Joven: <code style={{ background: '#f1f5f9', padding: '1px 4px', borderRadius: '4px' }}>{data.datosGenerales.youngId}</code>
+						</span>
+					)}
+				</div>
+
+				<div>
+					<span style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', fontWeight: 600, display: 'block', marginBottom: '4px' }}>
+						Facilitador / Acompañante
+					</span>
+					<span style={{ fontSize: '14px', fontWeight: 600, color: '#334155' }}>
+						{data.datosGenerales?.facilitadorNombre || <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>No asignado</span>}
+					</span>
+				</div>
+
+				<div>
+					<span style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', fontWeight: 600, display: 'block', marginBottom: '4px' }}>
+						Período / Fecha del Informe
+					</span>
+					<span style={{ fontSize: '14px', fontWeight: 600, color: '#334155' }}>
+						{data.datosGenerales?.periodo || <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>No definido</span>}
+					</span>
+				</div>
+
+				<div>
+					<span style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', fontWeight: 600, display: 'block', marginBottom: '4px' }}>
+						Identificador del Formulario
+					</span>
+					<span style={{ fontSize: '13px', fontWeight: 500, color: '#475569', display: 'block' }}>
+						{currentFormId ? (
+							<code style={{ background: '#fff', border: '1px solid #e2e8f0', padding: '3px 8px', borderRadius: '6px', fontSize: '12px' }}>
+								{currentFormId}
+							</code>
+						) : (
+							<span style={{ background: '#fef3c7', color: '#d97706', padding: '3px 8px', borderRadius: '6px', fontSize: '12px', fontWeight: 600 }}>
+								Nuevo Borrador
+							</span>
+						)}
+					</span>
+				</div>
+			</div>
+
 			<div className="ga-wizard-nav">
 				{steps.map((s, i) => (
 					<button key={s} className={`ga-chip ${i === step ? 'active' : ''}`} onClick={() => handleStepChange(i)}>{s}</button>
