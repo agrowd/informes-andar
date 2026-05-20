@@ -172,6 +172,28 @@ export default function FormsList() {
                       📋 Duplicar
                     </button>
                     <a href={`/api/forms/${it._id}/.json`} target="_blank" rel="noreferrer" style={{ fontSize: 12, padding: '4px 8px' }}>JSON</a>
+                    <button 
+                      className="ga-btn" 
+                      style={{ background: '#FEE2E2', borderColor: '#FCA5A5', color: '#991B1B', fontSize: 12, padding: '4px 8px', whiteSpace: 'nowrap' }}
+                      onClick={async () => {
+                        if (!confirm('¿Estás seguro de que deseas ELIMINAR este borrador? Esta acción no se puede deshacer.')) return;
+                        try {
+                          const r = await fetch(`/api/forms/${it._id}`, { method: 'DELETE' });
+                          if (r.ok) {
+                            alert('Borrador eliminado correctamente');
+                            loadData(page);
+                          } else {
+                            const err = await r.json().catch(() => ({ error: 'Error eliminando' }));
+                            alert(`Error: ${err.error || 'No se pudo eliminar'}`);
+                          }
+                        } catch (err: any) {
+                          alert(`Error: ${err.message || 'Error al eliminar'}`);
+                        }
+                      }}
+                      title="Eliminar borrador"
+                    >
+                      🗑️
+                    </button>
                   </div>
                 </td>
               </tr>
