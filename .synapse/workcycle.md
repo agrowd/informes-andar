@@ -1,5 +1,16 @@
 # 🗓️ Workcycle Log
 
+## 2026-06-09 (Diagnóstico de Caída del Puerto 8000 en Producción)
+- **Objetivo**: Determinar la causa raíz por la cual el puerto 8000 en el VPS (149.50.128.73) no responde y restaurar el servicio.
+- **Actividades**:
+  - Conectarse al VPS usando SSH (puerto 5782) con la contraseña provista.
+  - Diagnosticar el estado de PM2 (la aplicación `informes-andar` no figuraba en `pm2 list`).
+  - Identificar que la ejecución con `ecosystem.config.js` arrojaba error de sintaxis ES Module vs CommonJS.
+  - Iniciar el servicio usando `pm2 start ecosystem.config.cjs` en el puerto 8000.
+  - Ejecutar `pm2 save` para garantizar la persistencia del proceso en PM2 ante reinicios del VPS.
+  - Verificar con `curl -I http://localhost:8000` la correcta redirección a `/login`.
+- **Estado**: Completado. ✅
+
 ## 2026-05-20 (Resolución de Carga de Formulario y Cabecera de Joven)
 - **Objetivo**: Corregir la pantalla en blanco al presionar "Editar en formulario" desde un reporte, incorporar un banner/badge informativo con los detalles clave en el formulario, e incluir de forma destacada el nombre del joven, el facilitador, la fecha/período y el ID en el reporte generado (PDF y Markdown).
 - **Actividades**:

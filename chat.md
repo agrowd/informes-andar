@@ -1,14 +1,10 @@
-# Registro de Conversación - 2026-05-20 (Resolución de Carga de Formulario y Cabecera de Joven)
+# Registro de Conversación - 2026-06-09 (Diagnóstico de Caída del Puerto 8000 en Producción)
 
 ## Usuario:
-- Solicitó que el formulario en pantalla saliera con el nombre del joven, el facilitador, la fecha/período y el identificador (ID) del mismo.
-- Solicitó solucionar la pantalla en blanco (no carga la pantalla) al hacer click en "Editar formulario".
+- Reportó que el puerto 8000 en el VPS está caído y no responde. Indicó continuar ("segui").
 
 ## Antigravity:
-- **Refactorizó `api/reports/[id]/to-form/route.ts`**: Reemplazó la carga directa de datos crudos narrativos por la lectura del formulario original (`forms`), con fallback de reconstrucción inteligente y determinística para reportes heredados o fusionados. Esto eliminó por completo el crash de la pantalla en blanco al editar formularios desde reportes.
-- **Creó un banner de información premium en el formulario**: Diseñó e integró un componente visual premium en `src/app/form/page.tsx` para mostrar en vivo los detalles clave: Concurrente (Joven), Facilitador, Período evaluado y ID del Formulario / Borrador.
-- **Implementó auto-completado del facilitador**: Agregó un efecto reactivo en React que auto-completa el nombre del facilitador a partir de la sesión de usuario activa de NextAuth.
-- **Soportó carga directa desde Ficha de Joven**: Configuró `/form?youngId=...` para inicializar limpiamente un nuevo borrador asociado al joven seleccionado sin colisionar con borradores anteriores.
-- **Enriqueció los reportes generados (PDF y Markdown)**: Añadió las filas correspondientes en la sección 1 (DATOS GENERALES) de `report.njk` and in `renderMarkdownText` de `orchestrator.ts` para que los reportes impresos cuenten con: Nombre del joven, ID del Joven, Facilitador/a, Período evaluado, ID de Informe / Borrador, y Número de Legajo.
-- **Aseguró IDs definitivos en Base de Datos**: Modificó la API `generate-report/route.ts` para que, tras guardar el reporte en base de datos persistente (Postgres/Mongo) y obtener el ID oficial definitivo, se regenere inmediatamente el HTML, PDF y Markdown con dicho ID real en lugar de placeholders o IDs temporales de borrador.
-- **Pasó tests y compilación**: Verificó unit tests con Vitest (`npm run test`) y compiló producción con éxito rotundo (`npm run build`).
+- **Diagnóstico y Conexión SSH**: Conexión remota al VPS mediante un script Node.js con `ssh2`. Identificó que el puerto 8000 no estaba en escucha localmente en el servidor, y que la aplicación `informes-andar` no figuraba en la lista de procesos de PM2.
+- **Fallo de tipo de módulo**: Descubrió que intentar iniciar el servicio usando `ecosystem.config.js` causaba que PM2 fallara debido a que el archivo es CommonJS (`module.exports`) mientras que `package.json` declara `"type": "module"`.
+- **Resolución**: Inició el proceso de PM2 utilizando el archivo alternativo `ecosystem.config.cjs` (ya preparado pero inactivo) ejecutando `pm2 start ecosystem.config.cjs`.
+- **Persistencia**: Confirmó el estado `online` del proceso en el puerto 8000, comprobó el funcionamiento local mediante `curl -I http://localhost:8000` (redirigiendo a `/login` con éxito), y ejecutó `pm2 save` para registrar permanentemente el proceso y prevenir caídas en futuros reinicios del VPS.

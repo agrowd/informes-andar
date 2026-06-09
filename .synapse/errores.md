@@ -66,4 +66,11 @@
 **Solución:** Modificación a encadenamiento opcional `session?.user?.name || ''` para blindar el tipo y silenciar el compilador.
 **Estado:** ✅ FIXED
 
+## ERR-12: Caída del servicio y fallo al iniciar PM2 por tipo de módulo (2026-06-09)
+**Síntoma:** El puerto 8000 del VPS no responde y el proceso de `informes-andar` no figura en `pm2 list` tras un reinicio del VPS. Al intentar ejecutar `pm2 start ecosystem.config.js` arroja error de formato indicando `ReferenceError: module is not defined in ES module scope`.
+**Root Cause:** El archivo `ecosystem.config.js` utiliza exportación estilo CommonJS (`module.exports`), pero `package.json` declara `"type": "module"`. PM2 intenta cargarlo como un ES Module debido a la extensión `.js`. Además, el servicio no estaba guardado en PM2 para iniciarse tras el arranque del VPS.
+**Solución:** Se inició el servicio utilizando `pm2 start ecosystem.config.cjs` (que ya estaba preparado pero no registrado) y se guardó la configuración en PM2 mediante `pm2 save`.
+**Estado:** ✅ FIXED
+
+
 
