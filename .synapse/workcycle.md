@@ -1,5 +1,15 @@
 # 🗓️ Workcycle Log
 
+## 2026-06-10 (Caída General del Servidor VPS / Handshake Timeout)
+- **Objetivo**: Diagnosticar la caída completa de todos los puertos y la falta de respuesta del VPS.
+- **Actividades**:
+  - Comprobar que el VPS responde al comando `ping` desde el entorno local.
+  - Comprobar que los puertos TCP 5782 (SSH) y 8000 están abiertos (TCP Connection exitoso).
+  - Identificar que las conexiones a nivel de aplicación (SSH handshake y peticiones HTTP `curl`) quedan colgadas indefinidamente.
+  - Diagnosticar un posible agotamiento de recursos (RAM/CPU/Disco) en el VPS que causa un bloqueo de los procesos del espacio de usuario (thrashing).
+  - Solicitar al usuario un reinicio forzado del VPS desde el panel de control de DonWeb para recuperar el control.
+- **Estado**: En proceso (esperando reinicio del usuario). 🟡
+
 ## 2026-06-09 (Diagnóstico de Caída del Puerto 8000 en Producción)
 - **Objetivo**: Determinar la causa raíz por la cual el puerto 8000 en el VPS (149.50.128.73) no responde y restaurar el servicio.
 - **Actividades**:

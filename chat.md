@@ -1,10 +1,10 @@
-# Registro de Conversación - 2026-06-09 (Diagnóstico de Caída del Puerto 8000 en Producción)
+# Registro de Conversación - 2026-06-10 (Caída General del Servidor VPS / Handshake Timeout)
 
 ## Usuario:
-- Reportó que el puerto 8000 en el VPS está caído y no responde. Indicó continuar ("segui").
+- Reportó que no puede acceder a ningún puerto del VPS y preguntó qué pasó.
 
 ## Antigravity:
-- **Diagnóstico y Conexión SSH**: Conexión remota al VPS mediante un script Node.js con `ssh2`. Identificó que el puerto 8000 no estaba en escucha localmente en el servidor, y que la aplicación `informes-andar` no figuraba en la lista de procesos de PM2.
-- **Fallo de tipo de módulo**: Descubrió que intentar iniciar el servicio usando `ecosystem.config.js` causaba que PM2 fallara debido a que el archivo es CommonJS (`module.exports`) mientras que `package.json` declara `"type": "module"`.
-- **Resolución**: Inició el proceso de PM2 utilizando el archivo alternativo `ecosystem.config.cjs` (ya preparado pero inactivo) ejecutando `pm2 start ecosystem.config.cjs`.
-- **Persistencia**: Confirmó el estado `online` del proceso en el puerto 8000, comprobó el funcionamiento local mediante `curl -I http://localhost:8000` (redirigiendo a `/login` con éxito), y ejecutó `pm2 save` para registrar permanentemente el proceso y prevenir caídas en futuros reinicios del VPS.
+- **Diagnóstico de Red e IP**: Comprobó que el VPS responde al comando `ping` con latencia baja (~30ms) y que los puertos `5782` (SSH) y `8000` (Next.js) están abiertos a nivel de red TCP.
+- **Identificación de Bloqueo a Nivel de Aplicación**: Encontró que las conexiones a nivel de aplicación (handshake de SSH y peticiones HTTP `curl` locales) se quedan colgadas de forma indefinida sin responder.
+- **Diagnóstico**: Este comportamiento es típico de un servidor que ha agotado sus recursos físicos (RAM, CPU o espacio de almacenamiento). Los procesos del sistema quedan bloqueados en I/O o thrashing (intercambio masivo de memoria virtual con el disco), lo que impide que procesen cualquier conexión entrante, a pesar de que el kernel de red responda a los pings y a la apertura de sockets TCP.
+- **Recomendación**: Solicitar al usuario un reinicio forzado desde el panel de control de DonWeb para reestablecer el servidor y poder investigar y liberar memoria.
