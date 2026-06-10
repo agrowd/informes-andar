@@ -72,5 +72,12 @@
 **Solución:** Se inició el servicio utilizando `pm2 start ecosystem.config.cjs` (que ya estaba preparado pero no registrado) y se guardó la configuración en PM2 mediante `pm2 save`.
 **Estado:** ✅ FIXED
 
+## ERR-13: Congelamiento completo de VPS (Handshake Timeout) por falta de RAM (2026-06-10)
+**Síntoma:** El VPS deja de responder en todos los puertos HTTP y las conexiones de SSH se quedan colgadas indefinidamente en el handshake (Timeout), a pesar de que el servidor físico responde a ping y abre puertos TCP.
+**Root Cause:** El servidor ejecuta múltiples contenedores de Docker (7 apps) y múltiples procesos PM2 en Node/Next.js que acumulan un consumo elevado. El VPS de 8GB carecía por completo de espacio de intercambio (Swap). Al quedarse sin RAM física, el sistema operativo colapsó por sobrecarga en paginación (thrashing), congelando el espacio de usuario.
+**Solución:** Se realizó un reinicio forzado del VPS desde DonWeb. Tras el arranque, se ejecutó `pm2 resurrect` para levantar todos los servicios, se habilitó el inicio automático de PM2 en el arranque mediante `pm2 startup` + `systemctl enable pm2-root`, y se creó un archivo **Swap de 4GB** (`/swapfile`) para absorber picos de memoria futuros y evitar bloqueos del sistema.
+**Estado:** ✅ FIXED
+
+
 
 

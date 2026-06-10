@@ -29,6 +29,9 @@
 | D-25 | **Edición Principal vía Formulario** | La edición principal del informe es a través del formulario (no edición inline directa). El inline queda como opción secundaria para retoques rápidos de texto narrativo. | 🔒 LOCKED |
 | D-26 | **Duplicación de Formulario (no Report)** | Al duplicar un informe para otro mes, se copia el formulario fuente (no los datos del report), para que el facilitador trabaje sobre los campos del formulario y regenere. | 🔒 LOCKED |
 | D-27 | **PM2 Config con `.cjs`** | Usar `ecosystem.config.cjs` en lugar de `.js` en el VPS porque Next.js está configurado como ES Module (`"type": "module"`) y PM2 arroja error al parsear sintaxis de `module.exports` en extensiones `.js`. | 🔒 LOCKED |
+| D-28 | **Swap File de 4GB** | Crear un archivo `/swapfile` de 4GB en el VPS para actuar como buffer de memoria virtual y prevenir bloqueos totales (congelamientos) por consumo excesivo de RAM. | 🔒 LOCKED |
+| D-29 | **Autostart de PM2 via systemd** | Configurar `pm2 startup` y habilitar el servicio `pm2-root.service` en el VPS para que el listado de aplicaciones y sus entornos se restauren automáticamente (resurrect) ante reinicios del VPS. | 🔒 LOCKED |
+
 
 
 

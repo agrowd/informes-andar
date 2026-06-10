@@ -6,9 +6,12 @@
   - Comprobar que el VPS responde al comando `ping` desde el entorno local.
   - Comprobar que los puertos TCP 5782 (SSH) y 8000 están abiertos (TCP Connection exitoso).
   - Identificar que las conexiones a nivel de aplicación (SSH handshake y peticiones HTTP `curl`) quedan colgadas indefinidamente.
-  - Diagnosticar un posible agotamiento de recursos (RAM/CPU/Disco) en el VPS que causa un bloqueo de los procesos del espacio de usuario (thrashing).
-  - Solicitar al usuario un reinicio forzado del VPS desde el panel de control de DonWeb para recuperar el control.
-- **Estado**: En proceso (esperando reinicio del usuario). 🟡
+  - Diagnosticar un agotamiento crítico de recursos en el VPS (alerta en DonWeb de RAM > 100%).
+  - Solicitar al usuario un reinicio forzado del VPS desde el panel de control de DonWeb.
+  - **Post-reinicio**: Ejecutar `pm2 resurrect` para restaurar todos los servicios del servidor (informes-andar, canchas-front, natoh-api, natoh-ui).
+  - Configurar e iniciar el servicio systemd de PM2 (`pm2 startup`) para que se restauren automáticamente en futuros arranques.
+  - Crear y habilitar un archivo **Swap de 4GB** (`/swapfile`) para actuar como buffer de memoria RAM y prevenir bloqueos totales en picos de consumo futuro.
+- **Estado**: Completado. ✅
 
 ## 2026-06-09 (Diagnóstico de Caída del Puerto 8000 en Producción)
 - **Objetivo**: Determinar la causa raíz por la cual el puerto 8000 en el VPS (149.50.128.73) no responde y restaurar el servicio.
