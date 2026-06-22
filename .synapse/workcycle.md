@@ -1,5 +1,19 @@
 # 🗓️ Workcycle Log
 
+## 2026-06-22 (Consolidación de Escalas, PCP e Informes Trimestrales en VPS)
+- **Objetivo**: Integrar la escala de desarrollo de 4 niveles en grillas 2x2, incorporar soporte de PCP y generar informes trimestrales DOCX con narrativa de OpenAI (GPT-4o).
+- **Actividades**:
+  - Implementar visualizador e interactividad para grilla 2x2 en `/form`.
+  - Crear e integrar importador de Excel que suma celdas 2x2.
+  - Crear e integrar exportador de Excel que pinta progresivamente las celdas según el nivel.
+  - Crear e integrar generador de narrativa trimestral a través de OpenAI GPT-4o.
+  - Crear e integrar exportador DOCX que utiliza la plantilla trimestral con `docxtemplater` y `pizzip`.
+  - Resolver error de tipado del Buffer en `import-excel/route.ts` utilizando cast a `any`.
+  - Correr build local de Next.js (`npm run build`) de forma exitosa (0 errores).
+  - Correr pruebas de flujo completo (`scratch/test_full_flow.ts`) verificando de forma correcta todo el ciclo desde el Excel original hasta el DOCX trimestral final.
+  - Desplegar todos los cambios al VPS en caliente con el script `scratch/deploy_files.mjs` (compilando Next.js y reiniciando el PM2 daemon con éxito).
+- **Estado**: Completado. ✅
+
 ## 2026-06-10 (Caída General del Servidor VPS / Handshake Timeout)
 - **Objetivo**: Diagnosticar la caída completa de todos los puertos y la falta de respuesta del VPS.
 - **Actividades**:

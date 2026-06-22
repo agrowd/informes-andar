@@ -1,8 +1,6 @@
 export interface ChecklistItem {
   nombre: string;
-  enseñado: boolean;
-  apoyo: boolean;
-  sola: boolean;
+  nivel: number; // 0 a 4 (0: sin evaluar, 1: enseñado, 2: con apoyo, 3: sola, 4: puede enseñar)
 }
 
 export interface ChecklistTaller {
@@ -14,58 +12,58 @@ export const DEFAULT_TALLERES: ChecklistTaller[] = [
   {
     nombre: "DEPORTE",
     items: [
-      { nombre: "Desarrollar fuerza", enseñado: false, apoyo: false, sola: false },
-      { nombre: "Movilidad articular de miembros superiores", enseñado: false, apoyo: false, sola: false },
-      { nombre: "Movilidad articular de miembros inferiores", enseñado: false, apoyo: false, sola: false },
-      { nombre: "Lanzar con brazo derecho", enseñado: false, apoyo: false, sola: false },
-      { nombre: "Lanzar con brazo izquierdo", enseñado: false, apoyo: false, sola: false },
-      { nombre: "Realizar elongación", enseñado: false, apoyo: false, sola: false },
-      { nombre: "Elongar zona media", enseñado: false, apoyo: false, sola: false },
-      { nombre: "Elongar miembros superiores", enseñado: false, apoyo: false, sola: false },
-      { nombre: "Elongar miembros inferiores", enseñado: false, apoyo: false, sola: false },
-      { nombre: "Realizar trabajos posturales", enseñado: false, apoyo: false, sola: false },
-      { nombre: "Sostener estabilidad", enseñado: false, apoyo: false, sola: false },
-      { nombre: "Trasladar elementos", enseñado: false, apoyo: false, sola: false },
-      { nombre: "Acoplar elementos", enseñado: false, apoyo: false, sola: false },
-      { nombre: "Sostener el tiempo de la actividad", enseñado: false, apoyo: false, sola: false }
+      { nombre: "Desarrollar fuerza", nivel: 0 },
+      { nombre: "Movilidad articular de miembros superiores", nivel: 0 },
+      { nombre: "Movilidad articular de miembros inferiores", nivel: 0 },
+      { nombre: "Lanzar con brazo derecho", nivel: 0 },
+      { nombre: "Lanzar con brazo izquierdo", nivel: 0 },
+      { nombre: "Realizar elongación", nivel: 0 },
+      { nombre: "Elongar zona media", nivel: 0 },
+      { nombre: "Elongar miembros superiores", nivel: 0 },
+      { nombre: "Elongar miembros inferiores", nivel: 0 },
+      { nombre: "Realizar trabajos posturales", nivel: 0 },
+      { nombre: "Sostener estabilidad", nivel: 0 },
+      { nombre: "Trasladar elementos", nivel: 0 },
+      { nombre: "Acoplar elementos", nivel: 0 },
+      { nombre: "Sostener el tiempo de la actividad", nivel: 0 }
     ]
   },
   {
     nombre: "VIAJAR",
     items: [
-      { nombre: "Identificar AVD", enseñado: false, apoyo: false, sola: false },
-      { nombre: "Reconocer pertenencias", enseñado: false, apoyo: false, sola: false },
-      { nombre: "Desarrollar desplazamiento sobre circuito", enseñado: false, apoyo: false, sola: false },
-      { nombre: "Estimular el sentido auditivo", enseñado: false, apoyo: false, sola: false },
-      { nombre: "Identificar sonidos", enseñado: false, apoyo: false, sola: false },
-      { nombre: "Tolerar olores", enseñado: false, apoyo: false, sola: false }
+      { nombre: "Identificar AVD", nivel: 0 },
+      { nombre: "Reconocer pertenencias", nivel: 0 },
+      { nombre: "Desarrollar desplazamiento sobre circuito", nivel: 0 },
+      { nombre: "Estimular el sentido auditivo", nivel: 0 },
+      { nombre: "Identificar sonidos", nivel: 0 },
+      { nombre: "Tolerar olores", nivel: 0 }
     ]
   },
   {
     nombre: "HABILIDADES SOCIALES",
     items: [
-      { nombre: "Gestionar las emociones", enseñado: false, apoyo: false, sola: false },
-      { nombre: "Gestionar impulsos negativos", enseñado: false, apoyo: false, sola: false },
-      { nombre: "Identificar emociones propias", enseñado: false, apoyo: false, sola: false },
-      { nombre: "Comunicar verbalmente", enseñado: false, apoyo: false, sola: false },
-      { nombre: "Comunicar no verbalmente", enseñado: false, apoyo: false, sola: false },
-      { nombre: "Gestionar impulsos positivos", enseñado: false, apoyo: false, sola: false }
+      { nombre: "Gestionar las emociones", nivel: 0 },
+      { nombre: "Gestionar impulsos negativos", nivel: 0 },
+      { nombre: "Identificar emociones propias", nivel: 0 },
+      { nombre: "Comunicar verbalmente", nivel: 0 },
+      { nombre: "Comunicar no verbalmente", nivel: 0 },
+      { nombre: "Gestionar impulsos positivos", nivel: 0 }
     ]
   },
   {
     nombre: "MUSICOTERAPIA",
     items: [
-      { nombre: "Cantar", enseñado: false, apoyo: false, sola: false },
-      { nombre: "Manipular instrumentos musicales", enseñado: false, apoyo: false, sola: false },
-      { nombre: "Disfrutar de la actividad", enseñado: false, apoyo: false, sola: false }
+      { nombre: "Cantar", nivel: 0 },
+      { nombre: "Manipular instrumentos musicales", nivel: 0 },
+      { nombre: "Disfrutar de la actividad", nivel: 0 }
     ]
   },
   {
     nombre: "MANOS VERDES",
     items: [
-      { nombre: "Regar las plantas", enseñado: false, apoyo: false, sola: false },
-      { nombre: "Transladar macetas o   herramientas", enseñado: false, apoyo: false, sola: false },
-      { nombre: "Plantar planines o esquejos", enseñado: false, apoyo: false, sola: false }
+      { nombre: "Regar las plantas", nivel: 0 },
+      { nombre: "Transladar macetas o   herramientas", nivel: 0 },
+      { nombre: "Plantar planines o esquejos", nivel: 0 }
     ]
   }
 ];

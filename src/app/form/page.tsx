@@ -477,84 +477,161 @@ export default function ChecklistFormPage() {
                   <thead>
                     <tr style={{ borderBottom: '2px solid #e2e8f0' }}>
                       <th style={{ textAlign: 'left', padding: '10px 8px', color: '#475569', fontWeight: 600 }}>Habilidad / Ítem</th>
-                      <th style={{ textAlign: 'center', padding: '10px 8px', color: '#475569', fontWeight: 600, width: '120px' }}>Enseñado</th>
-                      <th style={{ textAlign: 'center', padding: '10px 8px', color: '#475569', fontWeight: 600, width: '120px' }}>Con Apoyo</th>
-                      <th style={{ textAlign: 'center', padding: '10px 8px', color: '#475569', fontWeight: 600, width: '120px' }}>Sola</th>
+                      <th style={{ textAlign: 'center', padding: '10px 8px', color: '#475569', fontWeight: 600, width: '380px' }}>Nivel de Desarrollo (Grilla 2x2)</th>
                       <th style={{ textAlign: 'center', padding: '10px 8px', width: '60px' }}></th>
                     </tr>
                   </thead>
                   <tbody>
-                    {taller.items.map((item: ChecklistItem, iIdx: number) => (
-                      <tr key={iIdx} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                        <td style={{ padding: '8px' }}>
-                          <input 
-                            type="text" 
-                            value={item.nombre} 
-                            onChange={(e) => handleItemNameChange(tIdx, iIdx, e.target.value)}
-                            style={{ 
-                              background: 'transparent', 
-                              border: 'none', 
-                              fontSize: 14, 
-                              color: '#334155', 
-                              width: '100%',
-                              padding: '4px 6px',
-                              borderRadius: 4
-                            }}
-                            onFocus={(e) => e.target.style.background = '#f8fafc'}
-                            onBlur={(e) => e.target.style.background = 'transparent'}
-                          />
-                        </td>
-                        
-                        {/* Checkbox Enseñado */}
-                        <td 
-                          style={{ 
-                            textAlign: 'center', 
-                            padding: '8px', 
-                            background: item.enseñado ? '#eff6ff' : 'transparent',
-                            transition: 'background 0.2s'
-                          }}
-                        >
-                          <input 
-                            type="checkbox" 
-                            checked={item.enseñado || false} 
-                            onChange={(e) => handleItemChange(tIdx, iIdx, 'enseñado', e.target.checked)}
-                            style={{ width: 18, height: 18, cursor: 'pointer' }}
-                          />
-                        </td>
+                    {taller.items.map((item: ChecklistItem, iIdx: number) => {
+                      const nivel = item.nivel || 0;
+                      let badgeColor = '#94a3b8';
+                      let badgeBg = '#f1f5f9';
+                      let badgeText = 'Sin evaluar';
+                      
+                      if (nivel === 1) {
+                        badgeColor = '#2563eb';
+                        badgeBg = '#eff6ff';
+                        badgeText = 'Enseñado';
+                      } else if (nivel === 2) {
+                        badgeColor = '#d97706';
+                        badgeBg = '#fffbeb';
+                        badgeText = 'Con apoyo';
+                      } else if (nivel === 3) {
+                        badgeColor = '#7c3aed';
+                        badgeBg = '#f5f3ff';
+                        badgeText = 'Sola';
+                      } else if (nivel === 4) {
+                        badgeColor = '#16a34a';
+                        badgeBg = '#f0fdf4';
+                        badgeText = 'Puede enseñar';
+                      }
 
-                        {/* Checkbox Apoyo */}
-                        <td 
-                          style={{ 
-                            textAlign: 'center', 
-                            padding: '8px', 
-                            background: item.apoyo ? '#fffbeb' : 'transparent',
-                            transition: 'background 0.2s'
-                          }}
-                        >
-                          <input 
-                            type="checkbox" 
-                            checked={item.apoyo || false} 
-                            onChange={(e) => handleItemChange(tIdx, iIdx, 'apoyo', e.target.checked)}
-                            style={{ width: 18, height: 18, cursor: 'pointer' }}
-                          />
-                        </td>
+                      return (
+                        <tr key={iIdx} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                          <td style={{ padding: '8px' }}>
+                            <input 
+                              type="text" 
+                              value={item.nombre} 
+                              onChange={(e) => handleItemNameChange(tIdx, iIdx, e.target.value)}
+                              style={{ 
+                                background: 'transparent', 
+                                border: 'none', 
+                                fontSize: 14, 
+                                color: '#334155', 
+                                width: '100%',
+                                padding: '4px 6px',
+                                borderRadius: 4
+                              }}
+                              onFocus={(e) => e.target.style.background = '#f8fafc'}
+                              onBlur={(e) => e.target.style.background = 'transparent'}
+                            />
+                          </td>
+                          
+                          {/* Selector Grilla 2x2 interactivo */}
+                          <td style={{ padding: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px' }}>
+                            <div style={{ 
+                              display: 'grid', 
+                              gridTemplateColumns: '1fr 1fr', 
+                              width: '38px', 
+                              height: '38px', 
+                              gap: '2px', 
+                              border: '1.5px solid #94a3b8', 
+                              padding: '2px', 
+                              background: '#fff', 
+                              borderRadius: '6px',
+                              boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                            }}>
+                              {/* Arriba-Izq (Nivel >= 1) */}
+                              <div 
+                                style={{ 
+                                  background: nivel >= 1 ? '#3b82f6' : '#f8fafc', 
+                                  border: '1px solid #e2e8f0', 
+                                  borderRadius: '2px',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.15s ease'
+                                }} 
+                                onClick={() => handleItemChange(tIdx, iIdx, 'nivel', 1)} 
+                                title="Click para nivel 1: Enseñado"
+                              />
+                              {/* Arriba-Der (Nivel >= 3) */}
+                              <div 
+                                style={{ 
+                                  background: nivel >= 3 ? '#3b82f6' : '#f8fafc', 
+                                  border: '1px solid #e2e8f0', 
+                                  borderRadius: '2px',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.15s ease'
+                                }} 
+                                onClick={() => handleItemChange(tIdx, iIdx, 'nivel', 3)}
+                                title="Click para nivel 3: Lo realiza sola"
+                              />
+                              {/* Abajo-Izq (Nivel >= 2) */}
+                              <div 
+                                style={{ 
+                                  background: nivel >= 2 ? '#3b82f6' : '#f8fafc', 
+                                  border: '1px solid #e2e8f0', 
+                                  borderRadius: '2px',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.15s ease'
+                                }} 
+                                onClick={() => handleItemChange(tIdx, iIdx, 'nivel', 2)}
+                                title="Click para nivel 2: Lo realiza con apoyo"
+                              />
+                              {/* Abajo-Der (Nivel >= 4) */}
+                              <div 
+                                style={{ 
+                                  background: nivel >= 4 ? '#3b82f6' : '#f8fafc', 
+                                  border: '1px solid #e2e8f0', 
+                                  borderRadius: '2px',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.15s ease'
+                                }} 
+                                onClick={() => handleItemChange(tIdx, iIdx, 'nivel', 4)}
+                                title="Click para nivel 4: Puede enseñar"
+                              />
+                            </div>
 
-                        {/* Checkbox Sola */}
-                        <td 
-                          style={{ 
-                            textAlign: 'center', 
-                            padding: '8px', 
-                            background: item.sola ? '#fcf7ff' : 'transparent',
-                            transition: 'background 0.2s'
-                          }}
-                        >
-                          <input 
-                            type="checkbox" 
-                            checked={item.sola || false} 
-                            onChange={(e) => handleItemChange(tIdx, iIdx, 'sola', e.target.checked)}
-                            style={{ width: 18, height: 18, cursor: 'pointer' }}
-                          />
-                        </td>
+                            {/* Badge del Estado */}
+                            <span style={{
+                              padding: '4px 10px',
+                              borderRadius: '20px',
+                              fontSize: '12px',
+                              fontWeight: 600,
+                              color: badgeColor,
+                              backgroundColor: badgeBg,
+                              border: `1px solid ${badgeColor}33`,
+                              minWidth: '110px',
+                              textAlign: 'center'
+                            }}>
+                              {badgeText}
+                            </span>
+
+                            {/* Botón de limpiar */}
+                            {nivel > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => handleItemChange(tIdx, iIdx, 'nivel', 0)}
+                                style={{
+                                  background: 'none',
+                                  border: 'none',
+                                  color: '#94a3b8',
+                                  cursor: 'pointer',
+                                  fontSize: '14px',
+                                  padding: '4px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  borderRadius: '4px',
+                                  transition: 'background 0.15s'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
+                                onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+                                title="Resetear a sin evaluar"
+                              >
+                                🔄
+                              </button>
+                            )}
+                          </td>
 
                         {/* Eliminar Ítem */}
                         <td style={{ textAlign: 'center', padding: '8px' }}>
@@ -568,7 +645,8 @@ export default function ChecklistFormPage() {
                           </button>
                         </td>
                       </tr>
-                    ))}
+                    );
+                  })}
                   </tbody>
                 </table>
               )}

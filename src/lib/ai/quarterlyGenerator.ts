@@ -85,16 +85,17 @@ function buildQuarterlyPrompt(options: QuarterlyGeneratorOptions): string {
     const talleres = data.talleres || [];
     talleres.forEach((taller: any) => {
       monthlyContext += `- Taller: ${taller.nombre}\n`;
-      const checkedItems = (taller.items || []).filter((it: any) => it.enseñado || it.apoyo || it.sola);
+      const checkedItems = (taller.items || []).filter((it: any) => it.nivel && it.nivel > 0);
       if (checkedItems.length === 0) {
         monthlyContext += `  No se marcaron habilidades específicas.\n`;
       } else {
         checkedItems.forEach((it: any) => {
-          const states: string[] = [];
-          if (it.enseñado) states.push('Enseñado');
-          if (it.apoyo) states.push('Con Apoyo');
-          if (it.sola) states.push('Sola (de forma independiente)');
-          monthlyContext += `  * Habilidad: "${it.nombre}" [Estado: ${states.join(' y ')}]\n`;
+          const nivel = Number(it.nivel || 0);
+          let stateText = 'Enseñado';
+          if (nivel === 2) stateText = 'Con Apoyo';
+          if (nivel === 3) stateText = 'Sola (de forma independiente)';
+          if (nivel === 4) stateText = 'Puede Enseñar (habilidad consolidada / puede guiar a otros)';
+          monthlyContext += `  * Habilidad: "${it.nombre}" [Nivel: ${stateText}]\n`;
         });
       }
     });
@@ -177,7 +178,7 @@ function generateDeterministicFallback(options: QuarterlyGeneratorOptions): any 
     talleres.forEach((t: any) => {
       const items = t.items || [];
       items.forEach((it: any) => {
-        if (it.sola || it.apoyo) {
+        if (it.nivel && Number(it.nivel) >= 2) {
           skillsList.push(`${it.nombre} (${t.nombre})`);
         }
       });

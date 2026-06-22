@@ -172,11 +172,15 @@ async function runTest() {
           const itemCell = sheet.getCell(r, c);
           const itemName = itemCell.value;
           if (itemName && typeof itemName === 'string' && itemName.trim().length > 2 && !itemName.toUpperCase().includes('REFERENCIAS') && !itemName.toUpperCase().includes('ENSEÑADO')) {
+            let nivel = 0;
+            if (isCellChecked(sheet.getCell(r + 2, c + 1))) nivel++;
+            if (isCellChecked(sheet.getCell(r + 3, c + 1))) nivel++;
+            if (isCellChecked(sheet.getCell(r + 2, c + 3))) nivel++;
+            if (isCellChecked(sheet.getCell(r + 3, c + 3))) nivel++;
+
             const item = {
               nombre: itemName.trim(),
-              enseñado: isCellChecked(sheet.getCell(r + 2, c + 1)) || isCellChecked(sheet.getCell(r + 2, c + 2)),
-              apoyo: isCellChecked(sheet.getCell(r + 3, c + 1)) || isCellChecked(sheet.getCell(r + 3, c + 2)),
-              sola: isCellChecked(sheet.getCell(r + 4, c + 1)) || isCellChecked(sheet.getCell(r + 4, c + 2))
+              nivel: nivel
             };
             if (currentTaller) {
               currentTaller.items.push(item);
@@ -286,15 +290,25 @@ async function runTest() {
       exportSheet.getCell('A3').value = `Nombre y Apellido: ${nombreCompleto}`;
       exportSheet.getCell('C4').value = `Facilitador/a: ${testFormData.datosGenerales?.facilitadorNombre || ''}`;
 
-      // Pintar checkboxes (sola/enseñado/apoyo)
-      const paintCell = (r: number, c: number) => {
+      // Pintar celdas combinadas de la grilla 2x2 (celeste)
+      const paintLeftCell = (row: number, col: number) => {
         const fillStyle: ExcelJS.Fill = {
           type: 'pattern',
           pattern: 'solid',
           fgColor: { argb: 'FFA4C2F4' }
         };
-        exportSheet.getCell(r, c).fill = fillStyle;
-        exportSheet.getCell(r, c + 1).fill = fillStyle;
+        exportSheet.getCell(row, col).fill = fillStyle;
+        exportSheet.getCell(row, col + 1).fill = fillStyle;
+      };
+
+      const paintRightCell = (row: number, col: number) => {
+        const fillStyle: ExcelJS.Fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFA4C2F4' }
+        };
+        exportSheet.getCell(row, col + 2).fill = fillStyle;
+        exportSheet.getCell(row, col + 3).fill = fillStyle;
       };
 
       const testTalleres = testFormData.talleres || [];
@@ -324,9 +338,11 @@ async function runTest() {
               const cell = exportSheet.getCell(r, c);
               const val = cell.value;
               if (val && typeof val === 'string' && val.trim().toLowerCase() === itemNameNormalized) {
-                if (item.enseñado) paintCell(r + 2, c + 1);
-                if (item.apoyo) paintCell(r + 3, c + 1);
-                if (item.sola) paintCell(r + 4, c + 1);
+                const nivel = Number(item.nivel || 0);
+                if (nivel >= 1) paintLeftCell(r + 2, c + 1);
+                if (nivel >= 2) paintLeftCell(r + 3, c + 1);
+                if (nivel >= 3) paintRightCell(r + 2, c + 1);
+                if (nivel >= 4) paintRightCell(r + 3, c + 1);
                 itemFound = true;
                 break;
               }

@@ -31,6 +31,8 @@
 | D-27 | **PM2 Config con `.cjs`** | Usar `ecosystem.config.cjs` en lugar de `.js` en el VPS porque Next.js está configurado como ES Module (`"type": "module"`) y PM2 arroja error al parsear sintaxis de `module.exports` en extensiones `.js`. | 🔒 LOCKED |
 | D-28 | **Swap File de 4GB** | Crear un archivo `/swapfile` de 4GB en el VPS para actuar como buffer de memoria virtual y prevenir bloqueos totales (congelamientos) por consumo excesivo de RAM. | 🔒 LOCKED |
 | D-29 | **Autostart de PM2 via systemd** | Configurar `pm2 startup` y habilitar el servicio `pm2-root.service` en el VPS para que el listado de aplicaciones y sus entornos se restauren automáticamente (resurrect) ante reinicios del VPS. | 🔒 LOCKED |
+| D-30 | **Grilla 2x2 para Niveles** | Representar los 4 niveles de desarrollo institucional mediante un checklist reactivo en una cuadrícula CSS Grid de 2x2 en la interfaz de usuario, ofreciendo una experiencia altamente interactiva e intuitiva. | 🔒 LOCKED |
+| D-31 | **Pintado Progresivo en Excel** | Pintar celdas en el Excel de forma secuencial según el nivel (1: Arriba-Izq, 2: Abajo-Izq, 3: Arriba-Der, 4: Abajo-Der) utilizando la coloración celeste institucional `FFA4C2F4` para alinearse con las referencias del Excel de Granja Andar. | 🔒 LOCKED |
 
 
 

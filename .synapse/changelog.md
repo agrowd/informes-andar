@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.6.0] - 2026-06-22
+### Added
+- Grilla de checklist reactiva de 2x2 en `/form` representando los 4 niveles de desarrollo.
+- Importador de planillas de Excel mensuales que calcula el nivel sumando las celdas coloreadas en el bloque 2x2.
+- Exportador de planillas de Excel mensuales que pinta progresivamente las celdas del bloque 2x2 basado en el nivel guardado.
+- Integración de PCP y escala de niveles en la base de datos Postgres (Neon DB) con migración para columna `pcp`.
+- Generación narrativa de informes trimestrales por IA (OpenAI GPT-4o) que consume los niveles y la PCP de forma consolidada.
+- Exportación a DOCX de informes trimestrales respetando exactamente la estructura de 12 secciones narrativas.
+
 ## [1.5.0] - 2026-05-20
 ### Added
 - Cabecera premium informativa en el editor de formulario (/form) con nombre del joven, facilitador, periodo evaluado e ID de borrador/formulario.

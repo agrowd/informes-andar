@@ -168,15 +168,15 @@ export async function POST(req: NextRequest) {
           const itemCell = sheet.getCell(r, c);
           const itemName = itemCell.value;
           if (itemName && typeof itemName === 'string' && itemName.trim().length > 2 && !itemName.toUpperCase().includes('REFERENCIAS') && !itemName.toUpperCase().includes('ENSEÑADO')) {
-            const cellE = sheet.getCell(r + 2, c + 1);
-            const cellA_apoyo = sheet.getCell(r + 3, c + 1);
-            const cellS = sheet.getCell(r + 4, c + 1);
+            let nivel = 0;
+            if (isCellChecked(sheet.getCell(r + 2, c + 1))) nivel++;
+            if (isCellChecked(sheet.getCell(r + 3, c + 1))) nivel++;
+            if (isCellChecked(sheet.getCell(r + 2, c + 3))) nivel++;
+            if (isCellChecked(sheet.getCell(r + 3, c + 3))) nivel++;
 
             const item = {
               nombre: itemName.trim(),
-              enseñado: isCellChecked(cellE) || isCellChecked(sheet.getCell(r + 2, c + 2)),
-              apoyo: isCellChecked(cellA_apoyo) || isCellChecked(sheet.getCell(r + 3, c + 2)),
-              sola: isCellChecked(cellS) || isCellChecked(sheet.getCell(r + 4, c + 2))
+              nivel: nivel
             };
 
             if (currentTaller) {

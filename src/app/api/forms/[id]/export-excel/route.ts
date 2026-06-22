@@ -89,9 +89,9 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
         const itemCell = sheet.getCell(r, c);
         const val = itemCell.value;
         if (val && typeof val === 'string' && val.trim().length > 2 && !val.toUpperCase().includes('REFERENCIAS') && !val.toUpperCase().includes('ENSEÑADO')) {
-          // Limpiar celdas de checklist
-          for (let rowOffset = 2; rowOffset <= 4; rowOffset++) {
-            for (let colOffset = 1; colOffset <= 2; colOffset++) {
+          // Limpiar celdas de la grilla 2x2 (filas r+2 y r+3, columnas c+1 a c+4)
+          for (let rowOffset = 2; rowOffset <= 3; rowOffset++) {
+            for (let colOffset = 1; colOffset <= 4; colOffset++) {
               const cell = sheet.getCell(r + rowOffset, c + colOffset);
               cell.fill = {
                 type: 'pattern',
@@ -103,15 +103,25 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       }
     }
 
-    // Helper para pintar la celda
-    const paintCell = (r: number, c: number) => {
+    // Helpers para pintar celdas combinadas de la grilla 2x2
+    const paintLeftCell = (row: number, col: number) => {
       const fillStyle: ExcelJS.Fill = {
         type: 'pattern',
         pattern: 'solid',
         fgColor: { argb: 'FFA4C2F4' } // Color celeste de la grilla
       };
-      sheet.getCell(r, c).fill = fillStyle;
-      sheet.getCell(r, c + 1).fill = fillStyle;
+      sheet.getCell(row, col).fill = fillStyle;
+      sheet.getCell(row, col + 1).fill = fillStyle;
+    };
+
+    const paintRightCell = (row: number, col: number) => {
+      const fillStyle: ExcelJS.Fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFA4C2F4' } // Color celeste de la grilla
+      };
+      sheet.getCell(row, col + 2).fill = fillStyle;
+      sheet.getCell(row, col + 3).fill = fillStyle;
     };
 
     // 4. Mapear y colorear los checklists guardados
@@ -152,10 +162,24 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
             const cell = sheet.getCell(r, c);
             const val = cell.value;
             if (val && typeof val === 'string' && val.trim().toLowerCase() === itemNameNormalized) {
-              // Pintar según estados
-              if (item.enseñado) paintCell(r + 2, c + 1);
-              if (item.apoyo) paintCell(r + 3, c + 1);
-              if (item.sola) paintCell(r + 4, c + 1);
+              const nivel = Number(item.nivel || 0);
+              // Pintar según nivel (acumulativo)
+              if (nivel >= 1) {
+                // Arriba-Izquierda
+                paintLeftCell(r + 2, c + 1);
+              }
+              if (nivel >= 2) {
+                // Abajo-Izquierda
+                paintLeftCell(r + 3, c + 1);
+              }
+              if (nivel >= 3) {
+                // Arriba-Derecha
+                paintRightCell(r + 2, c + 1);
+              }
+              if (nivel >= 4) {
+                // Abajo-Derecha
+                paintRightCell(r + 3, c + 1);
+              }
               itemFound = true;
               break;
             }
