@@ -11,7 +11,8 @@ const YoungSchema = new Schema({
   taller: { type: String },
   fechaNacimiento: { type: Date },
   circuloApoyo: { type: [CirculoSchema], default: [] },
-  assignedFacilitators: { type: [Schema.Types.ObjectId], ref: 'User', default: [] }
+  assignedFacilitators: { type: [Schema.Types.ObjectId], ref: 'User', default: [] },
+  pcp: { type: Schema.Types.Mixed, default: {} }
 }, { timestamps: true });
 
 export type Young = InferSchemaType<typeof YoungSchema> & { _id: any };

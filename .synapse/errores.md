@@ -78,6 +78,13 @@
 **Solución:** Se realizó un reinicio forzado del VPS desde DonWeb. Tras el arranque, se ejecutó `pm2 resurrect` para levantar todos los servicios, se habilitó el inicio automático de PM2 en el arranque mediante `pm2 startup` + `systemctl enable pm2-root`, y se creó un archivo **Swap de 4GB** (`/swapfile`) para absorber picos de memoria futuros y evitar bloqueos del sistema.
 **Estado:** ✅ FIXED
 
+## ERR-14: Fallo de compilación Next.js por incompatibilidad de tipo Buffer en import-excel (2026-06-22)
+**Síntoma:** `Type error: Argument of type 'Buffer<ArrayBuffer>' is not assignable to parameter of type 'Buffer'.` en `src/app/api/youngs/import-excel/route.ts:41:30` durante el build.
+**Root Cause:** En entornos de tipado de Next.js, `Buffer.from(await file.arrayBuffer())` retorna un tipo `Buffer<ArrayBuffer>` que no es asignable directamente al `Buffer` que requiere `workbook.xlsx.load()`.
+**Solución:** Castear `buffer` como `any` (`buffer as any`) al pasarlo a `workbook.xlsx.load(buffer as any)`.
+**Estado:** ✅ FIXED
+
+
 
 
 

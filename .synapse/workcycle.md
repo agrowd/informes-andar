@@ -203,5 +203,20 @@
   - Compilación exitosa de producción local (`npm run build`) con cero errores.
   - Commit y push definitivo a la rama `main` de GitHub.
 
+## 2026-06-22 (Reconstrucción de Formularios Mensuales y Reportes Trimestrales DOCX)
+- **Objetivo**: Reemplazar los formularios mensuales narrativos por una grilla estructurada de checklist, habilitar la fusión de 3 checklists + PCP en un reporte trimestral DOCX con IA, y permitir exportación a planillas Excel.
+- **Actividades**:
+  - Diseñar e implementar la grilla de checklists mensuales en `/form` y `/forms`.
+  - Crear generador trimestral con IA (`src/lib/ai/quarterlyGenerator.ts`).
+  - Crear endpoint trimestral (`src/app/api/reports/trimestral/route.ts`).
+  - Crear exportador mensual Excel (`src/app/api/forms/[id]/export-excel/route.ts`).
+  - Adaptar descarga DOCX en `/api/reports/[id]/.docx/route.ts` para reportes TRIMESTRALES.
+  - Ejecutar migración de base de datos Postgres para agregar la columna `pcp` (`scripts/run-migration.js`).
+  - Corregir error de compilación TypeScript en la API de importación (`import-excel/route.ts`) casteando el buffer de carga a `any`.
+  - Ejecutar tests programáticos completos en `scratch/test_full_flow.ts` para verificar la importación de Excel, exportación de checklist mensual, fusión trimestral con OpenAI (GPT-4o) y generación de DOCX final con éxito.
+  - Verificar compilación exitosa de Next.js (`npm run build`) y tests de Vitest (`npm run test`).
+- **Estado**: Completado. ✅
+
+
 
 

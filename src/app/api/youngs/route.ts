@@ -66,7 +66,8 @@ export async function GET(req: NextRequest) {
         fechaNacimiento: y.fecha_nacimiento,
         foto: y.foto,
         legajo: y.legajo,
-        obraSocial: y.obra_social
+        obraSocial: y.obra_social,
+        pcp: y.pcp || {}
       }));
       return NextResponse.json({ items: mapped, total, page, pageSize, totalPages: Math.ceil(total / pageSize) });
     } else if (process.env.MONGODB_URI) {
@@ -98,7 +99,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { nombreCompleto, dni, taller, assignedFacilitators, fechaNacimiento, circuloApoyo, foto, legajo, obraSocial } = body;
+    const { nombreCompleto, dni, taller, assignedFacilitators, fechaNacimiento, circuloApoyo, foto, legajo, obraSocial, pcp } = body;
 
     if (!nombreCompleto) {
       return NextResponse.json({ error: 'Nombre completo requerido' }, { status: 400 });
@@ -116,7 +117,7 @@ export async function POST(req: NextRequest) {
       // Usar template literal directamente con el array como string literal
       // El formato {1,2,3} es válido en PostgreSQL y los IDs están validados como números
       const result = await sql`
-        INSERT INTO youngs (nombre_completo, dni, taller, assigned_facilitators, fecha_nacimiento, circulo_apoyo, foto, legajo, obra_social)
+        INSERT INTO youngs (nombre_completo, dni, taller, assigned_facilitators, fecha_nacimiento, circulo_apoyo, foto, legajo, obra_social, pcp)
         VALUES (
           ${nombreCompleto},
           ${dni || null},
@@ -126,7 +127,8 @@ export async function POST(req: NextRequest) {
           ${JSON.stringify(circuloApoyo || [])}::jsonb,
           ${foto || null},
           ${legajo || null},
-          ${obraSocial || null}
+          ${obraSocial || null},
+          ${JSON.stringify(pcp || {})}::jsonb
         )
         RETURNING id
       `;
@@ -143,7 +145,8 @@ export async function POST(req: NextRequest) {
         circuloApoyo: circuloApoyo || [],
         foto: foto || undefined,
         legajo: legajo || undefined,
-        obraSocial: obraSocial || undefined
+        obraSocial: obraSocial || undefined,
+        pcp: pcp || {}
       });
       return NextResponse.json({ id: created._id.toString() }, { status: 201 });
     }

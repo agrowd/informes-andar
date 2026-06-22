@@ -18,7 +18,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     }
 
     const body = await req.json();
-    const { nombreCompleto, dni, taller, assignedFacilitators, fechaNacimiento, circuloApoyo, foto, legajo, obraSocial } = body;
+    const { nombreCompleto, dni, taller, assignedFacilitators, fechaNacimiento, circuloApoyo, foto, legajo, obraSocial, pcp } = body;
 
     if (!nombreCompleto) {
       return NextResponse.json({ error: 'Nombre completo requerido' }, { status: 400 });
@@ -47,6 +47,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
           foto = ${foto || null},
           legajo = ${legajo || null},
           obra_social = ${obraSocial || null},
+          pcp = ${JSON.stringify(pcp || {})}::jsonb,
           updated_at = NOW()
         WHERE id = ${parseInt(params.id)}
       `;
@@ -65,7 +66,8 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
             circuloApoyo: circuloApoyo || [],
             foto: foto || undefined,
             legajo: legajo || undefined,
-            obraSocial: obraSocial || undefined
+            obraSocial: obraSocial || undefined,
+            pcp: pcp || {}
           }
         }
       );

@@ -17,6 +17,7 @@ type Young = {
   fechaNacimiento?: string | null;
   foto?: string;
   circuloApoyo?: Array<{ nombre?: string; vinculo?: string }>;
+  pcp?: any;
 };
 
 export default function YoungsPage() {
@@ -32,7 +33,8 @@ export default function YoungsPage() {
     assignedFacilitators: [],
     fechaNacimiento: '',
     foto: '',
-    circuloApoyo: []
+    circuloApoyo: [],
+    pcp: {}
   });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
@@ -43,13 +45,57 @@ export default function YoungsPage() {
   // Estados de navegación
   const [view, setView] = useState<'list' | 'detail' | 'create'>('list');
   const [selectedYoung, setSelectedYoung] = useState<Young | null>(null);
-  const [activeTab, setActiveTab] = useState<'perfil' | 'asignaciones' | 'historial' | 'analiticas'>('perfil');
+  const [activeTab, setActiveTab] = useState<'perfil' | 'pcp' | 'asignaciones' | 'historial' | 'analiticas'>('perfil');
   const [reportsHistory, setReportsHistory] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [evolutionData, setEvolutionData] = useState<any[]>([]);
   const [loadingEvolution, setLoadingEvolution] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+
+  const handleExcelImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    setIsImporting(true);
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    try {
+      const res = await fetch('/api/youngs/import-excel', {
+        method: 'POST',
+        body: formData
+      });
+      
+      if (res.ok) {
+        const json = await res.json();
+        alert(json.message || 'Excel importado correctamente');
+        loadYoungs();
+        if (json.youngId) {
+          const params = new URLSearchParams({ page: '1', pageSize: '20' });
+          const fetchRes = await fetch(`/api/youngs?${params.toString()}`);
+          if (fetchRes.ok) {
+            const fetchJson = await fetchRes.json();
+            setItems(fetchJson.items || []);
+            const imported = (fetchJson.items || []).find((y: any) => String(y.id || y._id) === String(json.youngId));
+            if (imported) {
+              openDetail(imported);
+            }
+          }
+        }
+      } else {
+        const json = await res.json();
+        alert(json.error || 'Error al importar el archivo Excel');
+      }
+    } catch (err) {
+      console.error('Error importando Excel:', err);
+      alert('Error de conexión al importar Excel');
+    } finally {
+      setIsImporting(false);
+      e.target.value = '';
+    }
+  };
 
   const loadYoungs = async (pageNum: number = page) => {
     try {
@@ -141,8 +187,79 @@ export default function YoungsPage() {
     return items.filter(y => y.nombreCompleto?.toLowerCase().includes(v) || y.dni?.includes(v));
   }, [items, search]);
 
+  const initializePCP = (pcp?: any) => {
+    const base = pcp || {};
+    return {
+      anio: base.anio || '',
+      rutinas: {
+        semana: base.rutinas?.semana || '',
+        finDeSemana: base.rutinas?.finDeSemana || ''
+      },
+      perfil: {
+        suenos: Array.isArray(base.perfil?.suenos) ? base.perfil.suenos : [],
+        capacidades: Array.isArray(base.perfil?.capacidades) ? base.perfil.capacidades : [],
+        resultadosEscalas: {
+          gencat: base.perfil?.resultadosEscalas?.gencat || '',
+          sis: base.perfil?.resultadosEscalas?.sis || '',
+          inico: base.perfil?.resultadosEscalas?.inico || '',
+          sanMartin: base.perfil?.resultadosEscalas?.sanMartin || ''
+        }
+      },
+      planFuturo: {
+        BF: {
+          objetivos: base.planFuturo?.BF?.objetivos || '',
+          espacios: base.planFuturo?.BF?.espacios || '',
+          apoyos: base.planFuturo?.BF?.apoyos || '',
+          responsables: base.planFuturo?.BF?.responsables || ''
+        },
+        DP: {
+          objetivos: base.planFuturo?.DP?.objetivos || '',
+          espacios: base.planFuturo?.DP?.espacios || '',
+          apoyos: base.planFuturo?.DP?.apoyos || '',
+          responsables: base.planFuturo?.DP?.responsables || ''
+        },
+        RI: {
+          objetivos: base.planFuturo?.RI?.objetivos || '',
+          espacios: base.planFuturo?.RI?.espacios || '',
+          apoyos: base.planFuturo?.RI?.apoyos || '',
+          responsables: base.planFuturo?.RI?.responsables || ''
+        },
+        IS: {
+          objetivos: base.planFuturo?.IS?.objetivos || '',
+          espacios: base.planFuturo?.IS?.espacios || '',
+          apoyos: base.planFuturo?.IS?.apoyos || '',
+          responsables: base.planFuturo?.IS?.responsables || ''
+        },
+        BE: {
+          objetivos: base.planFuturo?.BE?.objetivos || '',
+          espacios: base.planFuturo?.BE?.espacios || '',
+          apoyos: base.planFuturo?.BE?.apoyos || '',
+          responsables: base.planFuturo?.BE?.responsables || ''
+        },
+        AU: {
+          objetivos: base.planFuturo?.AU?.objetivos || '',
+          espacios: base.planFuturo?.AU?.espacios || '',
+          apoyos: base.planFuturo?.AU?.apoyos || '',
+          responsables: base.planFuturo?.AU?.responsables || ''
+        },
+        BM: {
+          objetivos: base.planFuturo?.BM?.objetivos || '',
+          espacios: base.planFuturo?.BM?.espacios || '',
+          apoyos: base.planFuturo?.BM?.apoyos || '',
+          responsables: base.planFuturo?.BM?.responsables || ''
+        },
+        DR: {
+          objetivos: base.planFuturo?.DR?.objetivos || '',
+          espacios: base.planFuturo?.DR?.espacios || '',
+          apoyos: base.planFuturo?.DR?.apoyos || '',
+          responsables: base.planFuturo?.DR?.responsables || ''
+        }
+      }
+    };
+  };
+
   const resetForm = () => {
-    setForm({ nombreCompleto: '', dni: '', taller: '', legajo: '', obraSocial: '', assignedFacilitators: [], fechaNacimiento: '', foto: '', circuloApoyo: [] });
+    setForm({ nombreCompleto: '', dni: '', taller: '', legajo: '', obraSocial: '', assignedFacilitators: [], fechaNacimiento: '', foto: '', circuloApoyo: [], pcp: initializePCP() });
     setEditingId(null);
   };
 
@@ -187,7 +304,8 @@ export default function YoungsPage() {
       obraSocial: young.obraSocial || '',
       fechaNacimiento: young.fechaNacimiento?.split('T')[0] || '',
       assignedFacilitators: young.assignedFacilitators || [],
-      circuloApoyo: young.circuloApoyo || []
+      circuloApoyo: young.circuloApoyo || [],
+      pcp: initializePCP(young.pcp)
     });
     setView('detail');
     setActiveTab('perfil');
@@ -276,6 +394,7 @@ export default function YoungsPage() {
 
         <div className="ga-tabs-nav">
           <button className={`ga-tab ${activeTab === 'perfil' ? 'active' : ''}`} onClick={() => setActiveTab('perfil')}>Ficha Técnica</button>
+          <button className={`ga-tab ${activeTab === 'pcp' ? 'active' : ''}`} onClick={() => setActiveTab('pcp')}>PCP</button>
           <button className={`ga-tab ${activeTab === 'asignaciones' ? 'active' : ''}`} onClick={() => setActiveTab('asignaciones')}>Seguimiento</button>
           <button className={`ga-tab ${activeTab === 'historial' ? 'active' : ''}`} onClick={() => setActiveTab('historial')}>Historial</button>
           <button className={`ga-tab ${activeTab === 'analiticas' ? 'active' : ''}`} onClick={() => setActiveTab('analiticas')}>Analíticas</button>
@@ -324,6 +443,309 @@ export default function YoungsPage() {
                 {isSaving ? 'Guardando...' : isUploading ? 'Subiendo foto...' : 'Guardar Todos los Cambios'}
               </button>
               <button className="ga-btn" style={{ color: 'white', background: 'var(--error)', border: 'none' }} onClick={() => deleteYoung(selectedYoung.id || selectedYoung._id || '')}>Eliminar Joven Definitivamente</button>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'pcp' && (
+          <div className="ga-card" style={{ padding: 30 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, borderBottom: '1px solid var(--border)', paddingBottom: 15 }}>
+              <h2 style={{ margin: 0 }}>Planificación Centrada en la Persona (PCP)</h2>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                <label style={{ fontSize: 14, fontWeight: 600 }}>Año de la PCP:</label>
+                <input 
+                  className="ga-input" 
+                  style={{ width: 100, padding: '6px 10px' }} 
+                  value={form.pcp?.anio || ''} 
+                  onChange={e => {
+                    const nextPcp = { ...form.pcp, anio: e.target.value };
+                    setForm({ ...form, pcp: nextPcp });
+                  }} 
+                  placeholder="Ej: 2026" 
+                />
+              </div>
+            </div>
+
+            {/* RUTINAS */}
+            <div style={{ marginBottom: 30 }}>
+              <h3 style={{ borderBottom: '2px solid #f1f5f9', paddingBottom: 8, marginBottom: 15 }}>1. Mapa de Rutinas</h3>
+              <div className="ga-form-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
+                <div>
+                  <label style={{ fontWeight: 600, display: 'block', marginBottom: 6 }}>Mi Semana (Lunes a Viernes)</label>
+                  <textarea 
+                    rows={6}
+                    className="ga-input"
+                    value={form.pcp?.rutinas?.semana || ''}
+                    onChange={e => {
+                      const nextPcp = { ...form.pcp, rutinas: { ...form.pcp?.rutinas, semana: e.target.value } };
+                      setForm({ ...form, pcp: nextPcp });
+                    }}
+                    placeholder="Describe la rutina de lunes a viernes..."
+                  />
+                </div>
+                <div>
+                  <label style={{ fontWeight: 600, display: 'block', marginBottom: 6 }}>Fin de Semana (Sábado y Domingo)</label>
+                  <textarea 
+                    rows={6}
+                    className="ga-input"
+                    value={form.pcp?.rutinas?.finDeSemana || ''}
+                    onChange={e => {
+                      const nextPcp = { ...form.pcp, rutinas: { ...form.pcp?.rutinas, finDeSemana: e.target.value } };
+                      setForm({ ...form, pcp: nextPcp });
+                    }}
+                    placeholder="Describe la rutina del fin de semana..."
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* PERFIL */}
+            <div style={{ marginBottom: 30 }}>
+              <h3 style={{ borderBottom: '2px solid #f1f5f9', paddingBottom: 8, marginBottom: 15 }}>2. Perfil Personal</h3>
+              <div className="ga-form-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
+                {/* SUEÑOS */}
+                <div>
+                  <label style={{ fontWeight: 600, display: 'block', marginBottom: 6 }}>Sueños de la Persona</label>
+                  {(form.pcp?.perfil?.suenos || []).map((sueno: string, idx: number) => (
+                    <div key={idx} style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
+                      <input 
+                        className="ga-input"
+                        value={sueno}
+                        onChange={e => {
+                          const nextSuenos = [...form.pcp.perfil.suenos];
+                          nextSuenos[idx] = e.target.value;
+                          const nextPcp = { ...form.pcp, perfil: { ...form.pcp.perfil, suenos: nextSuenos } };
+                          setForm({ ...form, pcp: nextPcp });
+                        }}
+                        placeholder="Ingresa un sueño..."
+                      />
+                      <button 
+                        type="button"
+                        className="ga-btn"
+                        style={{ color: 'var(--error)' }}
+                        onClick={() => {
+                          const nextSuenos = form.pcp.perfil.suenos.filter((_: any, i: number) => i !== idx);
+                          const nextPcp = { ...form.pcp, perfil: { ...form.pcp.perfil, suenos: nextSuenos } };
+                          setForm({ ...form, pcp: nextPcp });
+                        }}
+                      >✕</button>
+                    </div>
+                  ))}
+                  <button 
+                    type="button"
+                    className="ga-btn secondary"
+                    onClick={() => {
+                      const nextSuenos = [...(form.pcp?.perfil?.suenos || []), ''];
+                      const nextPcp = { ...form.pcp, perfil: { ...form.pcp?.perfil, suenos: nextSuenos } };
+                      setForm({ ...form, pcp: nextPcp });
+                    }}
+                  >+ Agregar Sueño</button>
+                </div>
+
+                {/* CAPACIDADES */}
+                <div>
+                  <label style={{ fontWeight: 600, display: 'block', marginBottom: 6 }}>Capacidades de la Persona</label>
+                  {(form.pcp?.perfil?.capacidades || []).map((capacidad: string, idx: number) => (
+                    <div key={idx} style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
+                      <input 
+                        className="ga-input"
+                        value={capacidad}
+                        onChange={e => {
+                          const nextCap = [...form.pcp.perfil.capacidades];
+                          nextCap[idx] = e.target.value;
+                          const nextPcp = { ...form.pcp, perfil: { ...form.pcp.perfil, capacidades: nextCap } };
+                          setForm({ ...form, pcp: nextPcp });
+                        }}
+                        placeholder="Ingresa una capacidad..."
+                      />
+                      <button 
+                        type="button"
+                        className="ga-btn"
+                        style={{ color: 'var(--error)' }}
+                        onClick={() => {
+                          const nextCap = form.pcp.perfil.capacidades.filter((_: any, i: number) => i !== idx);
+                          const nextPcp = { ...form.pcp, perfil: { ...form.pcp.perfil, capacidades: nextCap } };
+                          setForm({ ...form, pcp: nextPcp });
+                        }}
+                      >✕</button>
+                    </div>
+                  ))}
+                  <button 
+                    type="button"
+                    className="ga-btn secondary"
+                    onClick={() => {
+                      const nextCap = [...(form.pcp?.perfil?.capacidades || []), ''];
+                      const nextPcp = { ...form.pcp, perfil: { ...form.pcp?.perfil, capacidades: nextCap } };
+                      setForm({ ...form, pcp: nextPcp });
+                    }}
+                  >+ Agregar Capacidad</button>
+                </div>
+              </div>
+            </div>
+
+            {/* RESULTADOS DE ESCALAS */}
+            <div style={{ marginBottom: 30 }}>
+              <h3 style={{ borderBottom: '2px solid #f1f5f9', paddingBottom: 8, marginBottom: 15 }}>3. Resultados de Escalas (Últimos resultados)</h3>
+              <div className="ga-form-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+                <div>
+                  <label style={{ fontWeight: 600, display: 'block', marginBottom: 6 }}>GENCAT</label>
+                  <input 
+                    className="ga-input"
+                    value={form.pcp?.perfil?.resultadosEscalas?.gencat || ''}
+                    onChange={e => {
+                      const nextPcp = { 
+                        ...form.pcp, 
+                        perfil: { 
+                          ...form.pcp?.perfil, 
+                          resultadosEscalas: { ...form.pcp?.perfil?.resultadosEscalas, gencat: e.target.value } 
+                        } 
+                      };
+                      setForm({ ...form, pcp: nextPcp });
+                    }}
+                    placeholder="Resultados GENCAT"
+                  />
+                </div>
+                <div>
+                  <label style={{ fontWeight: 600, display: 'block', marginBottom: 6 }}>SIS</label>
+                  <input 
+                    className="ga-input"
+                    value={form.pcp?.perfil?.resultadosEscalas?.sis || ''}
+                    onChange={e => {
+                      const nextPcp = { 
+                        ...form.pcp, 
+                        perfil: { 
+                          ...form.pcp?.perfil, 
+                          resultadosEscalas: { ...form.pcp?.perfil?.resultadosEscalas, sis: e.target.value } 
+                        } 
+                      };
+                      setForm({ ...form, pcp: nextPcp });
+                    }}
+                    placeholder="Resultados SIS"
+                  />
+                </div>
+                <div>
+                  <label style={{ fontWeight: 600, display: 'block', marginBottom: 6 }}>INICO-FEAPS</label>
+                  <input 
+                    className="ga-input"
+                    value={form.pcp?.perfil?.resultadosEscalas?.inico || ''}
+                    onChange={e => {
+                      const nextPcp = { 
+                        ...form.pcp, 
+                        perfil: { 
+                          ...form.pcp?.perfil, 
+                          resultadosEscalas: { ...form.pcp?.perfil?.resultadosEscalas, inico: e.target.value } 
+                        } 
+                      };
+                      setForm({ ...form, pcp: nextPcp });
+                    }}
+                    placeholder="Resultados INICO"
+                  />
+                </div>
+                <div>
+                  <label style={{ fontWeight: 600, display: 'block', marginBottom: 6 }}>SAN MARTIN</label>
+                  <input 
+                    className="ga-input"
+                    value={form.pcp?.perfil?.resultadosEscalas?.sanMartin || ''}
+                    onChange={e => {
+                      const nextPcp = { 
+                        ...form.pcp, 
+                        perfil: { 
+                          ...form.pcp?.perfil, 
+                          resultadosEscalas: { ...form.pcp?.perfil?.resultadosEscalas, sanMartin: e.target.value } 
+                        } 
+                      };
+                      setForm({ ...form, pcp: nextPcp });
+                    }}
+                    placeholder="Resultados SAN MARTIN"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* PLAN DE FUTURO */}
+            <div style={{ marginBottom: 30 }}>
+              <h3 style={{ borderBottom: '2px solid #f1f5f9', paddingBottom: 8, marginBottom: 15 }}>4. Plan de Futuro Personal</h3>
+              <div className="ga-table-mobile-wrap">
+                <table className="ga-table">
+                  <thead>
+                    <tr style={{ background: '#f8fafc' }}>
+                      <th style={{ width: '120px' }}>Dimensión</th>
+                      <th>Objetivos</th>
+                      <th>Espacios</th>
+                      <th>Apoyos</th>
+                      <th>Responsables</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[
+                      { id: 'BF', nombre: 'Bienestar Físico (BF)' },
+                      { id: 'DP', nombre: 'Desarrollo Personal (DP)' },
+                      { id: 'RI', nombre: 'Relaciones Interpersonales (RI)' },
+                      { id: 'IS', nombre: 'Inclusión Social (IS)' },
+                      { id: 'BE', nombre: 'Bienestar Emocional (BE)' },
+                      { id: 'AU', nombre: 'Autodeterminación (AU)' },
+                      { id: 'BM', nombre: 'Bienestar Material (BM)' },
+                      { id: 'DR', nombre: 'Derechos (DR)' }
+                    ].map(dim => {
+                      const dimKey = dim.id;
+                      const pfObj = form.pcp?.planFuturo?.[dimKey] || { objetivos: '', espacios: '', apoyos: '', responsables: '' };
+                      const handlePfChange = (field: string, val: string) => {
+                        const nextPF = { ...form.pcp?.planFuturo };
+                        nextPF[dimKey] = { ...pfObj, [field]: val };
+                        const nextPcp = { ...form.pcp, planFuturo: nextPF };
+                        setForm({ ...form, pcp: nextPcp });
+                      };
+                      return (
+                        <tr key={dim.id}>
+                          <td style={{ fontWeight: 600, fontSize: 13, background: '#f8fafc' }}>{dim.nombre}</td>
+                          <td>
+                            <input 
+                              className="ga-input" 
+                              style={{ padding: 6, fontSize: 13 }}
+                              value={pfObj.objetivos || ''}
+                              onChange={e => handlePfChange('objetivos', e.target.value)}
+                              placeholder="Objetivos..."
+                            />
+                          </td>
+                          <td>
+                            <input 
+                              className="ga-input" 
+                              style={{ padding: 6, fontSize: 13 }}
+                              value={pfObj.espacios || ''}
+                              onChange={e => handlePfChange('espacios', e.target.value)}
+                              placeholder="Espacios..."
+                            />
+                          </td>
+                          <td>
+                            <input 
+                              className="ga-input" 
+                              style={{ padding: 6, fontSize: 13 }}
+                              value={pfObj.apoyos || ''}
+                              onChange={e => handlePfChange('apoyos', e.target.value)}
+                              placeholder="Apoyos..."
+                            />
+                          </td>
+                          <td>
+                            <input 
+                              className="ga-input" 
+                              style={{ padding: 6, fontSize: 13 }}
+                              value={pfObj.responsables || ''}
+                              onChange={e => handlePfChange('responsables', e.target.value)}
+                              placeholder="Responsables..."
+                            />
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div style={{ marginTop: 40, borderTop: '1px solid #f1f5f9', paddingTop: 25 }}>
+              <button className="ga-btn primary" style={{ padding: '10px 30px' }} onClick={handleSave} disabled={isSaving || isUploading}>
+                {isSaving ? 'Guardando PCP...' : 'Guardar Datos PCP'}
+              </button>
             </div>
           </div>
         )}
@@ -414,9 +836,21 @@ export default function YoungsPage() {
           <h1 style={{ margin: 0 }}>Jóvenes</h1>
           <p style={{ color: 'var(--muted)', margin: 0 }}>Selecciona un joven para ver su ficha completa.</p>
         </div>
-        <button className="ga-btn primary" style={{ padding: '10px 25px' }} onClick={() => { resetForm(); setView('create'); }}>
-          + Nuevo Joven
-        </button>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <label className="ga-btn secondary" style={{ padding: '10px 25px', cursor: 'pointer' }}>
+            {isImporting ? 'Importando...' : '📥 Importar Excel'}
+            <input 
+              type="file" 
+              accept=".xlsx" 
+              style={{ display: 'none' }} 
+              disabled={isImporting}
+              onChange={handleExcelImport}
+            />
+          </label>
+          <button className="ga-btn primary" style={{ padding: '10px 25px' }} onClick={() => { resetForm(); setView('create'); }}>
+            + Nuevo Joven
+          </button>
+        </div>
       </div>
 
       <div className="ga-card" style={{ marginBottom: 30 }}>
