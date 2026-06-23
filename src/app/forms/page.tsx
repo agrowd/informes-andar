@@ -16,6 +16,7 @@ export default function FormsList() {
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [generatingTrimestral, setGeneratingTrimestral] = useState(false);
+  const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>({});
 
   // Estados de asistente de importación Excel
   const [isImporting, setIsImporting] = useState(false);
@@ -84,6 +85,24 @@ export default function FormsList() {
   useEffect(() => {
     loadData(1);
   }, []);
+
+  useEffect(() => {
+    if (items.length > 0) {
+      const initialExpanded: Record<string, boolean> = {};
+      items.forEach(it => {
+        const yId = it.youngId || 'sin-joven';
+        initialExpanded[yId] = true; // Todo expandido por defecto para facilidad de uso
+      });
+      setExpandedIds(initialExpanded);
+    }
+  }, [items]);
+
+  const toggleExpand = (youngId: string) => {
+    setExpandedIds(prev => ({
+      ...prev,
+      [youngId]: !prev[youngId]
+    }));
+  };
 
   const changeStatus = async (id: string, status: string) => {
     const statusMessages: Record<string, string> = {
@@ -180,6 +199,16 @@ export default function FormsList() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
         <h1>Borradores</h1>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <button 
+            className={`ga-btn ${selectionMode ? 'accent' : 'secondary'}`}
+            onClick={() => {
+              setSelectionMode(!selectionMode);
+              if (!selectionMode) setSelectedIds(new Set());
+            }}
+            style={{ padding: '10px 20px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6 }}
+          >
+            {selectionMode ? `✅ Cancelar Fusión` : '🔗 Fusionar Borradores'}
+          </button>
           <label className="ga-btn secondary" style={{ padding: '10px 20px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
             {isImporting ? 'Importando...' : '📥 Importar Excel'}
             <input 
@@ -235,173 +264,270 @@ export default function FormsList() {
 
       </div>
 
-      {loading ? 'Cargando…' : (
-        <div className="ga-card">
-        <table className="ga-table">
-          <thead>
-            <tr>
-              <th style={{ border: '1px solid #ccc', padding: 4, width: 40 }}></th>
-              <th style={{ border: '1px solid #ccc', padding: 4 }}>Período</th>
-              <th style={{ border: '1px solid #ccc', padding: 4 }}>Facilitador</th>
-              <th style={{ border: '1px solid #ccc', padding: 4 }}>Concurrente (Joven)</th>
-              <th style={{ border: '1px solid #ccc', padding: 4 }}>Estado</th>
-              <th style={{ border: '1px solid #ccc', padding: 4 }}>Última actualización</th>
-              <th style={{ border: '1px solid #ccc', padding: 4 }}>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.filter((it) => {
-              const searchLower = search.toLowerCase();
-              const matchesSearch = !search || 
-                String(it.periodo || '').toLowerCase().includes(searchLower) ||
-                String(it.facilitadorNombre || '').toLowerCase().includes(searchLower) ||
-                String(it.jovenNombre || '').toLowerCase().includes(searchLower);
-              const matchesFilter = !filter || String(it.periodo || '').toLowerCase().includes(filter.toLowerCase());
-              const matchesDraft = !showDraftsOnly || it.status === 'BORRADOR';
-              return matchesSearch && matchesFilter && matchesDraft;
-            }).map((it) => {
-              const id = it._id || it.id;
-              const isSelected = selectedIds.has(id);
-              return (
-                <tr 
-                  key={id}
-                  style={{
-                    background: isSelected ? '#EFF6FF' : undefined,
-                    cursor: 'pointer'
-                  }}
-                  onClick={() => toggleSelect(id)}
-                >
-                  <td style={{ border: '1px solid #ccc', padding: 4, textAlign: 'center' }}>
-                    <input 
-                      type="checkbox" 
-                      checked={isSelected} 
-                      onChange={() => toggleSelect(id)}
-                      onClick={(e) => e.stopPropagation()} // Prevenir doble trigger
-                      style={{ width: 18, height: 18, cursor: 'pointer' }}
-                    />
-                  </td>
-                  <td style={{ border: '1px solid #ccc', padding: 4 }}>{it.periodo}</td>
-                  <td style={{ border: '1px solid #ccc', padding: 4, fontSize: 13 }}>
-                    {it.facilitadorNombre || 'Sin facilitador'}
-                  </td>
-                  <td style={{ border: '1px solid #ccc', padding: 4, fontSize: 13 }}>
-                    {it.jovenNombre || 'Sin joven asignado'}
-                  </td>
-                  <td style={{ border: '1px solid #ccc', padding: 4 }}>
-                    <span className={`ga-badge ${it.status==='APROBADO'?'approved':it.status==='EN_REVISION'?'review':'draft'}`}>{it.status || 'BORRADOR'}</span>
-                  </td>
-                  <td style={{ border: '1px solid #ccc', padding: 4, fontSize: 12, color: 'var(--muted)' }}>
-                    {it.updatedAt ? new Date(it.updatedAt).toLocaleDateString('es-AR') : it.createdAt ? new Date(it.createdAt).toLocaleDateString('es-AR') : '—'}
-                  </td>
-                  <td style={{ border: '1px solid #ccc', padding: 4 }}>
-                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }} onClick={(e) => e.stopPropagation()}>
-                      <a 
-                        href={`/form?formId=${id}`} 
-                        className="ga-btn secondary" 
-                        style={{ fontSize: 12, padding: '4px 8px', whiteSpace: 'nowrap' }} 
-                        onClick={(e) => {
-                          if (selectionMode) e.stopPropagation();
-                        }}
-                      >
-                        ✏️ Editar
-                      </a>
-                      <a 
-                        href={`/api/forms/${id}/export-excel`} 
-                        className="ga-btn secondary" 
-                        style={{ fontSize: 12, padding: '4px 8px', whiteSpace: 'nowrap' }}
-                        onClick={(e) => {
-                          if (selectionMode) e.stopPropagation();
-                        }}
-                      >
-                        📥 Excel
-                      </a>
-                      <button 
-                        className="ga-btn secondary" 
-                        onClick={(e) => {
-                          if (selectionMode) e.stopPropagation();
-                          duplicateForm(id);
-                        }} 
-                        style={{ fontSize: 12, padding: '4px 8px', whiteSpace: 'nowrap' }}
-                        title="Crear una copia de este borrador"
-                      >
-                        📋 Duplicar
-                      </button>
-                      <a 
-                        href={`/api/forms/${id}/.json`} 
-                        target="_blank" 
-                        rel="noreferrer" 
-                        style={{ fontSize: 12, padding: '4px 8px' }}
-                        onClick={(e) => {
-                          if (selectionMode) e.stopPropagation();
-                        }}
-                      >
-                        JSON
-                      </a>
-                      <button 
-                        className="ga-btn" 
-                        style={{ background: '#FEE2E2', borderColor: '#FCA5A5', color: '#991B1B', fontSize: 12, padding: '4px 8px', whiteSpace: 'nowrap' }}
-                        onClick={async (e) => {
-                          if (selectionMode) e.stopPropagation();
-                          if (!confirm('¿Estás seguro de que deseas ELIMINAR este borrador? Esta acción no se puede deshacer.')) return;
-                          try {
-                            const r = await fetch(`/api/forms/${id}`, { method: 'DELETE' });
-                            if (r.ok) {
-                              alert('Borrador eliminado correctamente');
-                              loadData(page);
-                            } else {
-                              const err = await r.json().catch(() => ({ error: 'Error eliminando' }));
-                              alert(`Error: ${err.error || 'No se pudo eliminar'}`);
-                            }
-                          } catch (err: any) {
-                            alert(`Error: ${err.message || 'Error al eliminar'}`);
-                          }
-                        }}
-                        title="Eliminar borrador"
-                      >
-                        🗑️
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-        <div style={{ marginTop: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-          <div style={{ color: 'var(--muted)', fontSize: 14 }}>
-            Mostrando {items.filter((it) => {
-              const searchLower = search.toLowerCase();
-              const matchesSearch = !search || 
-                String(it.periodo || '').toLowerCase().includes(searchLower) ||
-                String(it.facilitadorNombre || '').toLowerCase().includes(searchLower) ||
-                String(it.jovenNombre || '').toLowerCase().includes(searchLower);
-              const matchesFilter = !filter || String(it.periodo || '').toLowerCase().includes(filter.toLowerCase());
-              const matchesDraft = !showDraftsOnly || it.status === 'BORRADOR';
-              return matchesSearch && matchesFilter && matchesDraft;
-            }).length} de {total} borradores
-          </div>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <button 
-              className="ga-btn" 
-              onClick={() => loadData(page - 1)} 
-              disabled={page === 1 || loading}
-            >
-              ← Anterior
-            </button>
-            <span style={{ fontSize: 14, color: 'var(--text)' }}>
-              Página {page} de {totalPages}
-            </span>
-            <button 
-              className="ga-btn" 
-              onClick={() => loadData(page + 1)} 
-              disabled={page >= totalPages || loading}
-            >
-              Siguiente →
-            </button>
-          </div>
-        </div>
+      {selectionMode && (
+        <div style={{ 
+          padding: '12px 18px', 
+          background: '#eff6ff', 
+          border: '1px solid #bfdbfe', 
+          borderRadius: '8px',
+          color: '#1e40af',
+          fontSize: '14px',
+          fontWeight: 500,
+          marginBottom: 12,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
+        }}>
+          💡 <span>Selecciona entre 1 y 3 borradores mensuales (checklists de cuadraditos) del <strong>mismo joven</strong> para generar el informe trimestral.</span>
         </div>
       )}
+
+      {loading ? 'Cargando…' : (() => {
+        // Filtrar ítems
+        const filteredItems = items.filter((it) => {
+          const searchLower = search.toLowerCase();
+          const matchesSearch = !search || 
+            String(it.periodo || '').toLowerCase().includes(searchLower) ||
+            String(it.facilitadorNombre || '').toLowerCase().includes(searchLower) ||
+            String(it.jovenNombre || '').toLowerCase().includes(searchLower);
+          const matchesFilter = !filter || String(it.periodo || '').toLowerCase().includes(filter.toLowerCase());
+          const matchesDraft = !showDraftsOnly || it.status === 'BORRADOR';
+          return matchesSearch && matchesFilter && matchesDraft;
+        });
+
+        // Agrupar ítems por joven
+        const grouped: Record<string, { jovenNombre: string; youngId: string; drafts: any[] }> = {};
+        filteredItems.forEach(it => {
+          const yId = it.youngId || 'sin-joven';
+          const name = it.jovenNombre || 'Sin joven asignado';
+          if (!grouped[yId]) {
+            grouped[yId] = {
+              youngId: yId,
+              jovenNombre: name,
+              drafts: []
+            };
+          }
+          grouped[yId].drafts.push(it);
+        });
+        const groupedList = Object.values(grouped);
+
+        return (
+          <div>
+            {groupedList.length === 0 ? (
+              <div className="ga-card" style={{ textAlign: 'center', padding: '40px 20px', color: '#64748b' }}>
+                No se encontraron borradores mensuales.
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {groupedList.map((group) => {
+                  const isExpanded = !!expandedIds[group.youngId];
+                  return (
+                    <div 
+                      key={group.youngId} 
+                      className="ga-card" 
+                      style={{ 
+                        padding: 0, 
+                        overflow: 'hidden', 
+                        border: '1px solid #e2e8f0', 
+                        borderRadius: '12px',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                        background: '#ffffff'
+                      }}
+                    >
+                      {/* Cabecera del Accordion */}
+                      <div 
+                        onClick={() => toggleExpand(group.youngId)}
+                        style={{ 
+                          display: 'flex', 
+                          justifyContent: 'space-between', 
+                          alignItems: 'center', 
+                          padding: '16px 20px', 
+                          background: '#f8fafc', 
+                          borderBottom: isExpanded ? '1px solid #e2e8f0' : 'none',
+                          cursor: 'pointer',
+                          userSelect: 'none',
+                          transition: 'background 0.2s ease'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = '#f8fafc'}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <span style={{ fontSize: '18px' }}>👤</span>
+                          <span style={{ fontSize: '16px', fontWeight: 700, color: '#1e3a8a' }}>
+                            {group.jovenNombre}
+                          </span>
+                          <span style={{ 
+                            background: '#eff6ff', 
+                            color: '#2563eb', 
+                            padding: '2px 8px', 
+                            borderRadius: '20px', 
+                            fontSize: '12px', 
+                            fontWeight: 600,
+                            border: '1px solid #bfdbfe'
+                          }}>
+                            {group.drafts.length} {group.drafts.length === 1 ? 'borrador mensual' : 'borradores mensuales'}
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          {selectionMode && group.drafts.some(d => selectedIds.has(d._id || d.id)) && (
+                            <span style={{ 
+                              fontSize: '12px', 
+                              background: '#fef08a', 
+                              color: '#854d0e', 
+                              padding: '2px 8px', 
+                              borderRadius: '12px', 
+                              fontWeight: 600 
+                            }}>
+                              📝 {group.drafts.filter(d => selectedIds.has(d._id || d.id)).length} seleccionados
+                            </span>
+                          )}
+                          <span style={{ 
+                            transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)', 
+                            transition: 'transform 0.2s ease',
+                            fontSize: '14px',
+                            color: '#64748b'
+                          }}>
+                            ▶
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Contenido Desplegable */}
+                      {isExpanded && (
+                        <div style={{ padding: '16px 20px', background: '#ffffff', overflowX: 'auto' }}>
+                          <table className="ga-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                            <thead>
+                              <tr>
+                                {selectionMode && <th style={{ border: '1px solid #ccc', padding: 4, width: 40 }}></th>}
+                                <th style={{ border: '1px solid #ccc', padding: 4 }}>Período</th>
+                                <th style={{ border: '1px solid #ccc', padding: 4 }}>Facilitador</th>
+                                <th style={{ border: '1px solid #ccc', padding: 4 }}>Estado</th>
+                                <th style={{ border: '1px solid #ccc', padding: 4 }}>Última actualización</th>
+                                <th style={{ border: '1px solid #ccc', padding: 4, textAlign: 'center', width: '260px' }}>Acciones</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {group.drafts.map((it: any) => {
+                                const id = it._id || it.id;
+                                const isSelected = selectedIds.has(id);
+                                return (
+                                  <tr 
+                                    key={id}
+                                    style={{
+                                      background: isSelected ? '#EFF6FF' : undefined,
+                                      cursor: selectionMode ? 'pointer' : undefined
+                                    }}
+                                    onClick={selectionMode ? () => toggleSelect(id) : undefined}
+                                  >
+                                    {selectionMode && (
+                                      <td style={{ border: '1px solid #ccc', padding: 4, textAlign: 'center' }}>
+                                        <input 
+                                          type="checkbox" 
+                                          checked={isSelected} 
+                                          onChange={() => toggleSelect(id)}
+                                          onClick={(e) => e.stopPropagation()} // Prevenir doble trigger
+                                          style={{ width: 18, height: 18, cursor: 'pointer' }}
+                                        />
+                                      </td>
+                                    )}
+                                    <td style={{ border: '1px solid #ccc', padding: 4, fontWeight: 'bold' }}>{it.periodo}</td>
+                                    <td style={{ border: '1px solid #ccc', padding: 4, fontSize: 13 }}>
+                                      {it.facilitadorNombre || 'Sin facilitador'}
+                                    </td>
+                                    <td style={{ border: '1px solid #ccc', padding: 4 }}>
+                                      <span className={`ga-badge ${it.status==='APROBADO'?'approved':it.status==='EN_REVISION'?'review':'draft'}`}>{it.status || 'BORRADOR'}</span>
+                                    </td>
+                                    <td style={{ border: '1px solid #ccc', padding: 4, fontSize: 12, color: 'var(--muted)' }}>
+                                      {it.updatedAt ? new Date(it.updatedAt).toLocaleDateString('es-AR') : it.createdAt ? new Date(it.createdAt).toLocaleDateString('es-AR') : '—'}
+                                    </td>
+                                    <td style={{ border: '1px solid #ccc', padding: 4 }}>
+                                      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center' }} onClick={(e) => e.stopPropagation()}>
+                                        <a 
+                                          href={`/form?formId=${id}`} 
+                                          className="ga-btn secondary" 
+                                          style={{ fontSize: 12, padding: '4px 8px', whiteSpace: 'nowrap' }} 
+                                        >
+                                          ✏️ Editar
+                                        </a>
+                                        <a 
+                                          href={`/api/forms/${id}/export-excel`} 
+                                          className="ga-btn secondary" 
+                                          style={{ fontSize: 12, padding: '4px 8px', whiteSpace: 'nowrap' }}
+                                        >
+                                          📥 Excel
+                                        </a>
+                                        <button 
+                                          className="ga-btn secondary" 
+                                          onClick={() => duplicateForm(id)} 
+                                          style={{ fontSize: 12, padding: '4px 8px', whiteSpace: 'nowrap' }}
+                                          title="Crear una copia de este borrador"
+                                        >
+                                          📋 Duplicar
+                                        </button>
+                                        <button 
+                                          className="ga-btn" 
+                                          style={{ background: '#FEE2E2', borderColor: '#FCA5A5', color: '#991B1B', fontSize: 12, padding: '4px 8px', whiteSpace: 'nowrap' }}
+                                          onClick={async () => {
+                                            if (!confirm('¿Estás seguro de que deseas ELIMINAR este borrador? Esta acción no se puede deshacer.')) return;
+                                            try {
+                                              const r = await fetch(`/api/forms/${id}`, { method: 'DELETE' });
+                                              if (r.ok) {
+                                                alert('Borrador eliminado correctamente');
+                                                loadData(page);
+                                              } else {
+                                                const err = await r.json().catch(() => ({ error: 'Error eliminando' }));
+                                                alert(`Error: ${err.error || 'No se pudo eliminar'}`);
+                                              }
+                                            } catch (err: any) {
+                                              alert(`Error: ${err.message || 'Error al eliminar'}`);
+                                            }
+                                          }}
+                                          title="Eliminar borrador"
+                                        >
+                                          🗑️
+                                        </button>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <div style={{ marginTop: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+              <div style={{ color: 'var(--muted)', fontSize: 14 }}>
+                Mostrando {filteredItems.length} de {total} borradores
+              </div>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <button 
+                  className="ga-btn" 
+                  onClick={() => loadData(page - 1)} 
+                  disabled={page === 1 || loading}
+                >
+                  ← Anterior
+                </button>
+                <span style={{ fontSize: 14, color: 'var(--text)' }}>
+                  Página {page} de {totalPages}
+                </span>
+                <button 
+                  className="ga-btn" 
+                  onClick={() => loadData(page + 1)} 
+                  disabled={page >= totalPages || loading}
+                >
+                  Siguiente →
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Panel de Control Flotante para Fusión */}
       {selectedIds.size > 0 && (
