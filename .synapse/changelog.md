@@ -4,7 +4,8 @@
 ### Added
 - Asistente interactivo de importación (`ExcelImportWizardModal`) para realizar fusión trimestral directamente tras la importación exitosa de planillas de Excel.
 - Rediseño premium de la pestaña PCP de concurrentes en `/youngs` con subpestañas organizadas por dimensiones e indicador interactivo de "Empty State" para generación con IA o creación manual.
-- Panel de control flotante en la parte inferior de `/forms` (borradores) con validaciones inteligentes de joven y mes en tiempo real para fusión trimestral.
+- Agrupamiento de borradores en la sección `/forms` mediante **tarjetas desplegables (accordions/collapse) por joven/concurrente**, ordenando la interfaz para evitar desorden visual.
+- Panel de control flotante en la parte inferior de `/forms` (borradores) con validaciones inteligentes de joven y mes en tiempo real para fusión trimestral, activado dinámicamente mediante el botón "🔗 Fusionar Borradores" en la barra de herramientas.
 - Soporte para creación de borradores mensuales completamente en blanco (sin plantilla predefinida) y botones de control ("Cargar Plantilla Estándar" y "Vaciar todo") en el editor `/form`.
 - Utilidad de impresión de PCP con estilo formal (Georgia) desde la ficha del joven.
 
