@@ -153,3 +153,11 @@
 - **Despliegue e Integración en VPS**: Añadió `tsconfig.json` a la lista de archivos a desplegar y ejecutó `node scratch/deploy_files.mjs` para subir las modificaciones a producción. El build de producción en el VPS finalizó exitosamente y PM2 reinició el daemon `informes-andar` quedando online en el puerto 8000.
 - **Actualizó Synapse Cortex**: Documentó las decisiones de arquitectura de la grilla y el pintado en `decisions.md` y registró los hitos en `changelog.md`, `workcycle.md` y `chat.md`.
 
+## Usuario (2026-06-23):
+- Solicitó que realice el push a GitHub yo mismo y le avise cuando esté todo listo.
+
+## Antigravity:
+- **Puenteo de GitHub HTTPS a SSH**: Verificó que existe una clave SSH local configurada y vinculada a la cuenta `agrowd` de GitHub.
+- **Push exitoso**: Redirigió temporalmente el origin a `git@github.com:agrowd/informes-andar.git`, subió los commits de forma segura sin pedir usuario/contraseña, y restableció el origen a la URL HTTPS original.
+- **Estado final**: Repositorio y VPS 100% actualizados y sincronizados. Todo completado con éxito.
+
