@@ -84,7 +84,14 @@
 **Solución:** Castear `buffer` como `any` (`buffer as any`) al pasarlo a `workbook.xlsx.load(buffer as any)`.
 **Estado:** ✅ FIXED
 
+## ERR-15: Error de sintaxis en form/page.tsx por paréntesis sin cerrar (2026-06-23)
+**Síntoma:** El compilador arroja `Unexpected token div. Expected jsx identifier` en la línea del return principal.
+**Root Cause:** Falta de un paréntesis de cierre `)` antes de la llave `}` en la sección de cierre de la tabla condicional de ítems (`taller.items.length === 0 ? ...`), y un tag `</div>` sin cerrar en la tarjeta del taller. Esto rompió el parsing de JSX del compilador SWC de Next.js.
+**Solución:** Se añadió el `)` antes del `}` y el tag `</div>` correspondiente, restaurando la estructura de JSX correcta.
+**Estado:** ✅ FIXED
 
-
-
-
+## ERR-16: Error de sintaxis en youngs/page.tsx por escapes en template literal (2026-06-23)
+**Síntoma:** El compilador arroja `Expected unicode escape` al parsear la función `handlePrintPcp`.
+**Root Cause:** Presencia de barras invertidas de escape `\` antes de las comillas invertidas (backticks) y antes del símbolo `$` en la cadena de impresión (`printWindow.document.write(\`...` y `\${form.nombreCompleto}`).
+**Solución:** Se eliminaron las barras de escape de la plantilla, permitiendo que Next.js compile y que las variables se evalúen dinámicamente en tiempo de ejecución.
+**Estado:** ✅ FIXED

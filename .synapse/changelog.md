@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.7.0] - 2026-06-23
+### Added
+- Asistente interactivo de importación (`ExcelImportWizardModal`) para realizar fusión trimestral directamente tras la importación exitosa de planillas de Excel.
+- Rediseño premium de la pestaña PCP de concurrentes en `/youngs` con subpestañas organizadas por dimensiones e indicador interactivo de "Empty State" para generación con IA o creación manual.
+- Panel de control flotante en la parte inferior de `/forms` (borradores) con validaciones inteligentes de joven y mes en tiempo real para fusión trimestral.
+- Soporte para creación de borradores mensuales completamente en blanco (sin plantilla predefinida) y botones de control ("Cargar Plantilla Estándar" y "Vaciar todo") en el editor `/form`.
+- Utilidad de impresión de PCP con estilo formal (Georgia) desde la ficha del joven.
+
+### Fixed
+- Corrección de error de paréntesis de JSX en `src/app/form/page.tsx`.
+- Solución definitiva al error de unicode escape en `src/app/youngs/page.tsx` removiendo barras de escape en comillas y variables del template literal.
+
 ## [1.6.0] - 2026-06-22
 ### Added
 - Grilla de checklist reactiva de 2x2 en `/form` representando los 4 niveles de desarrollo.
