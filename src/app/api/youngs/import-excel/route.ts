@@ -304,10 +304,16 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    const importedMonths = monthlyReports.map((report, idx) => ({
+      formId: createdFormIds[idx],
+      periodo: report.periodo
+    }));
+
     return NextResponse.json({
       success: true,
       youngId: youngIdStr,
       formIds: createdFormIds,
+      importedMonths,
       message: `Joven "${nombreCompleto}" procesado con éxito. Se importó su PCP y ${monthlyReports.length} planillas mensuales (${monthlyReports.map(r => r.periodo).join(', ')}).`
     });
 

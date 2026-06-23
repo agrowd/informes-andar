@@ -10,6 +10,8 @@ const FILES_TO_DEPLOY = [
   'src/app/api/reports/[id]/.docx/route.ts',
   'src/app/api/youngs/[id]/route.ts',
   'src/app/api/youngs/route.ts',
+  'src/app/api/youngs/generate-pcp/route.ts',
+  'src/app/_components/ExcelImportWizardModal.tsx',
   'src/app/form/page.tsx',
   'src/app/forms/page.tsx',
   'src/app/youngs/page.tsx',

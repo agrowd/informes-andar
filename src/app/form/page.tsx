@@ -307,9 +307,7 @@ export default function ChecklistFormPage() {
       const next = { ...prev };
       next.talleres[tallerIdx].items.push({
         nombre: name.trim(),
-        enseñado: false,
-        apoyo: false,
-        sola: false
+        nivel: 0
       });
       return next;
     });
@@ -324,6 +322,24 @@ export default function ChecklistFormPage() {
       return next;
     });
     addToast('Habilidad eliminada', 'info');
+  };
+
+  const handleClearAllTalleres = () => {
+    if (!confirm('¿Estás seguro de que deseas eliminar TODOS los talleres y habilidades para empezar desde cero?')) return;
+    setData((prev: any) => ({
+      ...prev,
+      talleres: []
+    }));
+    addToast('Checklist vaciado. Puedes agregar tus propios talleres y habilidades.', 'info');
+  };
+
+  const handleLoadDefaultTemplate = () => {
+    if (data.talleres.length > 0 && !confirm('Esto reemplazará todos los talleres y habilidades actuales por la plantilla institucional estándar. ¿Deseas continuar?')) return;
+    setData((prev: any) => ({
+      ...prev,
+      talleres: JSON.parse(JSON.stringify(DEFAULT_TALLERES))
+    }));
+    addToast('Plantilla institucional estándar cargada.', 'success');
   };
 
   if (loading) {
@@ -420,12 +436,44 @@ export default function ChecklistFormPage() {
 
       {/* 3. Grilla de Checklists de Talleres */}
       <div style={{ marginBottom: 24 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
           <h2 style={{ margin: 0, color: '#1e3a8a', fontSize: '20px' }}>2. Desempeño en Talleres y Habilidades</h2>
-          <button className="ga-btn secondary" onClick={handleAddTaller}>➕ Agregar Taller</button>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <button className="ga-btn secondary" onClick={handleLoadDefaultTemplate} style={{ fontSize: 13, padding: '6px 12px' }}>
+              📋 Cargar Plantilla Estándar
+            </button>
+            <button className="ga-btn" onClick={handleClearAllTalleres} style={{ fontSize: 13, padding: '6px 12px', background: '#fee2e2', borderColor: '#fca5a5', color: '#991b1b' }}>
+              🧹 Vaciar todo
+            </button>
+            <button className="ga-btn secondary" onClick={handleAddTaller} style={{ fontSize: 13, padding: '6px 12px' }}>
+              ➕ Agregar Taller
+            </button>
+          </div>
         </div>
 
-        {data.talleres.map((taller: ChecklistTaller, tIdx: number) => (
+        {data.talleres.length === 0 ? (
+          <div style={{
+            padding: '40px 20px',
+            textAlign: 'center',
+            background: '#f8fafc',
+            border: '2px dashed #cbd5e1',
+            borderRadius: '12px',
+            color: '#64748b',
+            marginTop: 15
+          }}>
+            <p style={{ margin: '0 0 12px 0', fontSize: '15px', fontWeight: 600 }}>No hay talleres en este borrador mensual.</p>
+            <p style={{ margin: '0 0 20px 0', fontSize: '13px' }}>Puedes iniciar cargando la plantilla predefinida o agregar talleres y habilidades manualmente desde cero.</p>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+              <button className="ga-btn secondary" onClick={handleLoadDefaultTemplate}>
+                📋 Cargar Plantilla Estándar
+              </button>
+              <button className="ga-btn primary" onClick={handleAddTaller}>
+                ➕ Agregar Taller Manualmente
+              </button>
+            </div>
+          </div>
+        ) : (
+          data.talleres.map((taller: ChecklistTaller, tIdx: number) => (
           <div key={tIdx} className="ga-card" style={{ marginBottom: 20, padding: 0, overflow: 'hidden', border: '1px solid #e2e8f0', borderRadius: 12 }}>
             {/* Header del Taller */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 20px', background: '#f1f5f9', borderBottom: '1px solid #e2e8f0' }}>
@@ -664,7 +712,7 @@ export default function ChecklistFormPage() {
               </div>
             </div>
           </div>
-        ))}
+        )))}
       </div>
 
       {/* 4. Observaciones */}

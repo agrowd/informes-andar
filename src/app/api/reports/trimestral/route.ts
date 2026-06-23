@@ -20,8 +20,8 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { formIds } = body as { formIds: string[] };
 
-    if (!formIds || !Array.isArray(formIds) || formIds.length !== 3) {
-      return NextResponse.json({ error: 'Se requieren exactamente 3 IDs de formularios para fusionar' }, { status: 400 });
+    if (!formIds || !Array.isArray(formIds) || formIds.length < 1 || formIds.length > 3) {
+      return NextResponse.json({ error: 'Se requieren entre 1 y 3 IDs de formularios para fusionar' }, { status: 400 });
     }
 
     let forms: any[] = [];
@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      if (forms.length !== 3) {
+      if (forms.length !== formIds.length) {
         return NextResponse.json({ error: 'No se encontraron todos los formularios seleccionados en Postgres' }, { status: 404 });
       }
 
@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
         } : null;
       }).filter(Boolean);
 
-      if (forms.length !== 3) {
+      if (forms.length !== formIds.length) {
         return NextResponse.json({ error: 'No se encontraron todos los formularios seleccionados en MongoDB' }, { status: 404 });
       }
 
@@ -119,7 +119,9 @@ export async function POST(req: NextRequest) {
 
     // 4. Armar el objeto de datos consolidado
     const periodos = forms.map(f => f.periodo).filter(Boolean);
-    const mergedPeriodo = `${periodos[0]} – ${periodos[periodos.length - 1]}`;
+    const mergedPeriodo = periodos.length === 1 
+      ? periodos[0] 
+      : `${periodos[0]} – ${periodos[periodos.length - 1]}`;
 
     // Obtener facilitadores del período
     const facilitators = forms

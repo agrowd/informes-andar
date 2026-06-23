@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from 'react';
+import ExcelImportWizardModal from '../_components/ExcelImportWizardModal';
 
 export default function FormsList() {
   const [items, setItems] = useState<any[]>([]);
@@ -15,6 +16,49 @@ export default function FormsList() {
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [generatingTrimestral, setGeneratingTrimestral] = useState(false);
+
+  // Estados de asistente de importación Excel
+  const [isImporting, setIsImporting] = useState(false);
+  const [importWizardOpen, setImportWizardOpen] = useState(false);
+  const [importWizardYoungId, setImportWizardYoungId] = useState('');
+  const [importWizardMonths, setImportWizardMonths] = useState<any[]>([]);
+
+  const handleExcelImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    setIsImporting(true);
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    try {
+      const res = await fetch('/api/youngs/import-excel', {
+        method: 'POST',
+        body: formData
+      });
+      
+      if (res.ok) {
+        const json = await res.json();
+        loadData(1);
+        if (json.importedMonths && json.importedMonths.length > 0) {
+          setImportWizardYoungId(json.youngId || '');
+          setImportWizardMonths(json.importedMonths);
+          setImportWizardOpen(true);
+        } else {
+          alert(json.message || 'Excel importado correctamente');
+        }
+      } else {
+        const json = await res.json();
+        alert(json.error || 'Error al importar el archivo Excel');
+      }
+    } catch (err) {
+      console.error('Error importando Excel:', err);
+      alert('Error de conexión al importar Excel');
+    } finally {
+      setIsImporting(false);
+      e.target.value = '';
+    }
+  };
 
   const loadData = async (pageNum: number = page) => {
     setLoading(true);
@@ -94,7 +138,7 @@ export default function FormsList() {
   const selectedItems = items.filter(it => selectedIds.has(it._id || it.id));
   const selectedYoungIds = [...new Set(selectedItems.map(it => it.youngId))];
   const sameYoung = selectedYoungIds.length === 1;
-  const countIsValid = selectedItems.length === 3;
+  const countIsValid = selectedItems.length >= 1 && selectedItems.length <= 3;
   const selectionValid = sameYoung && countIsValid;
 
   const handleGenerateTrimestral = async () => {
@@ -135,15 +179,27 @@ export default function FormsList() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
         <h1>Borradores</h1>
-        <button 
-          className={`ga-btn ${selectionMode ? 'accent' : 'secondary'}`}
-          onClick={() => {
-            setSelectionMode(!selectionMode);
-            if (selectionMode) setSelectedIds(new Set());
-          }}
-        >
-          {selectionMode ? `✅ ${selectedIds.size} seleccionados` : '🔗 Fusión Trimestral'}
-        </button>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <label className="ga-btn secondary" style={{ padding: '10px 20px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            {isImporting ? 'Importando...' : '📥 Importar Excel'}
+            <input 
+              type="file" 
+              accept=".xlsx" 
+              style={{ display: 'none' }} 
+              disabled={isImporting}
+              onChange={handleExcelImport}
+            />
+          </label>
+          {selectedIds.size > 0 && (
+            <button 
+              className="ga-btn"
+              style={{ background: '#fee2e2', borderColor: '#fca5a5', color: '#991b1b', padding: '10px 20px', fontWeight: 600 }}
+              onClick={() => setSelectedIds(new Set())}
+            >
+              🧹 Limpiar Selección ({selectedIds.size})
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="ga-card" style={{ marginBottom: 12 }}>
@@ -176,45 +232,7 @@ export default function FormsList() {
           </label>
         </div>
 
-        {/* Barra de fusión trimestral */}
-        {selectionMode && (
-          <div style={{ 
-            marginTop: 12, padding: '10px 14px', 
-            background: '#F0F9FF', border: '1px solid #BAE6FD', borderRadius: 8,
-            display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap'
-          }}>
-            <span style={{ fontSize: 13, color: '#0369A1' }}>
-              Seleccione exactamente <strong>3 borradores</strong> del <strong>mismo joven</strong>.
-            </span>
-            {selectedIds.size > 0 && !sameYoung && (
-              <span style={{ fontSize: 12, color: '#DC2626', fontWeight: 600 }}>
-                ⚠️ Los borradores deben pertenecer al mismo concurrente.
-              </span>
-            )}
-            {selectedIds.size > 0 && sameYoung && !countIsValid && (
-              <span style={{ fontSize: 12, color: '#D97706', fontWeight: 600 }}>
-                ⚠️ Se requieren exactamente 3 borradores (seleccionados: {selectedIds.size}).
-              </span>
-            )}
-            {selectionValid && (
-              <button 
-                className="ga-btn accent" 
-                onClick={handleGenerateTrimestral}
-                disabled={generatingTrimestral}
-                style={{ fontSize: 13 }}
-              >
-                {generatingTrimestral ? '⏳ Generando con IA...' : '🔗 Generar Informe Trimestral (Word)'}
-              </button>
-            )}
-            <button 
-              className="ga-btn" 
-              style={{ fontSize: 12 }}
-              onClick={() => setSelectedIds(new Set())}
-            >
-              Deseleccionar todo
-            </button>
-          </div>
-        )}
+
       </div>
 
       {loading ? 'Cargando…' : (
@@ -222,7 +240,7 @@ export default function FormsList() {
         <table className="ga-table">
           <thead>
             <tr>
-              {selectionMode && <th style={{ border: '1px solid #ccc', padding: 4, width: 40 }}></th>}
+              <th style={{ border: '1px solid #ccc', padding: 4, width: 40 }}></th>
               <th style={{ border: '1px solid #ccc', padding: 4 }}>Período</th>
               <th style={{ border: '1px solid #ccc', padding: 4 }}>Facilitador</th>
               <th style={{ border: '1px solid #ccc', padding: 4 }}>Concurrente (Joven)</th>
@@ -247,20 +265,21 @@ export default function FormsList() {
               return (
                 <tr 
                   key={id}
-                  style={isSelected ? { background: '#EFF6FF' } : undefined}
-                  onClick={selectionMode ? () => toggleSelect(id) : undefined}
+                  style={{
+                    background: isSelected ? '#EFF6FF' : undefined,
+                    cursor: 'pointer'
+                  }}
+                  onClick={() => toggleSelect(id)}
                 >
-                  {selectionMode && (
-                    <td style={{ border: '1px solid #ccc', padding: 4, textAlign: 'center' }}>
-                      <input 
-                        type="checkbox" 
-                        checked={isSelected} 
-                        onChange={() => toggleSelect(id)}
-                        onClick={(e) => e.stopPropagation()} // Prevenir doble trigger
-                        style={{ width: 18, height: 18, cursor: 'pointer' }}
-                      />
-                    </td>
-                  )}
+                  <td style={{ border: '1px solid #ccc', padding: 4, textAlign: 'center' }}>
+                    <input 
+                      type="checkbox" 
+                      checked={isSelected} 
+                      onChange={() => toggleSelect(id)}
+                      onClick={(e) => e.stopPropagation()} // Prevenir doble trigger
+                      style={{ width: 18, height: 18, cursor: 'pointer' }}
+                    />
+                  </td>
                   <td style={{ border: '1px solid #ccc', padding: 4 }}>{it.periodo}</td>
                   <td style={{ border: '1px solid #ccc', padding: 4, fontSize: 13 }}>
                     {it.facilitadorNombre || 'Sin facilitador'}
@@ -275,7 +294,7 @@ export default function FormsList() {
                     {it.updatedAt ? new Date(it.updatedAt).toLocaleDateString('es-AR') : it.createdAt ? new Date(it.createdAt).toLocaleDateString('es-AR') : '—'}
                   </td>
                   <td style={{ border: '1px solid #ccc', padding: 4 }}>
-                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }} onClick={(e) => e.stopPropagation()}>
                       <a 
                         href={`/form?formId=${id}`} 
                         className="ga-btn secondary" 
@@ -382,6 +401,112 @@ export default function FormsList() {
           </div>
         </div>
         </div>
+      )}
+
+      {/* Panel de Control Flotante para Fusión */}
+      {selectedIds.size > 0 && (
+        <div style={{
+          position: 'fixed',
+          bottom: '24px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          background: 'rgba(30, 41, 59, 0.95)',
+          backdropFilter: 'blur(10px)',
+          borderRadius: '16px',
+          padding: '16px 28px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '24px',
+          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1)',
+          zIndex: 1000,
+          color: '#ffffff',
+          width: '90%',
+          maxWidth: '800px',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
+        }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <span style={{ fontSize: '15px', fontWeight: 700, color: '#f8fafc' }}>
+              {selectedIds.size} {selectedIds.size === 1 ? 'borrador seleccionado' : 'borradores seleccionados'}
+            </span>
+            {sameYoung && selectedItems.length > 0 && (
+              <span style={{ fontSize: '13px', color: '#93c5fd' }}>
+                Concurrente: <strong>{selectedItems[0].jovenNombre || 'Sin nombre'}</strong>
+              </span>
+            )}
+            {!sameYoung && (
+              <span style={{ fontSize: '13px', color: '#fca5a5', fontWeight: 600 }}>
+                ⚠️ Los borradores deben ser del mismo joven.
+              </span>
+            )}
+            {sameYoung && !countIsValid && (
+              <span style={{ fontSize: '13px', color: '#fde047', fontWeight: 600 }}>
+                ⚠️ Selecciona entre 1 y 3 borradores (máximo 3).
+              </span>
+            )}
+          </div>
+
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+            <button
+              className="ga-btn"
+              style={{
+                background: 'transparent',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                color: '#cbd5e1',
+                padding: '8px 16px',
+                fontSize: '13px',
+                borderRadius: '8px',
+                cursor: 'pointer'
+              }}
+              onClick={() => setSelectedIds(new Set())}
+            >
+              Deseleccionar todo
+            </button>
+            <button
+              className="ga-btn"
+              disabled={!selectionValid || generatingTrimestral}
+              style={{
+                background: selectionValid ? 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)' : 'rgba(255,255,255,0.05)',
+                color: selectionValid ? '#ffffff' : 'rgba(255,255,255,0.3)',
+                border: 'none',
+                padding: '10px 24px',
+                fontSize: '13px',
+                fontWeight: 700,
+                borderRadius: '8px',
+                cursor: selectionValid ? 'pointer' : 'not-allowed',
+                boxShadow: selectionValid ? '0 10px 15px -3px rgba(37, 99, 235, 0.3)' : 'none',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+              onClick={handleGenerateTrimestral}
+            >
+              {generatingTrimestral ? (
+                <span>⏳ Generando con IA...</span>
+              ) : (
+                <span>🔗 Fusionar y Generar Reporte (Word)</span>
+              )}
+            </button>
+          </div>
+
+          <style jsx>{`
+            @keyframes slideUp {
+              from { transform: translate(-50%, 100px); opacity: 0; }
+              to { transform: translate(-50%, 0); opacity: 1; }
+            }
+          `}</style>
+        </div>
+      )}
+
+      {/* Modal Asistente de Fusión Post-Importación */}
+      {importWizardOpen && (
+        <ExcelImportWizardModal
+          isOpen={importWizardOpen}
+          youngId={importWizardYoungId}
+          importedMonths={importWizardMonths}
+          onClose={() => setImportWizardOpen(false)}
+        />
       )}
     </div>
   );

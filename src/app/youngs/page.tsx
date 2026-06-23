@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import ImageUpload from '../_components/ImageUpload';
 import QualityOfLifeChart from '../_components/QualityOfLifeChart';
+import ExcelImportWizardModal from '../_components/ExcelImportWizardModal';
 import { integrantesCirculoTipos } from '@/lib/form/options';
 
 type Young = {
@@ -54,6 +55,188 @@ export default function YoungsPage() {
   const [loadingEvolution, setLoadingEvolution] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
 
+  // Estados de generación de PCP con IA
+  const [showPcpAiModal, setShowPcpAiModal] = useState(false);
+  const [pcpAiPrompt, setPcpAiPrompt] = useState('');
+  const [generatingPcp, setGeneratingPcp] = useState(false);
+
+  // Estados de asistente de importación Excel
+  const [importWizardOpen, setImportWizardOpen] = useState(false);
+  const [importWizardYoungId, setImportWizardYoungId] = useState('');
+  const [importWizardMonths, setImportWizardMonths] = useState<any[]>([]);
+
+  // Sub-pestañas PCP
+  const [pcpSubTab, setPcpSubTab] = useState<'rutinas' | 'perfil' | 'planFuturo'>('rutinas');
+
+  const handlePrintPcp = () => {
+    if (!form.pcp?.anio) return alert('No hay PCP activa para imprimir');
+    
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return alert('Permite las ventanas emergentes para imprimir');
+
+    const suenosList = (form.pcp?.perfil?.suenos || []).map((s: string) => `<li>${s}</li>`).join('') || '<li>No registrado</li>';
+    const capList = (form.pcp?.perfil?.capacidades || []).map((c: string) => `<li>${c}</li>`).join('') || '<li>No registrado</li>';
+    
+    const dims = [
+      { id: 'BF', nombre: 'Bienestar Físico (BF)' },
+      { id: 'DP', nombre: 'Desarrollo Personal (DP)' },
+      { id: 'RI', nombre: 'Relaciones Interpersonales (RI)' },
+      { id: 'IS', nombre: 'Inclusión Social (IS)' },
+      { id: 'BE', nombre: 'Bienestar Emocional (BE)' },
+      { id: 'AU', nombre: 'Autodeterminación (AU)' },
+      { id: 'BM', nombre: 'Bienestar Material (BM)' },
+      { id: 'DR', nombre: 'Derechos (DR)' }
+    ];
+    
+    const pfRows = dims.map(d => {
+      const pfObj = form.pcp?.planFuturo?.[d.id] || { objetivos: '', espacios: '', apoyos: '', responsables: '' };
+      return `
+        <tr>
+          <td style="font-weight: bold; background: #f8fafc; border: 1px solid #cbd5e1; padding: 10px; font-size: 13px;">${d.nombre}</td>
+          <td style="border: 1px solid #cbd5e1; padding: 10px; font-size: 13px;">${pfObj.objetivos || '—'}</td>
+          <td style="border: 1px solid #cbd5e1; padding: 10px; font-size: 13px;">${pfObj.espacios || '—'}</td>
+          <td style="border: 1px solid #cbd5e1; padding: 10px; font-size: 13px;">${pfObj.apoyos || '—'}</td>
+          <td style="border: 1px solid #cbd5e1; padding: 10px; font-size: 13px;">${pfObj.responsables || '—'}</td>
+        </tr>
+      `;
+    }).join('');
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>PCP - ${form.nombreCompleto}</title>
+          <style>
+            body { font-family: 'Georgia', serif; color: #1e293b; padding: 40px; line-height: 1.6; }
+            h1 { text-align: center; color: #1e3a8a; margin-bottom: 5px; }
+            .header-info { text-align: center; color: #64748b; margin-bottom: 40px; font-size: 14px; }
+            .section { margin-bottom: 30px; }
+            .section-title { font-size: 18px; font-weight: bold; color: #1e3a8a; border-bottom: 2px solid #cbd5e1; padding-bottom: 8px; margin-bottom: 15px; }
+            .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+            .card { background: #f8fafc; border: 1px solid #e2e8f0; padding: 15px; border-radius: 8px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+            th { background: #f1f5f9; border: 1px solid #cbd5e1; padding: 10px; text-align: left; font-size: 13px; color: #475569; }
+            td { border: 1px solid #cbd5e1; padding: 10px; }
+            ul { padding-left: 20px; margin: 5px 0; }
+            @media print {
+              body { padding: 0; }
+              .no-print { display: none; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="no-print" style="margin-bottom: 20px; text-align: right;">
+            <button onclick="window.print()" style="padding: 10px 20px; font-size: 14px; background: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">🖨️ Imprimir Documento</button>
+          </div>
+          <h1>Planificación Centrada en la Persona (PCP)</h1>
+          <div class="header-info">
+            <strong>Concurrente:</strong> ${form.nombreCompleto} | <strong>Año PCP:</strong> ${form.pcp?.anio} | <strong>Taller:</strong> ${form.taller || '—'}
+          </div>
+          
+          <div class="section">
+            <div class="section-title">1. Mapa de Rutinas</div>
+            <div class="grid">
+              <div class="card">
+                <strong>Mi Semana (Lunes a Viernes):</strong>
+                <p>${form.pcp?.rutinas?.semana || '—'}</p>
+              </div>
+              <div class="card">
+                <strong>Fin de Semana:</strong>
+                <p>${form.pcp?.rutinas?.finDeSemana || '—'}</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="section-title">2. Perfil de la Persona</div>
+            <div class="grid">
+              <div class="card">
+                <strong>Metas y Sueños:</strong>
+                <ul>${suenosList}</ul>
+              </div>
+              <div class="card">
+                <strong>Capacidades:</strong>
+                <ul>${capList}</ul>
+              </div>
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="section-title">3. Resultados de Escalas de Calidad de Vida</div>
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px;">
+              <div class="card" style="text-align: center;">
+                <div style="font-weight: bold; color: #475569;">GENCAT</div>
+                <div style="font-size: 16px; margin-top: 5px; font-weight: bold;">${form.pcp?.perfil?.resultadosEscalas?.gencat || '—'}</div>
+              </div>
+              <div class="card" style="text-align: center;">
+                <div style="font-weight: bold; color: #475569;">SIS</div>
+                <div style="font-size: 16px; margin-top: 5px; font-weight: bold;">${form.pcp?.perfil?.resultadosEscalas?.sis || '—'}</div>
+              </div>
+              <div class="card" style="text-align: center;">
+                <div style="font-weight: bold; color: #475569;">INICO-FEAPS</div>
+                <div style="font-size: 16px; margin-top: 5px; font-weight: bold;">${form.pcp?.perfil?.resultadosEscalas?.inico || '—'}</div>
+              </div>
+              <div class="card" style="text-align: center;">
+                <div style="font-weight: bold; color: #475569;">SAN MARTIN</div>
+                <div style="font-size: 16px; margin-top: 5px; font-weight: bold;">${form.pcp?.perfil?.resultadosEscalas?.sanMartin || '—'}</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="section" style="page-break-before: always;">
+            <div class="section-title">4. Plan de Futuro Personal</div>
+            <table>
+              <thead>
+                <tr>
+                  <th style="width: 150px;">Dimensión</th>
+                  <th>Objetivos</th>
+                  <th>Espacios</th>
+                  <th>Apoyos</th>
+                  <th>Responsables</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${pfRows}
+              </tbody>
+            </table>
+          </div>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
+  const handleGeneratePcp = async () => {
+    if (!pcpAiPrompt.trim()) return alert('Por favor escribe una descripción de prueba');
+    setGeneratingPcp(true);
+    try {
+      const res = await fetch('/api/youngs/generate-pcp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: pcpAiPrompt })
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.pcp) {
+          const generatedPcp = initializePCP(json.pcp);
+          setForm(prev => ({ ...prev, pcp: generatedPcp }));
+          setShowPcpAiModal(false);
+          setPcpAiPrompt('');
+          alert('✨ PCP generada con éxito por la IA. Revísala en esta pestaña PCP y haz click en "Guardar Datos PCP" abajo para persistir los cambios.');
+        } else {
+          alert('No se pudo generar la estructura de PCP.');
+        }
+      } else {
+        const json = await res.json();
+        alert(json.error || 'Error al generar PCP con IA');
+      }
+    } catch (err) {
+      console.error('Error generando PCP:', err);
+      alert('Error de conexión al generar PCP');
+    } finally {
+      setGeneratingPcp(false);
+    }
+  };
+
   const handleExcelImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -70,8 +253,14 @@ export default function YoungsPage() {
       
       if (res.ok) {
         const json = await res.json();
-        alert(json.message || 'Excel importado correctamente');
         loadYoungs();
+        if (json.importedMonths && json.importedMonths.length > 0) {
+          setImportWizardYoungId(json.youngId || '');
+          setImportWizardMonths(json.importedMonths);
+          setImportWizardOpen(true);
+        } else {
+          alert(json.message || 'Excel importado correctamente');
+        }
         if (json.youngId) {
           const params = new URLSearchParams({ page: '1', pageSize: '20' });
           const fetchRes = await fetch(`/api/youngs?${params.toString()}`);
@@ -449,304 +638,437 @@ export default function YoungsPage() {
 
         {activeTab === 'pcp' && (
           <div className="ga-card" style={{ padding: 30 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, borderBottom: '1px solid var(--border)', paddingBottom: 15 }}>
+            {/* Header del panel PCP */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, borderBottom: '1px solid var(--border)', paddingBottom: 15, flexWrap: 'wrap', gap: 15 }}>
               <h2 style={{ margin: 0 }}>Planificación Centrada en la Persona (PCP)</h2>
-              <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                <label style={{ fontSize: 14, fontWeight: 600 }}>Año de la PCP:</label>
-                <input 
-                  className="ga-input" 
-                  style={{ width: 100, padding: '6px 10px' }} 
-                  value={form.pcp?.anio || ''} 
-                  onChange={e => {
-                    const nextPcp = { ...form.pcp, anio: e.target.value };
-                    setForm({ ...form, pcp: nextPcp });
-                  }} 
-                  placeholder="Ej: 2026" 
-                />
-              </div>
-            </div>
-
-            {/* RUTINAS */}
-            <div style={{ marginBottom: 30 }}>
-              <h3 style={{ borderBottom: '2px solid #f1f5f9', paddingBottom: 8, marginBottom: 15 }}>1. Mapa de Rutinas</h3>
-              <div className="ga-form-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
-                <div>
-                  <label style={{ fontWeight: 600, display: 'block', marginBottom: 6 }}>Mi Semana (Lunes a Viernes)</label>
-                  <textarea 
-                    rows={6}
-                    className="ga-input"
-                    value={form.pcp?.rutinas?.semana || ''}
-                    onChange={e => {
-                      const nextPcp = { ...form.pcp, rutinas: { ...form.pcp?.rutinas, semana: e.target.value } };
-                      setForm({ ...form, pcp: nextPcp });
-                    }}
-                    placeholder="Describe la rutina de lunes a viernes..."
-                  />
-                </div>
-                <div>
-                  <label style={{ fontWeight: 600, display: 'block', marginBottom: 6 }}>Fin de Semana (Sábado y Domingo)</label>
-                  <textarea 
-                    rows={6}
-                    className="ga-input"
-                    value={form.pcp?.rutinas?.finDeSemana || ''}
-                    onChange={e => {
-                      const nextPcp = { ...form.pcp, rutinas: { ...form.pcp?.rutinas, finDeSemana: e.target.value } };
-                      setForm({ ...form, pcp: nextPcp });
-                    }}
-                    placeholder="Describe la rutina del fin de semana..."
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* PERFIL */}
-            <div style={{ marginBottom: 30 }}>
-              <h3 style={{ borderBottom: '2px solid #f1f5f9', paddingBottom: 8, marginBottom: 15 }}>2. Perfil Personal</h3>
-              <div className="ga-form-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
-                {/* SUEÑOS */}
-                <div>
-                  <label style={{ fontWeight: 600, display: 'block', marginBottom: 6 }}>Sueños de la Persona</label>
-                  {(form.pcp?.perfil?.suenos || []).map((sueno: string, idx: number) => (
-                    <div key={idx} style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
-                      <input 
-                        className="ga-input"
-                        value={sueno}
-                        onChange={e => {
-                          const nextSuenos = [...form.pcp.perfil.suenos];
-                          nextSuenos[idx] = e.target.value;
-                          const nextPcp = { ...form.pcp, perfil: { ...form.pcp.perfil, suenos: nextSuenos } };
-                          setForm({ ...form, pcp: nextPcp });
-                        }}
-                        placeholder="Ingresa un sueño..."
-                      />
-                      <button 
-                        type="button"
-                        className="ga-btn"
-                        style={{ color: 'var(--error)' }}
-                        onClick={() => {
-                          const nextSuenos = form.pcp.perfil.suenos.filter((_: any, i: number) => i !== idx);
-                          const nextPcp = { ...form.pcp, perfil: { ...form.pcp.perfil, suenos: nextSuenos } };
-                          setForm({ ...form, pcp: nextPcp });
-                        }}
-                      >✕</button>
-                    </div>
-                  ))}
-                  <button 
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                {form.pcp?.anio && (
+                  <button
                     type="button"
                     className="ga-btn secondary"
-                    onClick={() => {
-                      const nextSuenos = [...(form.pcp?.perfil?.suenos || []), ''];
-                      const nextPcp = { ...form.pcp, perfil: { ...form.pcp?.perfil, suenos: nextSuenos } };
-                      setForm({ ...form, pcp: nextPcp });
-                    }}
-                  >+ Agregar Sueño</button>
-                </div>
-
-                {/* CAPACIDADES */}
-                <div>
-                  <label style={{ fontWeight: 600, display: 'block', marginBottom: 6 }}>Capacidades de la Persona</label>
-                  {(form.pcp?.perfil?.capacidades || []).map((capacidad: string, idx: number) => (
-                    <div key={idx} style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
-                      <input 
-                        className="ga-input"
-                        value={capacidad}
-                        onChange={e => {
-                          const nextCap = [...form.pcp.perfil.capacidades];
-                          nextCap[idx] = e.target.value;
-                          const nextPcp = { ...form.pcp, perfil: { ...form.pcp.perfil, capacidades: nextCap } };
-                          setForm({ ...form, pcp: nextPcp });
-                        }}
-                        placeholder="Ingresa una capacidad..."
-                      />
-                      <button 
-                        type="button"
-                        className="ga-btn"
-                        style={{ color: 'var(--error)' }}
-                        onClick={() => {
-                          const nextCap = form.pcp.perfil.capacidades.filter((_: any, i: number) => i !== idx);
-                          const nextPcp = { ...form.pcp, perfil: { ...form.pcp.perfil, capacidades: nextCap } };
-                          setForm({ ...form, pcp: nextPcp });
-                        }}
-                      >✕</button>
-                    </div>
-                  ))}
-                  <button 
-                    type="button"
-                    className="ga-btn secondary"
-                    onClick={() => {
-                      const nextCap = [...(form.pcp?.perfil?.capacidades || []), ''];
-                      const nextPcp = { ...form.pcp, perfil: { ...form.pcp?.perfil, capacidades: nextCap } };
-                      setForm({ ...form, pcp: nextPcp });
-                    }}
-                  >+ Agregar Capacidad</button>
-                </div>
-              </div>
-            </div>
-
-            {/* RESULTADOS DE ESCALAS */}
-            <div style={{ marginBottom: 30 }}>
-              <h3 style={{ borderBottom: '2px solid #f1f5f9', paddingBottom: 8, marginBottom: 15 }}>3. Resultados de Escalas (Últimos resultados)</h3>
-              <div className="ga-form-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
-                <div>
-                  <label style={{ fontWeight: 600, display: 'block', marginBottom: 6 }}>GENCAT</label>
-                  <input 
-                    className="ga-input"
-                    value={form.pcp?.perfil?.resultadosEscalas?.gencat || ''}
-                    onChange={e => {
-                      const nextPcp = { 
-                        ...form.pcp, 
-                        perfil: { 
-                          ...form.pcp?.perfil, 
-                          resultadosEscalas: { ...form.pcp?.perfil?.resultadosEscalas, gencat: e.target.value } 
-                        } 
-                      };
-                      setForm({ ...form, pcp: nextPcp });
-                    }}
-                    placeholder="Resultados GENCAT"
-                  />
-                </div>
-                <div>
-                  <label style={{ fontWeight: 600, display: 'block', marginBottom: 6 }}>SIS</label>
-                  <input 
-                    className="ga-input"
-                    value={form.pcp?.perfil?.resultadosEscalas?.sis || ''}
-                    onChange={e => {
-                      const nextPcp = { 
-                        ...form.pcp, 
-                        perfil: { 
-                          ...form.pcp?.perfil, 
-                          resultadosEscalas: { ...form.pcp?.perfil?.resultadosEscalas, sis: e.target.value } 
-                        } 
-                      };
-                      setForm({ ...form, pcp: nextPcp });
-                    }}
-                    placeholder="Resultados SIS"
-                  />
-                </div>
-                <div>
-                  <label style={{ fontWeight: 600, display: 'block', marginBottom: 6 }}>INICO-FEAPS</label>
-                  <input 
-                    className="ga-input"
-                    value={form.pcp?.perfil?.resultadosEscalas?.inico || ''}
-                    onChange={e => {
-                      const nextPcp = { 
-                        ...form.pcp, 
-                        perfil: { 
-                          ...form.pcp?.perfil, 
-                          resultadosEscalas: { ...form.pcp?.perfil?.resultadosEscalas, inico: e.target.value } 
-                        } 
-                      };
-                      setForm({ ...form, pcp: nextPcp });
-                    }}
-                    placeholder="Resultados INICO"
-                  />
-                </div>
-                <div>
-                  <label style={{ fontWeight: 600, display: 'block', marginBottom: 6 }}>SAN MARTIN</label>
-                  <input 
-                    className="ga-input"
-                    value={form.pcp?.perfil?.resultadosEscalas?.sanMartin || ''}
-                    onChange={e => {
-                      const nextPcp = { 
-                        ...form.pcp, 
-                        perfil: { 
-                          ...form.pcp?.perfil, 
-                          resultadosEscalas: { ...form.pcp?.perfil?.resultadosEscalas, sanMartin: e.target.value } 
-                        } 
-                      };
-                      setForm({ ...form, pcp: nextPcp });
-                    }}
-                    placeholder="Resultados SAN MARTIN"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* PLAN DE FUTURO */}
-            <div style={{ marginBottom: 30 }}>
-              <h3 style={{ borderBottom: '2px solid #f1f5f9', paddingBottom: 8, marginBottom: 15 }}>4. Plan de Futuro Personal</h3>
-              <div className="ga-table-mobile-wrap">
-                <table className="ga-table">
-                  <thead>
-                    <tr style={{ background: '#f8fafc' }}>
-                      <th style={{ width: '120px' }}>Dimensión</th>
-                      <th>Objetivos</th>
-                      <th>Espacios</th>
-                      <th>Apoyos</th>
-                      <th>Responsables</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {[
-                      { id: 'BF', nombre: 'Bienestar Físico (BF)' },
-                      { id: 'DP', nombre: 'Desarrollo Personal (DP)' },
-                      { id: 'RI', nombre: 'Relaciones Interpersonales (RI)' },
-                      { id: 'IS', nombre: 'Inclusión Social (IS)' },
-                      { id: 'BE', nombre: 'Bienestar Emocional (BE)' },
-                      { id: 'AU', nombre: 'Autodeterminación (AU)' },
-                      { id: 'BM', nombre: 'Bienestar Material (BM)' },
-                      { id: 'DR', nombre: 'Derechos (DR)' }
-                    ].map(dim => {
-                      const dimKey = dim.id;
-                      const pfObj = form.pcp?.planFuturo?.[dimKey] || { objetivos: '', espacios: '', apoyos: '', responsables: '' };
-                      const handlePfChange = (field: string, val: string) => {
-                        const nextPF = { ...form.pcp?.planFuturo };
-                        nextPF[dimKey] = { ...pfObj, [field]: val };
-                        const nextPcp = { ...form.pcp, planFuturo: nextPF };
+                    style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', fontSize: 13, height: 38 }}
+                    onClick={handlePrintPcp}
+                  >
+                    🖨️ Imprimir PCP
+                  </button>
+                )}
+                <button 
+                  type="button" 
+                  className="ga-btn accent" 
+                  style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '8px 16px', fontSize: 13, height: 38 }}
+                  onClick={() => setShowPcpAiModal(true)}
+                >
+                  ✨ Generar con IA
+                </button>
+                {form.pcp?.anio && (
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <label style={{ fontSize: 14, fontWeight: 600, whiteSpace: 'nowrap' }}>Año PCP:</label>
+                    <input 
+                      className="ga-input" 
+                      style={{ width: 80, padding: '6px 10px' }} 
+                      value={form.pcp?.anio || ''} 
+                      onChange={e => {
+                        const nextPcp = { ...form.pcp, anio: e.target.value };
                         setForm({ ...form, pcp: nextPcp });
-                      };
-                      return (
-                        <tr key={dim.id}>
-                          <td style={{ fontWeight: 600, fontSize: 13, background: '#f8fafc' }}>{dim.nombre}</td>
-                          <td>
-                            <input 
-                              className="ga-input" 
-                              style={{ padding: 6, fontSize: 13 }}
-                              value={pfObj.objetivos || ''}
-                              onChange={e => handlePfChange('objetivos', e.target.value)}
-                              placeholder="Objetivos..."
-                            />
-                          </td>
-                          <td>
-                            <input 
-                              className="ga-input" 
-                              style={{ padding: 6, fontSize: 13 }}
-                              value={pfObj.espacios || ''}
-                              onChange={e => handlePfChange('espacios', e.target.value)}
-                              placeholder="Espacios..."
-                            />
-                          </td>
-                          <td>
-                            <input 
-                              className="ga-input" 
-                              style={{ padding: 6, fontSize: 13 }}
-                              value={pfObj.apoyos || ''}
-                              onChange={e => handlePfChange('apoyos', e.target.value)}
-                              placeholder="Apoyos..."
-                            />
-                          </td>
-                          <td>
-                            <input 
-                              className="ga-input" 
-                              style={{ padding: 6, fontSize: 13 }}
-                              value={pfObj.responsables || ''}
-                              onChange={e => handlePfChange('responsables', e.target.value)}
-                              placeholder="Responsables..."
-                            />
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                      }} 
+                      placeholder="Ej: 2026" 
+                    />
+                  </div>
+                )}
               </div>
             </div>
 
-            <div style={{ marginTop: 40, borderTop: '1px solid #f1f5f9', paddingTop: 25 }}>
-              <button className="ga-btn primary" style={{ padding: '10px 30px' }} onClick={handleSave} disabled={isSaving || isUploading}>
-                {isSaving ? 'Guardando PCP...' : 'Guardar Datos PCP'}
-              </button>
-            </div>
+            {!form.pcp?.anio ? (
+              /* ESTADO VACÍO (EMPTY STATE) */
+              <div style={{
+                padding: '50px 20px',
+                textAlign: 'center',
+                background: '#f8fafc',
+                border: '2px dashed #cbd5e1',
+                borderRadius: '12px',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '16px',
+                margin: '20px 0'
+              }}>
+                <div style={{ fontSize: '50px' }}>📋</div>
+                <h3 style={{ margin: 0, color: '#1e293b', fontSize: '18px', fontWeight: 700 }}>Sin PCP Activa para este Concurrente</h3>
+                <p style={{ margin: 0, color: '#64748b', fontSize: '14px', maxWidth: '480px', lineHeight: '1.6' }}>
+                  La Planificación Centrada en la Persona (PCP) es la base estructurada que la IA interpreta para generar informes de calidad. Puedes crearla manualmente de inmediato o generarla automáticamente a partir de una descripción.
+                </p>
+                <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
+                  <button 
+                    type="button" 
+                    className="ga-btn accent"
+                    style={{ padding: '10px 20px', fontWeight: 700 }}
+                    onClick={() => setShowPcpAiModal(true)}
+                  >
+                    ✨ Generar PCP con IA
+                  </button>
+                  <button 
+                    type="button" 
+                    className="ga-btn secondary"
+                    style={{ padding: '10px 20px', fontWeight: 600 }}
+                    onClick={() => {
+                      const nextPcp = initializePCP({ anio: new Date().getFullYear().toString() });
+                      setForm({ ...form, pcp: nextPcp });
+                    }}
+                  >
+                    ✍️ Crear PCP Manualmente
+                  </button>
+                </div>
+              </div>
+            ) : (
+              /* PCP ACTIVA: SUB-TAB NAVIGATION Y CONTENIDO */
+              <>
+                {/* Sub-tab navigation */}
+                <div style={{ display: 'flex', gap: '10px', borderBottom: '1px solid #e2e8f0', marginBottom: '24px', paddingBottom: '10px', overflowX: 'auto' }}>
+                  <button
+                    type="button"
+                    style={{
+                      padding: '8px 16px',
+                      fontSize: '13px',
+                      fontWeight: 700,
+                      borderRadius: '6px',
+                      border: 'none',
+                      background: pcpSubTab === 'rutinas' ? '#eff6ff' : 'transparent',
+                      color: pcpSubTab === 'rutinas' ? '#2563eb' : '#64748b',
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap'
+                    }}
+                    onClick={() => setPcpSubTab('rutinas')}
+                  >
+                    🕒 1. Rutinas y Escalas
+                  </button>
+                  <button
+                    type="button"
+                    style={{
+                      padding: '8px 16px',
+                      fontSize: '13px',
+                      fontWeight: 700,
+                      borderRadius: '6px',
+                      border: 'none',
+                      background: pcpSubTab === 'perfil' ? '#eff6ff' : 'transparent',
+                      color: pcpSubTab === 'perfil' ? '#2563eb' : '#64748b',
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap'
+                    }}
+                    onClick={() => setPcpSubTab('perfil')}
+                  >
+                    💭 2. Sueños y Capacidades
+                  </button>
+                  <button
+                    type="button"
+                    style={{
+                      padding: '8px 16px',
+                      fontSize: '13px',
+                      fontWeight: 700,
+                      borderRadius: '6px',
+                      border: 'none',
+                      background: pcpSubTab === 'planFuturo' ? '#eff6ff' : 'transparent',
+                      color: pcpSubTab === 'planFuturo' ? '#2563eb' : '#64748b',
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap'
+                    }}
+                    onClick={() => setPcpSubTab('planFuturo')}
+                  >
+                    🎯 3. Plan de Futuro Personal
+                  </button>
+                </div>
+
+                {/* CONTENIDOS SUB-TABS */}
+                {pcpSubTab === 'rutinas' && (
+                  <div>
+                    {/* RUTINAS */}
+                    <div style={{ marginBottom: 30 }}>
+                      <h3 style={{ borderBottom: '2px solid #f1f5f9', paddingBottom: 8, marginBottom: 15, fontSize: '16px', color: '#1e3a8a' }}>Mapa de Rutinas</h3>
+                      <div className="ga-form-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
+                        <div>
+                          <label style={{ fontWeight: 600, display: 'block', marginBottom: 6 }}>Mi Semana (Lunes a Viernes)</label>
+                          <textarea 
+                            rows={6}
+                            className="ga-input"
+                            value={form.pcp?.rutinas?.semana || ''}
+                            onChange={e => {
+                              const nextPcp = { ...form.pcp, rutinas: { ...form.pcp?.rutinas, semana: e.target.value } };
+                              setForm({ ...form, pcp: nextPcp });
+                            }}
+                            placeholder="Describe la rutina de lunes a viernes..."
+                          />
+                        </div>
+                        <div>
+                          <label style={{ fontWeight: 600, display: 'block', marginBottom: 6 }}>Fin de Semana (Sábado y Domingo)</label>
+                          <textarea 
+                            rows={6}
+                            className="ga-input"
+                            value={form.pcp?.rutinas?.finDeSemana || ''}
+                            onChange={e => {
+                              const nextPcp = { ...form.pcp, rutinas: { ...form.pcp?.rutinas, finDeSemana: e.target.value } };
+                              setForm({ ...form, pcp: nextPcp });
+                            }}
+                            placeholder="Describe la rutina del fin de semana..."
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* ESCALAS */}
+                    <div style={{ marginBottom: 20 }}>
+                      <h3 style={{ borderBottom: '2px solid #f1f5f9', paddingBottom: 8, marginBottom: 15, fontSize: '16px', color: '#1e3a8a' }}>Resultados de Escalas de Calidad de Vida</h3>
+                      <div className="ga-form-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
+                        <div>
+                          <label style={{ fontWeight: 600, display: 'block', marginBottom: 6 }}>GENCAT</label>
+                          <input 
+                            className="ga-input"
+                            value={form.pcp?.perfil?.resultadosEscalas?.gencat || ''}
+                            onChange={e => {
+                              const nextPcp = { 
+                                ...form.pcp, 
+                                perfil: { 
+                                  ...form.pcp?.perfil, 
+                                  resultadosEscalas: { ...form.pcp?.perfil?.resultadosEscalas, gencat: e.target.value } 
+                                } 
+                              };
+                              setForm({ ...form, pcp: nextPcp });
+                            }}
+                            placeholder="Resultados GENCAT"
+                          />
+                        </div>
+                        <div>
+                          <label style={{ fontWeight: 600, display: 'block', marginBottom: 6 }}>SIS</label>
+                          <input 
+                            className="ga-input"
+                            value={form.pcp?.perfil?.resultadosEscalas?.sis || ''}
+                            onChange={e => {
+                              const nextPcp = { 
+                                ...form.pcp, 
+                                perfil: { 
+                                  ...form.pcp?.perfil, 
+                                  resultadosEscalas: { ...form.pcp?.perfil?.resultadosEscalas, sis: e.target.value } 
+                                } 
+                              };
+                              setForm({ ...form, pcp: nextPcp });
+                            }}
+                            placeholder="Resultados SIS"
+                          />
+                        </div>
+                        <div>
+                          <label style={{ fontWeight: 600, display: 'block', marginBottom: 6 }}>INICO-FEAPS</label>
+                          <input 
+                            className="ga-input"
+                            value={form.pcp?.perfil?.resultadosEscalas?.inico || ''}
+                            onChange={e => {
+                              const nextPcp = { 
+                                ...form.pcp, 
+                                perfil: { 
+                                  ...form.pcp?.perfil, 
+                                  resultadosEscalas: { ...form.pcp?.perfil?.resultadosEscalas, inico: e.target.value } 
+                                } 
+                              };
+                              setForm({ ...form, pcp: nextPcp });
+                            }}
+                            placeholder="Resultados INICO"
+                          />
+                        </div>
+                        <div>
+                          <label style={{ fontWeight: 600, display: 'block', marginBottom: 6 }}>SAN MARTIN</label>
+                          <input 
+                            className="ga-input"
+                            value={form.pcp?.perfil?.resultadosEscalas?.sanMartin || ''}
+                            onChange={e => {
+                              const nextPcp = { 
+                                ...form.pcp, 
+                                perfil: { 
+                                  ...form.pcp?.perfil, 
+                                  resultadosEscalas: { ...form.pcp?.perfil?.resultadosEscalas, sanMartin: e.target.value } 
+                                } 
+                              };
+                              setForm({ ...form, pcp: nextPcp });
+                            }}
+                            placeholder="Resultados SAN MARTIN"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {pcpSubTab === 'perfil' && (
+                  <div>
+                    {/* SUEÑOS Y CAPACIDADES */}
+                    <div style={{ marginBottom: 20 }}>
+                      <h3 style={{ borderBottom: '2px solid #f1f5f9', paddingBottom: 8, marginBottom: 15, fontSize: '16px', color: '#1e3a8a' }}>Sueños y Capacidades de la Persona</h3>
+                      <div className="ga-form-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
+                        {/* SUEÑOS */}
+                        <div>
+                          <label style={{ fontWeight: 600, display: 'block', marginBottom: 6 }}>Sueños del Concurrente</label>
+                          {(form.pcp?.perfil?.suenos || []).map((sueno: string, idx: number) => (
+                            <div key={idx} style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
+                              <input 
+                                className="ga-input"
+                                value={sueno}
+                                onChange={e => {
+                                  const nextSuenos = [...form.pcp.perfil.suenos];
+                                  nextSuenos[idx] = e.target.value;
+                                  const nextPcp = { ...form.pcp, perfil: { ...form.pcp.perfil, suenos: nextSuenos } };
+                                  setForm({ ...form, pcp: nextPcp });
+                                }}
+                                placeholder="Ingresa un sueño..."
+                              />
+                              <button type="button" className="ga-btn" style={{ color: 'var(--error)' }} onClick={() => {
+                                const nextSuenos = form.pcp.perfil.suenos.filter((_: any, i: number) => i !== idx);
+                                const nextPcp = { ...form.pcp, perfil: { ...form.pcp.perfil, suenos: nextSuenos } };
+                                setForm({ ...form, pcp: nextPcp });
+                              }}>✕</button>
+                            </div>
+                          ))}
+                          <button type="button" className="ga-btn secondary" onClick={() => {
+                            const nextSuenos = [...(form.pcp?.perfil?.suenos || []), ''];
+                            const nextPcp = { ...form.pcp, perfil: { ...form.pcp?.perfil, suenos: nextSuenos } };
+                            setForm({ ...form, pcp: nextPcp });
+                          }}>+ Agregar Sueño</button>
+                        </div>
+
+                        {/* CAPACIDADES */}
+                        <div>
+                          <label style={{ fontWeight: 600, display: 'block', marginBottom: 6 }}>Capacidades y Fortalezas</label>
+                          {(form.pcp?.perfil?.capacidades || []).map((capacidad: string, idx: number) => (
+                            <div key={idx} style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
+                              <input 
+                                className="ga-input"
+                                value={capacidad}
+                                onChange={e => {
+                                  const nextCap = [...form.pcp.perfil.capacidades];
+                                  nextCap[idx] = e.target.value;
+                                  const nextPcp = { ...form.pcp, perfil: { ...form.pcp.perfil, capacidades: nextCap } };
+                                  setForm({ ...form, pcp: nextPcp });
+                                }}
+                                placeholder="Ingresa una capacidad..."
+                              />
+                              <button type="button" className="ga-btn" style={{ color: 'var(--error)' }} onClick={() => {
+                                const nextCap = form.pcp.perfil.capacidades.filter((_: any, i: number) => i !== idx);
+                                const nextPcp = { ...form.pcp, perfil: { ...form.pcp.perfil, capacidades: nextCap } };
+                                setForm({ ...form, pcp: nextPcp });
+                              }}>✕</button>
+                            </div>
+                          ))}
+                          <button type="button" className="ga-btn secondary" onClick={() => {
+                            const nextCap = [...(form.pcp?.perfil?.capacidades || []), ''];
+                            const nextPcp = { ...form.pcp, perfil: { ...form.pcp?.perfil, capacidades: nextCap } };
+                            setForm({ ...form, pcp: nextPcp });
+                          }}>+ Agregar Capacidad</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {pcpSubTab === 'planFuturo' && (
+                  <div>
+                    {/* PLAN DE FUTURO */}
+                    <div style={{ marginBottom: 20 }}>
+                      <h3 style={{ borderBottom: '2px solid #f1f5f9', paddingBottom: 8, marginBottom: 15, fontSize: '16px', color: '#1e3a8a' }}>Plan de Futuro Personal</h3>
+                      <div className="ga-table-mobile-wrap">
+                        <table className="ga-table">
+                          <thead>
+                            <tr style={{ background: '#f8fafc' }}>
+                              <th style={{ width: '200px' }}>Dimensión</th>
+                              <th>Objetivos</th>
+                              <th>Espacios</th>
+                              <th>Apoyos</th>
+                              <th>Responsables</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {[
+                              { id: 'BF', nombre: 'Bienestar Físico (BF)' },
+                              { id: 'DP', nombre: 'Desarrollo Personal (DP)' },
+                              { id: 'RI', nombre: 'Relaciones Interpersonales (RI)' },
+                              { id: 'IS', nombre: 'Inclusión Social (IS)' },
+                              { id: 'BE', nombre: 'Bienestar Emocional (BE)' },
+                              { id: 'AU', nombre: 'Autodeterminación (AU)' },
+                              { id: 'BM', nombre: 'Bienestar Material (BM)' },
+                              { id: 'DR', nombre: 'Derechos (DR)' }
+                            ].map(dim => {
+                              const dimKey = dim.id;
+                              const pfObj = form.pcp?.planFuturo?.[dimKey] || { objetivos: '', espacios: '', apoyos: '', responsables: '' };
+                              const handlePfChange = (field: string, val: string) => {
+                                const nextPF = { ...form.pcp?.planFuturo };
+                                nextPF[dimKey] = { ...pfObj, [field]: val };
+                                const nextPcp = { ...form.pcp, planFuturo: nextPF };
+                                setForm({ ...form, pcp: nextPcp });
+                              };
+                              return (
+                                <tr key={dim.id}>
+                                  <td style={{ fontWeight: 600, fontSize: 13, background: '#f8fafc' }}>{dim.nombre}</td>
+                                  <td>
+                                    <input 
+                                      className="ga-input" 
+                                      style={{ padding: 6, fontSize: 13 }}
+                                      value={pfObj.objetivos || ''}
+                                      onChange={e => handlePfChange('objetivos', e.target.value)}
+                                      placeholder="Objetivos..."
+                                    />
+                                  </td>
+                                  <td>
+                                    <input 
+                                      className="ga-input" 
+                                      style={{ padding: 6, fontSize: 13 }}
+                                      value={pfObj.espacios || ''}
+                                      onChange={e => handlePfChange('espacios', e.target.value)}
+                                      placeholder="Espacios..."
+                                    />
+                                  </td>
+                                  <td>
+                                    <input 
+                                      className="ga-input" 
+                                      style={{ padding: 6, fontSize: 13 }}
+                                      value={pfObj.apoyos || ''}
+                                      onChange={e => handlePfChange('apoyos', e.target.value)}
+                                      placeholder="Apoyos..."
+                                    />
+                                  </td>
+                                  <td>
+                                    <input 
+                                      className="ga-input" 
+                                      style={{ padding: 6, fontSize: 13 }}
+                                      value={pfObj.responsables || ''}
+                                      onChange={e => handlePfChange('responsables', e.target.value)}
+                                      placeholder="Responsables..."
+                                    />
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Botón de Guardado */}
+                <div style={{ marginTop: 40, borderTop: '1px solid #f1f5f9', paddingTop: 25, display: 'flex', justifyContent: 'space-between' }}>
+                  <button className="ga-btn primary" style={{ padding: '10px 30px' }} onClick={handleSave} disabled={isSaving || isUploading}>
+                    {isSaving ? 'Guardando PCP...' : 'Guardar Datos PCP'}
+                  </button>
+                  <button
+                    type="button"
+                    className="ga-btn"
+                    style={{ color: '#ef4444', background: 'none', border: '1px solid #fca5a5', padding: '10px 20px' }}
+                    onClick={() => {
+                      if (confirm('¿Deseas eliminar la PCP de este concurrente? Todos los datos de su planificación del año actual se borrarán.')) {
+                        const nextPcp = { ...form.pcp, anio: '' };
+                        setForm({ ...form, pcp: nextPcp });
+                      }
+                    }}
+                  >
+                    🗑️ Borrar PCP
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         )}
 
@@ -886,6 +1208,62 @@ export default function YoungsPage() {
         <span style={{ fontWeight: 600 }}>{page} / {totalPages}</span>
         <button className="ga-btn" onClick={() => loadYoungs(page + 1)} disabled={page >= totalPages}>Siguiente</button>
       </div>
+
+      {/* Modal de PCP con IA */}
+      {showPcpAiModal && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            background: '#fff', borderRadius: 12, padding: 24, maxWidth: 600, width: '90%',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.3)', display: 'flex', flexDirection: 'column', gap: 15
+          }}>
+            <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>✨ Generar PCP con IA</h2>
+            <p style={{ margin: 0, fontSize: 14, color: 'var(--muted)' }}>
+              Describe brevemente los intereses, metas, rutinas y capacidades del concurrente. La IA interpretará este texto para estructurar todos los campos de la PCP de forma coherente.
+            </p>
+            <textarea
+              className="ga-input"
+              rows={8}
+              style={{ width: '100%', resize: 'vertical', padding: '12px' }}
+              value={pcpAiPrompt}
+              onChange={e => setPcpAiPrompt(e.target.value)}
+              placeholder="Ejemplo: Juan es un joven muy puntual. Su sueño es poder viajar de forma autónoma en colectivo para ir al taller y participar de los eventos de fútbol los fines de semana. Tiene buena motricidad gruesa pero le cuesta concentrarse en tareas artísticas..."
+              disabled={generatingPcp}
+            />
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 10 }}>
+              <button 
+                type="button"
+                className="ga-btn secondary"
+                onClick={() => { setShowPcpAiModal(false); setPcpAiPrompt(''); }}
+                disabled={generatingPcp}
+              >
+                Cancelar
+              </button>
+              <button 
+                type="button"
+                className="ga-btn accent"
+                onClick={handleGeneratePcp}
+                disabled={generatingPcp || !pcpAiPrompt.trim()}
+              >
+                {generatingPcp ? '⏳ Procesando con IA...' : '✨ Generar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Asistente de Fusión Post-Importación */}
+      {importWizardOpen && (
+        <ExcelImportWizardModal
+          isOpen={importWizardOpen}
+          youngId={importWizardYoungId}
+          importedMonths={importWizardMonths}
+          onClose={() => setImportWizardOpen(false)}
+        />
+      )}
     </div>
   );
 }

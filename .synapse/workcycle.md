@@ -233,6 +233,15 @@
   - Verificar compilación exitosa de Next.js (`npm run build`) y tests de Vitest (`npm run test`).
 - **Estado**: Completado. ✅
 
+## 2026-06-23 (Importación Completa Excel, UI PCP con IA, Fusión Flotante y Borradores desde Cero)
+- **Objetivo**: Implementar importación interactiva de Excel con PCP y fusión directa, rediseñar panel de PCP de jóvenes, implementar panel de control flotante para selección de borradores y permitir crear borradores mensuales vacíos desde cero en `/form`.
+- **Actividades**:
+  - Crear e integrar `ExcelImportWizardModal` tras la importación exitosa para permitir la fusión de 1 a 3 meses de forma directa.
+  - Implementar "Empty State" de PCP con opciones de generación manual e IA, y rediseñar el formulario de PCP en sub-secciones ordenadas.
+  - Diseñar e implementar el panel flotante de fusión trimestral en la vista de `/forms`.
+  - Agregar botones "Vaciar Checklist" y "Cargar Plantilla" en el editor de formularios, y permitir inicializar un formulario en blanco.
+- **Estado**: En progreso (Fase de Planeamiento y Aprobación del Usuario). 🟡
+
 
 
 
