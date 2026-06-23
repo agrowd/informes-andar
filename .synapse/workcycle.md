@@ -13,6 +13,7 @@
   - Correr pruebas de flujo completo (`scratch/test_full_flow.ts`) verificando de forma correcta todo el ciclo desde el Excel original hasta el DOCX trimestral final.
   - Desplegar todos los cambios al VPS en caliente con el script `scratch/deploy_files.mjs` (compilando Next.js y reiniciando el PM2 daemon con éxito).
   - Purgar el bloqueo de autenticación de GitHub HTTPS modificando temporalmente la URL remota a SSH para aprovechar la llave local del usuario, realizando el push con éxito y restaurando el origen a HTTPS para evitar alterar la configuración original.
+  - Crear y ejecutar el script `scratch/clear_reports_forms.mjs` para limpiar todos los registros de las tablas `reports`, `forms` y sus correspondientes logs de auditoría en la base de datos PostgreSQL Neon, reiniciando las secuencias de IDs a 1.
 - **Estado**: Completado. ✅
 
 ## 2026-06-10 (Caída General del Servidor VPS / Handshake Timeout)

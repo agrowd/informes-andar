@@ -161,3 +161,10 @@
 - **Push exitoso**: Redirigió temporalmente el origin a `git@github.com:agrowd/informes-andar.git`, subió los commits de forma segura sin pedir usuario/contraseña, y restableció el origen a la URL HTTPS original.
 - **Estado final**: Repositorio y VPS 100% actualizados y sincronizados. Todo completado con éxito.
 
+## Usuario (2026-06-23 - Continuación):
+- Pidió vaciar los informes (`reports`) y borradores (`forms`) de la base de datos para comenzar de cero únicamente con los nuevos informes mensuales (grilla 2x2) y trimestrales (consolidados en Word).
+
+## Antigravity:
+- **Limpieza de Base de Datos**: Creó y ejecutó el script `scratch/clear_reports_forms.mjs` que vacía las tablas `reports` y `forms`, resetea sus contadores/secuencias de IDs a 1, y elimina los logs de auditoría asociados a estos modelos en la base de datos Postgres Neon.
+- **Sincronización**: Guardó el script de mantenimiento en el repositorio y realizó el push definitivo a GitHub. Conexión de producción y local limpias.
+
