@@ -258,10 +258,28 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // Dreams (row 18 to 20)
-      for (let r = 18; r <= 20; r++) {
-        const val = pcpSheet.getCell(`A${r}`).value;
-        if (val) pcpData.perfil.suenos.push(cleanText(val));
+      // Dreams (dinámico)
+      let scanDreams = false;
+      const ignoreDreamsLabels = ['SUEÑO', 'SUEÑOS', 'DCV', 'AREA DE APOYO', 'SEGUIMIENTO'];
+      for (let r = 12; r <= 25; r++) {
+        const val = pcpSheet.getCell(r, 1).value;
+        if (val) {
+          const txt = String(val).trim().toUpperCase();
+          if (txt.includes('SUEÑO') || txt.includes('SUEÑOS')) {
+            scanDreams = true;
+            continue;
+          }
+          if (txt === 'SIS' || txt.includes('PLAN DE FUTURO') || txt.includes('DIMENSI') || txt.includes('GENCAT')) {
+            scanDreams = false;
+            break;
+          }
+          if (scanDreams) {
+            const cleanVal = cleanText(val);
+            if (cleanVal && !ignoreDreamsLabels.includes(cleanVal.toUpperCase()) && !pcpData.perfil.suenos.includes(cleanVal)) {
+              pcpData.perfil.suenos.push(cleanVal);
+            }
+          }
+        }
       }
 
       // Capabilities (row 17 Col 5)
@@ -271,9 +289,9 @@ export async function POST(req: NextRequest) {
         pcpData.perfil.capacidades = caps;
       }
 
-      // Plan de futuro (row 26 to 31)
+      // Plan de futuro (row 24 to 35)
       const dims = ['BF', 'DP', 'RI', 'IS', 'BE', 'AU', 'BM', 'DR'];
-      for (let r = 26; r <= 35; r++) {
+      for (let r = 24; r <= 35; r++) {
         const dimCodeRaw = pcpSheet.getCell(`A${r}`).value;
         if (!dimCodeRaw) continue;
         let dimCode = String(dimCodeRaw).trim().toUpperCase().replace(/\./g, '');
@@ -326,6 +344,29 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No se pudo extraer el nombre del joven de la solapa PCP ni de las solapas mensuales (ej: Celda A3 o A2)' }, { status: 400 });
     }
 
+    // Helper para traducir nombres de meses a números
+    const getMonthNumber = (name: string): string => {
+      const months: Record<string, string> = {
+        'ENERO': '01', 'ENE': '01',
+        'FEBRERO': '02', 'FEB': '02',
+        'MARZO': '03', 'MAR': '03',
+        'ABRIL': '04', 'ABR': '04',
+        'MAYO': '05', 'MAY': '05',
+        'JUNIO': '06', 'JUN': '06',
+        'JULIO': '07', 'JUL': '07',
+        'AGOSTO': '08', 'AGO': '08',
+        'SEPTIEMBRE': '09', 'SEP': '09', 'SETIEMBRE': '09', 'SET': '09',
+        'OCTUBRE': '10', 'OCT': '10',
+        'NOVIEMBRE': '11', 'NOV': '11',
+        'DICIEMBRE': '12', 'DIC': '12'
+      };
+      const n = name.trim().toUpperCase();
+      for (const [key, val] of Object.entries(months)) {
+        if (n.startsWith(key) || n.includes(key)) return val;
+      }
+      return '';
+    };
+
     // 2. PARSEAR PLANILLAS MENSUALES
     const monthlyReports: any[] = [];
 
@@ -341,8 +382,11 @@ export async function POST(req: NextRequest) {
         sheetNameUpper.startsWith('HOJA')
       ) continue;
 
+      const monthNum = getMonthNumber(sheet.name);
+      const parsedPeriod = monthNum ? `${anioPcp || new Date().getFullYear()}-${monthNum}` : sheet.name.trim().toUpperCase();
+
       const report: any = {
-        periodo: sheet.name.trim().toUpperCase(),
+        periodo: parsedPeriod,
         facilitadorNombre: '',
         taller: '',
         talleres: [],
