@@ -120,3 +120,28 @@
 **Solución:** Se implementó una lógica de coincidencia flexible y caso-insensible en la solapa de PCP, y se pasó a excluirla del mapeo de planillas mensuales mediante la validación directa de su ID de hoja (`sheet.id === pcpSheet.id`).
 **Estado:** ✅ FIXED
 
+## ERR-21: Escalas SIS/GENCAT cruzadas por celdas mergeadas en Excel (2026-06-24)
+**Síntoma:** Al importar un Excel con PCP, la escala SIS se llenaba con el valor "GENCAT" y viceversa.
+**Root Cause:** Las celdas de escalas en el Excel están mergeadas (A21:C21 = "SIS", D21:F21 = "GENCAT"). El loop iteraba sobre las celdas de continuación del merge (B21, C21) como si fueran labels independientes. Al procesar C21 (valor "SIS"), miraba la celda siguiente D21 (valor "GENCAT") y lo asignaba erróneamente como el score de SIS.
+**Solución:** Implementar un `Set<string>` (`foundScales`) para trackear qué escalas ya fueron procesadas y solo procesar la primera aparición de cada label. Además, validar que el valor siguiente no sea otro label de escala conocido (usando `isScaleLabel()`).
+**Commit:** `d25abdb`
+**Estado:** ✅ FIXED
+
+## ERR-22: Date | null no asignable a Primitive en driver Neon SQL (2026-06-24)
+**Síntoma:** Error de compilación TypeScript: `Type 'Date' is not assignable to type 'Primitive'` en la query de INSERT de youngs.
+**Root Cause:** El driver `@neondatabase/serverless` (template literal SQL) no acepta objetos `Date` nativos de JavaScript como parámetros. Solo acepta tipos primitivos (string, number, boolean, null).
+**Solución:** Convertir `pcpFechaNacimiento` a string ISO (`pcpFechaNacimiento.toISOString()`) antes de pasarlo a las queries SQL.
+**Commit:** `d25abdb`
+**Estado:** ✅ FIXED
+
+## ERR-23: Sueño erróneo "SIS" y omisión de dimensión Bienestar Físico (BF) en importación de PCP (2026-06-24)
+**Síntoma:** En el informe trimestral generado de Marisol Fernanda Brito figura `Meta o Sueño para 2026: SIS` y la dimensión `BF` no se importa del Excel.
+**Root Cause:**
+1. El parser de sueños en `import-excel/route.ts` escaneaba de forma estática las filas 18 a 20 de la columna A. En la fila 20 del Excel de Marisol dice `"SIS"` (es el label de la escala), tomando esto como sueño, mientras que el sueño real está en `A16`.
+2. El parser de dimensiones del plan de futuro comenzaba en la fila 26, omitiendo la fila 25 que contenía la dimensión de Bienestar Físico (`BF`).
+**Solución:** 
+1. Se implementó una lógica de escaneo dinámica para sueños en la columna A, que inicia al encontrar `"SUEÑO"` / `"SUEÑOS"` y se detiene al toparse con `"SIS"` o `"PLAN DE FUTURO"`.
+2. Se amplió el rango del bucle de dimensiones para comenzar en la fila 24, procesando correctamente la dimensión `BF` (fila 25).
+**Commit:** `2a7de6f`
+**Estado:** ✅ FIXED
+

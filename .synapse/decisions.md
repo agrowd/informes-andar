@@ -38,6 +38,10 @@
 | D-34 | **Escaneo flexible de metadatos en importador** | Buscar los metadatos de facilitador y taller escaneando las filas 1 a 6 y columnas 1 a 8 en lugar de depender de posiciones fijas (como `D4` o `A5`), logrando compatibilidad con múltiples variantes de diseño de planillas. | 🔒 LOCKED |
 | D-35 | **Vinculación Dinámica de Años en DOCX** | Reemplazar los años fijos (2024 y 2025) en el XML de la plantilla de Word por placeholders `{pcpAnio}` y `{periodoAnio}` e inyectarlos desde el endpoint de descarga realizando un JOIN en Postgres para obtener el PCP del concurrente, garantizando consistencia temporal. | 🔒 LOCKED |
 | D-36 | **Exclusión Dinámica de PCP en Importador** | Identificar la solapa de PCP por ID en lugar de solo por nombre para excluirla de forma robusta de la importación de planillas de habilidades mensuales, evitando colisiones si la solapa tiene sufijos o nombres especiales. | 🔒 LOCKED |
+| D-37 | **Fidelidad Absoluta de Datos en IA** | Prohibir inductores (biasing examples) en la definición de claves JSON del prompt de fusión trimestral, forzando a la IA a redactar sobre apoyos recreativos en lugar de alucinar destrezas motrices o independencia física no registradas en concurrentes con movilidad reducida (silla de ruedas). | 🔒 LOCKED |
+| D-38 | **Búsqueda Dinámica de Sueños en PCP** | Escanear de forma secuencial la columna A del PCP identificando el inicio mediante la palabra clave `"SUEÑO"` / `"SUEÑOS"` y deteniéndose ante etiquetas como `"SIS"` o `"PLAN DE FUTURO"`, logrando una captura fiel del sueño y evitando capturar erróneamente siglas de escalas. | 🔒 LOCKED |
+| D-39 | **Ampliación de Escaneo de Dimensiones PFP** | Iniciar el barrido del plan de futuro del PCP en la fila 24 (en lugar de la 26) para permitir capturar la dimensión `BF` (Bienestar Físico) que se ubica en la fila 25 de la plantilla oficial de Andar. | 🔒 LOCKED |
+
 
 
 

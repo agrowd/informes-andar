@@ -1,5 +1,32 @@
 # 🗓️ Workcycle Log
 
+## 2026-06-24 (Corrección de Sueño "SIS" y Omisión de Dimensión BF en Importador de Excel)
+- **Objetivo**: Solucionar el problema en el importador de Excel por el cual se capturaba la sigla "SIS" como meta o sueño de la persona y se omitía la dimensión de Bienestar Físico (BF) en el PCP de Marisol Fernanda Brito.
+- **Actividades**:
+  - Implementar búsqueda dinámica de sueños en la columna A de la solapa PCP de Excel, iniciando tras encontrar "SUEÑO" / "SUEÑOS" y deteniéndose ante "SIS" o "PLAN DE FUTURO".
+  - Ampliar el rango de lectura del Plan de Futuro Personal a partir de la fila 24, capturando correctamente la dimensión "BF" (fila 25).
+  - Validar los cambios localmente con el script de prueba `scratch/test_import_marisol.mjs` usando la planilla de Marisol Fernanda Brito.
+  - Realizar commit y push de la corrección a GitHub.
+  - Ejecutar el script `scratch/deploy_files.mjs` para desplegar la actualización en caliente en el VPS de producción y reiniciar PM2.
+- **Estado**: Completado ✅
+
+## 2026-06-24 (Mejora del Importador Excel: PCP completa, foto, escalas y facilitador)
+- **Objetivo**: Corregir y completar el importador de Excel (foto, escalas, metadatos y facilitador), unificar la gestión de borradores y fusión en el perfil del joven, implementar duplicado inteligente de meses y solucionar márgenes del PDF y tiempo verbal del reporte trimestral.
+- **Actividades**:
+  - Fix: Convertir columna `foto` de `VARCHAR(500)` a `TEXT` en Postgres para soportar imágenes base64.
+  - Fix: Parseo de escalas (SIS/GENCAT) para manejar celdas mergeadas de Excel que causaban asignación cruzada incorrecta.
+  - Fix: Error de tipo `Date | null` no asignable a `Primitive` en driver Neon SQL.
+  - Implementar extracción de imagen embebida de la hoja PCP y escaneo dinámico de campos.
+  - Implementar asignación automática del facilitador que importa el Excel.
+  - Diseñar e integrar una nueva sub-sección de **Borradores Mensuales** en la pestaña de `Historial` de la ficha del joven.
+  - Habilitar la **fusión trimestral y generación de Word** directamente desde la ficha de perfil de cada joven.
+  - Implementar **duplicado inteligente** con prompt que autoincrementa el mes sugerido (ej. de 2026-05 sugiere 2026-06).
+  - Traducir automáticamente los nombres de las solapas de Excel importadas (ej. "MAYO") a su período estándar `YYYY-MM`.
+  - Corregir el solapamiento del membrete en el PDF subiendo la imagen del logo y aumentando el margen superior de Playwright a `52mm`.
+  - Reforzar la instrucción de redactar el informe trimestral estrictamente en **tiempo presente** en el system prompt de OpenAI.
+  - Build local Next.js exitoso y despliegue completo de cambios en producción.
+- **Estado**: Completado ✅
+
 ## 2026-06-22 (Consolidación de Escalas, PCP e Informes Trimestrales en VPS)
 - **Objetivo**: Integrar la escala de desarrollo de 4 niveles en grillas 2x2, incorporar soporte de PCP y generar informes trimestrales DOCX con narrativa de OpenAI (GPT-4o).
 - **Actividades**:
@@ -259,3 +286,11 @@
   - Agregar botón "📋 Duplicar para otro mes" en `/form/page.tsx` que despliega un selector de mes y crea el nuevo borrador de forma automática sin alterar el original.
   - Validar build de producción local, correr Vitest, y desplegar en caliente al VPS reiniciando PM2 de forma exitosa.
 - **Estado**: Completado. ✅
+
+## 2026-06-24 (Extracción de Foto del PCP, Asignación del Facilitador y Metadatos de PCP)
+- **Objetivo**: Mejorar el importador de Excel para extraer la foto del joven, completar metadatos (taller, legajo, obra social, DNI, fecha de nacimiento) desde la solapa de PCP, y asignar automáticamente al facilitador que sube la planilla.
+- **Actividades**:
+  - Crear e implementar un plan de trabajo.
+  - Modificar la base de datos Postgres alterando la columna `foto` a `TEXT`.
+  - [En Progreso] Modificar `import-excel/route.ts` para extraer la imagen más grande del PCP (foto) y guardar metadatos.
+
