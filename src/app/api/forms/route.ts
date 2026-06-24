@@ -164,43 +164,80 @@ export async function GET(req: NextRequest) {
     const pageSize = parseInt(url.searchParams.get('pageSize') || '20');
     const offset = (page - 1) * pageSize;
     
-    console.log('[API /forms] Sesión:', session ? { email: session.user?.email, role } : 'null');
+    const youngIdParam = url.searchParams.get('youngId');
+    
+    console.log('[API /forms] Sesión:', session ? { email: session.user?.email, role } : 'null', 'Filter youngId:', youngIdParam);
     
     if (USE_POSTGRES && sql) {
       console.log('[API /forms] Usando Postgres...');
       let countQuery;
       let dataQuery;
+      const youngIdFilter = youngIdParam ? Number(youngIdParam) : null;
       
       if (role === 'FACILITADOR' && session?.user) {
         const userId = Number((session.user as any).id);
-        countQuery = sql`SELECT COUNT(*) as total FROM forms WHERE created_by = ${userId}`;
-        dataQuery = sql`
-          SELECT 
-            f.*,
-            u.name as facilitador_nombre,
-            u.email as facilitador_email,
-            y.nombre_completo as joven_nombre
-          FROM forms f
-          LEFT JOIN users u ON f.created_by = u.id
-          LEFT JOIN youngs y ON f.young_id = y.id
-          WHERE f.created_by = ${userId}
-          ORDER BY f.updated_at DESC
-          LIMIT ${pageSize} OFFSET ${offset}
-        `;
+        if (youngIdFilter) {
+          countQuery = sql`SELECT COUNT(*) as total FROM forms WHERE created_by = ${userId} AND young_id = ${youngIdFilter}`;
+          dataQuery = sql`
+            SELECT 
+              f.*,
+              u.name as facilitador_nombre,
+              u.email as facilitador_email,
+              y.nombre_completo as joven_nombre
+            FROM forms f
+            LEFT JOIN users u ON f.created_by = u.id
+            LEFT JOIN youngs y ON f.young_id = y.id
+            WHERE f.created_by = ${userId} AND f.young_id = ${youngIdFilter}
+            ORDER BY f.updated_at DESC
+            LIMIT ${pageSize} OFFSET ${offset}
+          `;
+        } else {
+          countQuery = sql`SELECT COUNT(*) as total FROM forms WHERE created_by = ${userId}`;
+          dataQuery = sql`
+            SELECT 
+              f.*,
+              u.name as facilitador_nombre,
+              u.email as facilitador_email,
+              y.nombre_completo as joven_nombre
+            FROM forms f
+            LEFT JOIN users u ON f.created_by = u.id
+            LEFT JOIN youngs y ON f.young_id = y.id
+            WHERE f.created_by = ${userId}
+            ORDER BY f.updated_at DESC
+            LIMIT ${pageSize} OFFSET ${offset}
+          `;
+        }
       } else {
-        countQuery = sql`SELECT COUNT(*) as total FROM forms`;
-        dataQuery = sql`
-          SELECT 
-            f.*,
-            u.name as facilitador_nombre,
-            u.email as facilitador_email,
-            y.nombre_completo as joven_nombre
-          FROM forms f
-          LEFT JOIN users u ON f.created_by = u.id
-          LEFT JOIN youngs y ON f.young_id = y.id
-          ORDER BY f.updated_at DESC
-          LIMIT ${pageSize} OFFSET ${offset}
-        `;
+        if (youngIdFilter) {
+          countQuery = sql`SELECT COUNT(*) as total FROM forms WHERE young_id = ${youngIdFilter}`;
+          dataQuery = sql`
+            SELECT 
+              f.*,
+              u.name as facilitador_nombre,
+              u.email as facilitador_email,
+              y.nombre_completo as joven_nombre
+            FROM forms f
+            LEFT JOIN users u ON f.created_by = u.id
+            LEFT JOIN youngs y ON f.young_id = y.id
+            WHERE f.young_id = ${youngIdFilter}
+            ORDER BY f.updated_at DESC
+            LIMIT ${pageSize} OFFSET ${offset}
+          `;
+        } else {
+          countQuery = sql`SELECT COUNT(*) as total FROM forms`;
+          dataQuery = sql`
+            SELECT 
+              f.*,
+              u.name as facilitador_nombre,
+              u.email as facilitador_email,
+              y.nombre_completo as joven_nombre
+            FROM forms f
+            LEFT JOIN users u ON f.created_by = u.id
+            LEFT JOIN youngs y ON f.young_id = y.id
+            ORDER BY f.updated_at DESC
+            LIMIT ${pageSize} OFFSET ${offset}
+          `;
+        }
       }
       
       const countResult = await countQuery;
@@ -228,6 +265,7 @@ export async function GET(req: NextRequest) {
       const { YoungModel } = await import('@/models/Young');
       const findFilter: any = {};
       if (role === 'FACILITADOR') findFilter.createdBy = (session?.user as any)?.id;
+      if (youngIdParam) findFilter.youngId = youngIdParam;
       const total = await FormModel.countDocuments(findFilter);
       const items = await FormModel.find(findFilter).sort({ updatedAt: -1 }).limit(pageSize).skip(offset).lean();
       

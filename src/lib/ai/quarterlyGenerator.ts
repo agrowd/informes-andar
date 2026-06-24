@@ -23,7 +23,7 @@ export async function generateQuarterlyReportNarrative(options: QuarterlyGenerat
       messages: [
         {
           role: 'system',
-          content: 'Eres un profesional especializado en informes evolutivos de discapacidad bajo el modelo de Planificación Centrada en la Persona (PCP) y Calidad de Vida. Generas narrativas sumamente fluidas, cálidas, detalladas y profesionales en español, sin listas y sin placeholders. Tu salida debe ser estrictamente un objeto JSON.'
+          content: 'Eres un profesional especializado en informes evolutivos de discapacidad bajo el modelo de Planificación Centrada en la Persona (PCP) y Calidad de Vida. Generas narrativas sumamente fluidas, cálidas, detalladas y profesionales en español, sin listas y sin placeholders. OBLIGATORIO: Toda tu redacción debe estar expresada estrictamente en tiempo PRESENTE (por ejemplo: "asiste", "participa", "colabora", "comparte"), transformando activamente cualquier insumo en pasado a presente. Tu salida debe ser estrictamente un objeto JSON.'
         },
         {
           role: 'user',
@@ -135,7 +135,7 @@ ${monthlyContext}
    - Si se trabajaron caminatas o circuitos, lúcelo en "Habilidades para metas deportivas".
    - Si se trabajaron relajación, interacciones o musicoterapia, lúcelo en "Habilidades para metas sociales".
 4. Sigue estrictamente la estructura JSON indicada abajo y no agregues ninguna clave extra.
-5. **Tiempo verbal obligatorio**: Escribe toda la redacción estrictamente en tiempo presente (por ejemplo: 'Juan Pablo participa...', 'colabora...', 'realiza...', en lugar de usar formas en pasado como 'participó', 'colaboró', ni presente perfecto como 'ha participado'). Toda la narrativa debe dar la sensación de evolución actual, activa y continua.
+5. **Tiempo verbal obligatorio**: Escribe toda la redacción estrictamente en tiempo presente (por ejemplo: 'Juan Pablo participa...', 'colabora...', 'realiza...', en lugar de usar formas en pasado como 'participó', 'colaboró', ni presente perfecto como 'ha participado'). Toda la narrativa debe dar la sensación de evolución actual, activa y continua. Transforma de forma proactiva cualquier observación o logro que venga redactado en pasado a su equivalente en presente (ej. cambia "asistió" por "asiste", "logró" por "logra").
 
 ## FORMATO DE SALIDA (DEBE SER JSON ESTRICTO)
 Responde con un objeto JSON con las siguientes claves y con textos narrativos de al menos 4-5 líneas por sección:

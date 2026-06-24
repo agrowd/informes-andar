@@ -131,10 +131,40 @@ export default function FormsList() {
     }
   };
 
-  const duplicateForm = async (id: string) => {
-    if (!confirm('¿Deseas duplicar este borrador para crear uno nuevo basado en este?')) return;
+  const duplicateForm = async (id: string, currentPeriod?: string) => {
+    let sugerido = '';
+    if (currentPeriod) {
+      const match = currentPeriod.match(/^(\d{4})-(\d{2})$/);
+      if (match) {
+        let year = parseInt(match[1]);
+        let month = parseInt(match[2]);
+        month++;
+        if (month > 12) {
+          month = 1;
+          year++;
+        }
+        sugerido = `${year}-${String(month).padStart(2, '0')}`;
+      }
+    }
+    
+    const nuevoPeriodo = prompt(
+      `¿Para qué período (mes) deseas duplicar este borrador?\n(Formato sugerido: AAAA-MM)`,
+      sugerido || currentPeriod || ''
+    );
+    
+    if (nuevoPeriodo === null) return;
+    const trimmed = nuevoPeriodo.trim();
+    if (!trimmed) {
+      alert('Debes ingresar un período válido.');
+      return;
+    }
+
     try {
-      const res = await fetch(`/api/forms/${id}/copy`, { method: 'POST' });
+      const res = await fetch(`/api/forms/${id}/copy`, { 
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ periodo: trimmed })
+      });
       if (!res.ok) {
         const error = await res.json().catch(() => ({ error: 'Error duplicando formulario' }));
         throw new Error(error.error || `HTTP ${res.status}`);
@@ -462,7 +492,7 @@ export default function FormsList() {
                                         </a>
                                         <button 
                                           className="ga-btn secondary" 
-                                          onClick={() => duplicateForm(id)} 
+                                          onClick={() => duplicateForm(id, it.periodo)} 
                                           style={{ fontSize: 12, padding: '4px 8px', whiteSpace: 'nowrap' }}
                                           title="Crear una copia de este borrador"
                                         >

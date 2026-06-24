@@ -26,7 +26,10 @@ const FILES_TO_DEPLOY = [
   'src/lib/ai/quarterlyGenerator.ts',
   'src/lib/form/defaultChecklists.ts',
   'templates/monthly_template.xlsx',
-  'templates/trimestral_template.docx'
+  'templates/trimestral_template.docx',
+  'src/app/api/forms/route.ts',
+  'src/lib/pdf/render.ts',
+  'src/lib/templates/report.njk'
 ];
 
 const REMOTE_BASE_DIR = '/srv/informes-andar';

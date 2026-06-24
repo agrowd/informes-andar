@@ -49,6 +49,11 @@ export default function YoungsPage() {
   const [activeTab, setActiveTab] = useState<'perfil' | 'pcp' | 'asignaciones' | 'historial' | 'analiticas'>('perfil');
   const [reportsHistory, setReportsHistory] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [monthlyForms, setMonthlyForms] = useState<any[]>([]);
+  const [loadingMonthlyForms, setLoadingMonthlyForms] = useState(false);
+  const [selectedFormIds, setSelectedFormIds] = useState<Set<string>>(new Set());
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [generatingTrimestral, setGeneratingTrimestral] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [evolutionData, setEvolutionData] = useState<any[]>([]);
@@ -327,6 +332,108 @@ export default function YoungsPage() {
     }
   };
 
+  const loadMonthlyForms = async (youngId: string) => {
+    setLoadingMonthlyForms(true);
+    try {
+      const res = await fetch(`/api/forms?youngId=${youngId}&pageSize=100`);
+      if (res.ok) {
+        const json = await res.json();
+        setMonthlyForms(json.items || []);
+      }
+    } catch (error) {
+      console.error('Error cargando borradores mensuales:', error);
+    } finally {
+      setLoadingMonthlyForms(false);
+    }
+  };
+
+  const duplicateMonthlyForm = async (id: string, currentPeriod: string) => {
+    let sugerido = '';
+    if (currentPeriod) {
+      const match = currentPeriod.match(/^(\d{4})-(\d{2})$/);
+      if (match) {
+        let year = parseInt(match[1]);
+        let month = parseInt(match[2]);
+        month++;
+        if (month > 12) {
+          month = 1;
+          year++;
+        }
+        sugerido = `${year}-${String(month).padStart(2, '0')}`;
+      }
+    }
+    
+    const nuevoPeriodo = prompt(
+      `¿Para qué período (mes) deseas duplicar este borrador?\n(Formato sugerido: AAAA-MM)`,
+      sugerido || currentPeriod || ''
+    );
+    
+    if (nuevoPeriodo === null) return;
+    const trimmed = nuevoPeriodo.trim();
+    if (!trimmed) {
+      alert('Debes ingresar un período válido.');
+      return;
+    }
+    
+    try {
+      const res = await fetch(`/api/forms/${id}/copy`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ periodo: trimmed })
+      });
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({ error: 'Error duplicando formulario' }));
+        throw new Error(error.error || `HTTP ${res.status}`);
+      }
+      const data = await res.json();
+      alert('✅ Borrador duplicado correctamente. Serás redirigido para editarlo.');
+      window.location.href = `/form?formId=${data.id}`;
+    } catch (error: any) {
+      console.error('Error duplicando borrador:', error);
+      alert('Error: ' + (error.message || 'No se pudo duplicar el borrador'));
+    }
+  };
+
+  const handleGenerateTrimestralForYoung = async () => {
+    const selectedIdsArray = Array.from(selectedFormIds);
+    if (selectedIdsArray.length < 1 || selectedIdsArray.length > 3) {
+      alert('Selecciona entre 1 y 3 borradores mensuales.');
+      return;
+    }
+    
+    setGeneratingTrimestral(true);
+    try {
+      const res = await fetch('/api/reports/trimestral', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ formIds: selectedIdsArray })
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Error generando informe trimestral' }));
+        throw new Error(err.error || `HTTP ${res.status}`);
+      }
+
+      const result = await res.json();
+      alert('✅ Informe Trimestral generado con éxito. Se iniciará la descarga en formato Word.');
+      
+      setSelectedFormIds(new Set());
+      setSelectionMode(false);
+      
+      const youngId = form.id || form._id;
+      if (youngId) {
+        loadReportsHistory(youngId);
+      }
+      
+      window.location.href = `/api/reports/${result.reportId}/.docx`;
+    } catch (error: any) {
+      console.error('Error al generar informe trimestral:', error);
+      alert(`Error: ${error.message}`);
+    } finally {
+      setGeneratingTrimestral(false);
+    }
+  };
+
   const loadEvolution = async (youngId: string) => {
     setLoadingEvolution(true);
     try {
@@ -509,7 +616,10 @@ export default function YoungsPage() {
     const id = young.id || young._id;
     if (id) {
       loadReportsHistory(id);
+      loadMonthlyForms(id);
       loadEvolution(id);
+      setSelectedFormIds(new Set());
+      setSelectionMode(false);
     }
   };
 
@@ -1102,40 +1212,256 @@ export default function YoungsPage() {
         )}
 
         {activeTab === 'historial' && (
-          <div className="ga-card" style={{ padding: 30 }}>
-            <h3 style={{ marginBottom: 20 }}>Historial de Informes de Evolución</h3>
-            {loadingHistory ? (
-              <div style={{ padding: 40, textAlign: 'center' }}>Cargando informes...</div>
-            ) : reportsHistory.length === 0 ? (
-              <div style={{ padding: 40, textAlign: 'center', color: 'var(--muted)', background: '#f8fafc', borderRadius: 12 }}>
-                No hay informes registrados para este joven.
-              </div>
-            ) : (
-              <div className="ga-table-mobile-wrap">
-                <table className="ga-table">
-                  <thead>
-                    <tr>
-                      <th>Fecha</th>
-                      <th>Periodo</th>
-                      <th>Estado</th>
-                      <th style={{ textAlign: 'right' }}>Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {reportsHistory.map(r => (
-                      <tr key={r.id} className="ga-table-row-hover">
-                        <td>{formatDate(r.createdAt)}</td>
-                        <td><strong>{r.periodo}</strong></td>
-                        <td><span className={`ga-status-pill ${r.status?.toLowerCase()}`}>{r.status}</span></td>
-                        <td style={{ textAlign: 'right' }}>
-                          <a href={`/reports/${r.id}`} className="ga-btn secondary" style={{ fontSize: 12 }}>Ver Informe Completo</a>
-                        </td>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 30 }}>
+            {/* Sección de Informes Trimestrales */}
+            <div className="ga-card" style={{ padding: 30 }}>
+              <h3 style={{ marginBottom: 20, color: '#1e3a8a', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span>📄</span> Informes Evolutivos Trimestrales (PDF/Word)
+              </h3>
+              {loadingHistory ? (
+                <div style={{ padding: 40, textAlign: 'center' }}>Cargando informes...</div>
+              ) : reportsHistory.length === 0 ? (
+                <div style={{ padding: 40, textAlign: 'center', color: 'var(--muted)', background: '#f8fafc', borderRadius: 12 }}>
+                  No hay informes registrados para este joven.
+                </div>
+              ) : (
+                <div className="ga-table-mobile-wrap">
+                  <table className="ga-table">
+                    <thead>
+                      <tr>
+                        <th>Fecha</th>
+                        <th>Periodo</th>
+                        <th>Estado</th>
+                        <th style={{ textAlign: 'right' }}>Acciones</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {reportsHistory.map(r => (
+                        <tr key={r.id} className="ga-table-row-hover">
+                          <td>{formatDate(r.createdAt)}</td>
+                          <td><strong>{r.periodo}</strong></td>
+                          <td><span className={`ga-status-pill ${r.status?.toLowerCase()}`}>{r.status}</span></td>
+                          <td style={{ textAlign: 'right' }}>
+                            <a href={`/reports/${r.id}`} className="ga-btn secondary" style={{ fontSize: 12, marginRight: 8 }}>Ver Informe Completo</a>
+                            <a href={`/api/reports/${r.id}/.docx`} className="ga-btn primary" style={{ fontSize: 12 }}>📥 Descargar Word</a>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Sección de Borradores Mensuales (Checklists) */}
+            <div className="ga-card" style={{ padding: 30 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 10 }}>
+                <h3 style={{ margin: 0, color: '#1e3a8a', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span>📋</span> Borradores / Formularios Mensuales (Checklists)
+                </h3>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button 
+                    className={`ga-btn ${selectionMode ? 'accent' : 'secondary'}`}
+                    onClick={() => {
+                      setSelectionMode(!selectionMode);
+                      if (!selectionMode) setSelectedFormIds(new Set());
+                    }}
+                    style={{ padding: '8px 16px', fontSize: 13, fontWeight: 600 }}
+                  >
+                    {selectionMode ? '✅ Cancelar Fusión' : '🔗 Fusionar Borradores'}
+                  </button>
+                  <a 
+                    href={`/form?youngId=${editingId}`}
+                    className="ga-btn primary"
+                    style={{ padding: '8px 16px', fontSize: 13, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                  >
+                    <span>➕</span> Nuevo Borrador
+                  </a>
+                </div>
               </div>
-            )}
+
+              {selectionMode && (
+                <div style={{ 
+                  padding: '12px 18px', 
+                  background: '#eff6ff', 
+                  border: '1px solid #bfdbfe', 
+                  borderRadius: '8px',
+                  color: '#1e40af',
+                  fontSize: '13px',
+                  fontWeight: 500,
+                  marginBottom: 15
+                }}>
+                  💡 Selecciona entre 1 y 3 borradores mensuales para generar el informe trimestral.
+                </div>
+              )}
+
+              {loadingMonthlyForms ? (
+                <div style={{ padding: 40, textAlign: 'center' }}>Cargando borradores...</div>
+              ) : monthlyForms.length === 0 ? (
+                <div style={{ padding: 40, textAlign: 'center', color: 'var(--muted)', background: '#f8fafc', borderRadius: 12 }}>
+                  No hay borradores mensuales cargados para este joven. Puedes crear uno desde el botón "Nuevo Borrador".
+                </div>
+              ) : (
+                <div className="ga-table-mobile-wrap">
+                  <table className="ga-table">
+                    <thead>
+                      <tr>
+                        {selectionMode && <th style={{ width: 40, textAlign: 'center' }}></th>}
+                        <th>Período</th>
+                        <th>Facilitador</th>
+                        <th>Estado</th>
+                        <th>Última actualización</th>
+                        <th style={{ textAlign: 'center', width: 250 }}>Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {monthlyForms.map(it => {
+                        const id = it._id || it.id;
+                        const isSelected = selectedFormIds.has(id);
+                        return (
+                          <tr 
+                            key={id}
+                            className="ga-table-row-hover"
+                            style={{
+                              background: isSelected ? '#eff6ff' : undefined,
+                              cursor: selectionMode ? 'pointer' : undefined
+                            }}
+                            onClick={selectionMode ? () => {
+                              setSelectedFormIds(prev => {
+                                const next = new Set(prev);
+                                if (next.has(id)) next.delete(id);
+                                else next.add(id);
+                                return next;
+                              });
+                            } : undefined}
+                          >
+                            {selectionMode && (
+                              <td style={{ textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+                                <input 
+                                  type="checkbox" 
+                                  checked={isSelected}
+                                  onChange={() => {
+                                    setSelectedFormIds(prev => {
+                                      const next = new Set(prev);
+                                      if (next.has(id)) next.delete(id);
+                                      else next.add(id);
+                                      return next;
+                                    });
+                                  }}
+                                  style={{ width: 18, height: 18, cursor: 'pointer' }}
+                                />
+                              </td>
+                            )}
+                            <td style={{ fontWeight: 'bold' }}>{it.periodo}</td>
+                            <td style={{ fontSize: 13 }}>{it.facilitadorNombre || 'Sin facilitador'}</td>
+                            <td>
+                              <span className={`ga-badge ${it.status === 'APROBADO' ? 'approved' : it.status === 'EN_REVISION' ? 'review' : 'draft'}`}>
+                                {it.status || 'BORRADOR'}
+                              </span>
+                            </td>
+                            <td style={{ fontSize: 12, color: 'var(--muted)' }}>
+                              {it.updatedAt ? new Date(it.updatedAt).toLocaleDateString('es-AR') : '—'}
+                            </td>
+                            <td onClick={e => e.stopPropagation()}>
+                              <div style={{ display: 'flex', gap: 4, justifyContent: 'center' }}>
+                                <a 
+                                  href={`/form?formId=${id}`} 
+                                  className="ga-btn secondary" 
+                                  style={{ fontSize: 12, padding: '4px 8px' }}
+                                >
+                                  ✏️ Editar
+                                </a>
+                                <a 
+                                  href={`/api/forms/${id}/export-excel`} 
+                                  className="ga-btn secondary" 
+                                  style={{ fontSize: 12, padding: '4px 8px' }}
+                                >
+                                  📥 Excel
+                                </a>
+                                <button 
+                                  className="ga-btn secondary" 
+                                  onClick={() => duplicateMonthlyForm(id, it.periodo)}
+                                  style={{ fontSize: 12, padding: '4px 8px' }}
+                                  title="Duplicar para el siguiente mes"
+                                >
+                                  📋 Duplicar
+                                </button>
+                                <button 
+                                  className="ga-btn" 
+                                  style={{ background: '#fee2e2', borderColor: '#fca5a5', color: '#991b1b', fontSize: 12, padding: '4px 8px' }}
+                                  onClick={async () => {
+                                    if (!confirm('¿Estás seguro de que deseas ELIMINAR este borrador mensual?')) return;
+                                    try {
+                                      const res = await fetch(`/api/forms/${id}`, { method: 'DELETE' });
+                                      if (res.ok) {
+                                        alert('Borrador eliminado');
+                                        if (editingId) loadMonthlyForms(String(editingId));
+                                      } else {
+                                        alert('Error al eliminar');
+                                      }
+                                    } catch (err) {
+                                      console.error(err);
+                                      alert('Error de conexión');
+                                    }
+                                  }}
+                                  title="Eliminar borrador"
+                                >
+                                  🗑️
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* Botón flotante/panel de fusión cuando hay seleccionados */}
+              {selectedFormIds.size > 0 && (
+                <div style={{
+                  marginTop: 25,
+                  padding: '15px 25px',
+                  background: '#1e293b',
+                  borderRadius: '10px',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  color: 'white',
+                  flexWrap: 'wrap',
+                  gap: 10
+                }}>
+                  <div>
+                    <strong style={{ display: 'block', fontSize: 15 }}>
+                      {selectedFormIds.size} {selectedFormIds.size === 1 ? 'borrador mensual seleccionado' : 'borradores mensuales seleccionados'}
+                    </strong>
+                    <span style={{ fontSize: 12, color: '#94a3b8' }}>
+                      {selectedFormIds.size >= 1 && selectedFormIds.size <= 3 
+                        ? '✓ Cantidad válida para fusión trimestral.' 
+                        : '⚠️ Selecciona entre 1 y 3 borradores.'}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    <button 
+                      className="ga-btn secondary" 
+                      onClick={() => setSelectedFormIds(new Set())}
+                      style={{ color: 'white', borderColor: '#475569', background: 'transparent' }}
+                    >
+                      Deseleccionar
+                    </button>
+                    <button 
+                      className="ga-btn primary" 
+                      disabled={selectedFormIds.size < 1 || selectedFormIds.size > 3 || generatingTrimestral}
+                      onClick={handleGenerateTrimestralForYoung}
+                      style={{ background: '#2563eb', border: 'none' }}
+                    >
+                      {generatingTrimestral ? '⏳ Generando con IA...' : '🔗 Fusionar y Generar Trimestral'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
