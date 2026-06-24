@@ -6,6 +6,7 @@
   - Implementar búsqueda dinámica de sueños en la columna A de la solapa PCP de Excel, iniciando tras encontrar "SUEÑO" / "SUEÑOS" y deteniéndose ante "SIS" o "PLAN DE FUTURO".
   - Ampliar el rango de lectura del Plan de Futuro Personal a partir de la fila 24, capturando correctamente la dimensión "BF" (fila 25).
   - Validar los cambios localmente con el script de prueba `scratch/test_import_marisol.mjs` usando la planilla de Marisol Fernanda Brito.
+  - Verificar la compatibilidad estructural de los 3 archivos Excel (`Marisol Fernanda Brito.xlsx`, `Celis Analia Noemi.xlsx` y `Juan Pablo Herrera.xlsx`) en Descargas, corroborando que la lógica es 100% genérica y funciona perfectamente para todos.
   - Realizar commit y push de la corrección a GitHub.
   - Ejecutar el script `scratch/deploy_files.mjs` para desplegar la actualización en caliente en el VPS de producción y reiniciar PM2.
 - **Estado**: Completado ✅
