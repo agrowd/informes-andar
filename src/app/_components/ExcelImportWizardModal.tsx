@@ -11,13 +11,15 @@ interface ExcelImportWizardModalProps {
   youngId: string;
   importedMonths: ImportedMonth[];
   onClose: () => void;
+  onSuccess?: (reportId: string) => void;
 }
 
 export default function ExcelImportWizardModal({
   isOpen,
   youngId,
   importedMonths,
-  onClose
+  onClose,
+  onSuccess
 }: ExcelImportWizardModalProps) {
   const [selectedIds, setSelectedIds] = useState<string[]>(
     importedMonths.map(m => m.formId)
@@ -56,6 +58,9 @@ export default function ExcelImportWizardModal({
       
       // Descargar el Word
       window.location.href = `/api/reports/${result.reportId}/.docx`;
+      if (onSuccess) {
+        onSuccess(result.reportId);
+      }
       onClose();
     } catch (err: any) {
       console.error('Error fusionando importados:', err);

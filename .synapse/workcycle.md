@@ -242,6 +242,9 @@
   - Diseñar e implementar el agrupamiento por concurrente mediante accordions desplegables en `/forms` para limpiar la vista y agrupar los borradores mensuales del mismo joven de forma compacta.
   - Agregar botones "Vaciar Checklist" y "Cargar Plantilla" en el editor de formularios, y permitir inicializar un formulario en blanco.
   - Resolver errores de compilación críticos en `form/page.tsx` (JSX div de cierre) y `youngs/page.tsx` (escapes unicode en template string).
+  - Corregir el formateo de celdas de fecha en `cleanText` al importar celdas de PCP auto-convertidas por Excel (ej: fracciones como 4/3).
+  - Implementar escaneo dinámico de filas 1 a 6 para obtener metadatos de facilitador y taller en el importador de Excel, logrando compatibilidad con el formato real de `Juan Pablo Herrera .xlsx` y otras variantes de planilla.
+  - Integrar callback `onSuccess` en `ExcelImportWizardModal` en las páginas `/youngs` y `/forms` para recargar el historial (ficha joven) o redirigir a `/reports` (borradores) tras la generación exitosa del reporte trimestral.
   - Validar build local de Next.js y tests de Vitest de forma exitosa.
   - Desplegar cambios en caliente al VPS utilizando el script `deploy_files.mjs` con build y reinicio de PM2 exitosos.
   - Sincronizar todos los cambios en el repositorio de GitHub mediante SSH.

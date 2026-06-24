@@ -33,6 +33,12 @@
 | D-29 | **Autostart de PM2 via systemd** | Configurar `pm2 startup` y habilitar el servicio `pm2-root.service` en el VPS para que el listado de aplicaciones y sus entornos se restauren automáticamente (resurrect) ante reinicios del VPS. | 🔒 LOCKED |
 | D-30 | **Grilla 2x2 para Niveles** | Representar los 4 niveles de desarrollo institucional mediante un checklist reactivo en una cuadrícula CSS Grid de 2x2 en la interfaz de usuario, ofreciendo una experiencia altamente interactiva e intuitiva. | 🔒 LOCKED |
 | D-31 | **Pintado Progresivo en Excel** | Pintar celdas en el Excel de forma secuencial según el nivel (1: Arriba-Izq, 2: Abajo-Izq, 3: Arriba-Der, 4: Abajo-Der) utilizando la coloración celeste institucional `FFA4C2F4` para alinearse con las referencias del Excel de Granja Andar. | 🔒 LOCKED |
+| D-32 | **Formateo de fechas auto-convertidas en Excel** | En Excel, las celdas con fracciones o niveles de apoyo (ej: "4/3") se auto-convierten automáticamente en objetos Date por la configuración regional. En la importación, los convertimos de vuelta a una cadena limpia "mes/día" o "día/mes/año" en lugar de guardar la cadena completa de zona horaria de JS. | 🔒 LOCKED |
+| D-33 | **Flujo de Éxito del Asistente Post-Importación** | Agregar un callback de éxito (`onSuccess`) al asistente `ExcelImportWizardModal`. En el perfil del joven recarga el historial y activa la pestaña "Historial" directamente. En el listado general de borradores, redirige al usuario a `/reports` para ver el informe trimestral recién creado. | 🔒 LOCKED |
+| D-34 | **Escaneo flexible de metadatos en importador** | Buscar los metadatos de facilitador y taller escaneando las filas 1 a 6 y columnas 1 a 8 en lugar de depender de posiciones fijas (como `D4` o `A5`), logrando compatibilidad con múltiples variantes de diseño de planillas. | 🔒 LOCKED |
+| D-35 | **Vinculación Dinámica de Años en DOCX** | Reemplazar los años fijos (2024 y 2025) en el XML de la plantilla de Word por placeholders `{pcpAnio}` y `{periodoAnio}` e inyectarlos desde el endpoint de descarga realizando un JOIN en Postgres para obtener el PCP del concurrente, garantizando consistencia temporal. | 🔒 LOCKED |
+| D-36 | **Exclusión Dinámica de PCP en Importador** | Identificar la solapa de PCP por ID en lugar de solo por nombre para excluirla de forma robusta de la importación de planillas de habilidades mensuales, evitando colisiones si la solapa tiene sufijos o nombres especiales. | 🔒 LOCKED |
+
 
 
 

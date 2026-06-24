@@ -135,18 +135,19 @@ ${monthlyContext}
    - Si se trabajaron caminatas o circuitos, lúcelo en "Habilidades para metas deportivas".
    - Si se trabajaron relajación, interacciones o musicoterapia, lúcelo en "Habilidades para metas sociales".
 4. Sigue estrictamente la estructura JSON indicada abajo y no agregues ninguna clave extra.
+5. **Tiempo verbal obligatorio**: Escribe toda la redacción estrictamente en tiempo presente (por ejemplo: 'Juan Pablo participa...', 'colabora...', 'realiza...', en lugar de usar formas en pasado como 'participó', 'colaboró', ni presente perfecto como 'ha participado'). Toda la narrativa debe dar la sensación de evolución actual, activa y continua.
 
 ## FORMATO DE SALIDA (DEBE SER JSON ESTRICTO)
 Responde con un objeto JSON con las siguientes claves y con textos narrativos de al menos 4-5 líneas por sección:
 
 {
-  "metaAlcanzada": "Narrativa sobre si ha logrado o avanzado en su meta/sueño anual (${pcpSuenos}) basado en los datos del trimestre. Describe la experiencia concreta y su disfrute.",
+  "metaAlcanzada": "Narrativa sobre cómo avanza o logra su meta/sueño anual (${pcpSuenos}) basado en los datos del trimestre. Describe la experiencia concreta y su disfrute.",
   "participacion": "Narrativa sobre su asistencia regular y participación en los talleres. Detalla el nivel de apoyo (físico, verbal) brindado por los facilitadores y su predisposición.",
   "integracionRelaciones": "Narrativa sobre cómo interactúa con sus compañeros y facilitadores. Describe su afecto, contacto gestual, físico y la relación de confianza.",
-  "actividadesRelacionadas": "Detalle de los talleres que realizó que se asocian con su meta principal (deportes, habilidades sociales, etc.), destacando su interés y logros.",
+  "actividadesRelacionadas": "Detalle de los talleres que realiza que se asocian con su meta principal (deportes, habilidades sociales, etc.), destacando su interés y logros.",
   "vidaIndependiente": "Narrativa sobre las habilidades cotidianas trabajadas (colaborar en poner manteles, rutinas de aseo, cambio de ropa, descarte de pañal si aplica).",
   "habilidadesViajar": "Narrativa sobre cómo se adapta a nuevos espacios, paciencia, adaptabilidad y tareas en el vivero o Manos Verdes (pala de mano, traslados) que fortalecen la paciencia y el contacto natural.",
-  "desarrolloPersonal": "Narrativa sobre las tareas grupales, juegos de encastres y concentración. Si las actividades artísticas le cuestan, detalla cómo se le motivó para la motricidad fina.",
+  "desarrolloPersonal": "Narrativa sobre las tareas grupales, juegos de encastres y concentración. Si las actividades artísticas le cuestan, detalla cómo se le motiva para la motricidad fina.",
   "metasDeportivas": "Narrativa sobre destrezas físicas trabajadas (fuerza, resistencia, caminatas) y destrezas como lanzamiento, aros, bochas o tejo.",
   "metasSociales": "Narrativa sobre comunicación verbal/no verbal, empatía, relajación, contacto natural y celebraciones de cumpleaños de los jóvenes del grupo.",
   "dimensionesCalidadVida": "Cómo se trabajaron las dimensiones de calidad de vida (autodeterminación, bienestar físico y emocional, relaciones) a través de las bochas, caminatas, relajación, musicoterapia.",
@@ -169,7 +170,7 @@ function generateDeterministicFallback(options: QuarterlyGeneratorOptions): any 
 
   const consolidatedObs = observationsList.length > 0
     ? observationsList.join('\n')
-    : `Durante este trimestre se acompañó a ${jovenNombre} en su desarrollo personal y talleres.`;
+    : `Durante este trimestre se acompaña a ${jovenNombre} en su desarrollo personal y talleres.`;
 
   // Consolidar habilidades logradas
   const skillsList: string[] = [];
@@ -189,20 +190,18 @@ function generateDeterministicFallback(options: QuarterlyGeneratorOptions): any 
     ? `Se destacan avances en: ${uniqueSkills.join(', ')}.`
     : '';
 
-  const defaultParagraph = `${jovenNombre} ha sostenido su participación activa durante el período evaluado. Con el acompañamiento de las facilitadoras, ha logrado responder a las consignas de los talleres de Deporte, Viajar, Habilidades Sociales y Manos Verdes. ${skillsText}\n\nObservaciones recopiladas:\n${consolidatedObs}`;
-
   return {
-    metaAlcanzada: `${jovenNombre} ha realizado importantes progresos orientados a su meta de: "${pcpSuenos}". Ha podido participar en actividades recreativas asociadas y salidas de esparcimiento con gran disfrute.`,
+    metaAlcanzada: `${jovenNombre} realiza importantes progresos orientados a su meta de: "${pcpSuenos}". Participa en actividades recreativas asociadas y salidas de esparcimiento con gran disfrute.`,
     participacion: `${jovenNombre} asiste con regularidad y se muestra predispuesto ante las actividades propuestas. Requiere de apoyo verbal y físico intermitente de las facilitadoras para culminar las tareas de manera exitosa.`,
     integracionRelaciones: `${jovenNombre} demuestra una excelente integración con sus pares. Su vinculación es sumamente afectuosa, haciendo uso del contacto físico y señas gestuales para expresarse.`,
-    actividadesRelacionadas: `Participó activamente en los talleres deportivos y recreativos de la institución que se encuentran alineados con su plan de desarrollo personal y sus intereses evolutivos.`,
-    vidaIndependiente: `Se han trabajado destrezas del hogar y autonomía funcional, tales como la colaboración en el orden del comedor, higiene de manos y rostro, y descarte de residuos personales.`,
-    habilidadesViajar: `En el taller de Manos Verdes y salidas, se trabajó su adaptabilidad a nuevos entornos. Se destaca su paciencia y adaptación al aire libre manipulando elementos del vivero.`,
+    actividadesRelacionadas: `Participa activamente en los talleres deportivos y recreativos de la institución que se encuentran alineados con su plan de desarrollo personal y sus intereses evolutivos.`,
+    vidaIndependiente: `Trabaja destrezas del hogar y autonomía funcional, tales como la colaboración en el orden del comedor, higiene de manos y rostro, y descarte de residuos personales.`,
+    habilidadesViajar: `En el taller de Manos Verdes y en las salidas, trabaja su adaptabilidad a nuevos entornos. Se destaca su paciencia y adaptación al aire libre manipulando elementos del vivero.`,
     desarrolloPersonal: `Se observa una buena tolerancia y concentración en tareas tranquilas como los juegos de encastre. Se le brinda motivación extra en tareas plásticas para el fortalecimiento de la motricidad fina.`,
-    metasDeportivas: `Físicamente ha participado de las caminatas grupales y actividades de lanzamiento, coordinación con aros y juegos adaptados de bochas.`,
-    metasSociales: `Se ha incentivado la comunicación social y la empatía compartiendo meriendas y la celebración de los cumpleaños de los concurrentes del grupo.`,
-    dimensionesCalidadVida: `Se abordaron dimensiones de bienestar emocional, autodeterminación y bienestar físico mediante talleres sensoriales y de relajación adaptados.`,
-    actividadesComplementarias: `Participó en percusión y musicoterapia siguiendo ritmos simples. Ha demostrado compañerismo colaborando al empujar la silla de ruedas de sus compañeros con movilidad reducida.`,
-    mejoraCalidadVida: `La incorporación de rutinas estructuradas y el estímulo constante en espacios naturales han contribuido a fortalecer su bienestar general, autonomía y estado de salud.`
+    metasDeportivas: `Físicamente participa de las caminatas grupales y actividades de lanzamiento, coordinación con aros y juegos adaptados de bochas.`,
+    metasSociales: `Se incentiva la comunicación social y la empatía al compartir meriendas y celebrar los cumpleaños de los concurrentes del grupo.`,
+    dimensionesCalidadVida: `Se abordan dimensiones de bienestar emocional, autodeterminación y bienestar físico mediante talleres sensoriales y de relajación adaptados.`,
+    actividadesComplementarias: `Participa en percusión y musicoterapia siguiendo ritmos simples. Demuestra compañerismo al empujar la silla de ruedas de sus compañeros con movilidad reducida.`,
+    mejoraCalidadVida: `La incorporación de rutinas estructuradas y el estímulo constante en espacios naturales contribuyen a fortalecer su bienestar general, autonomía y estado de salud.`
   };
 }

@@ -24,6 +24,10 @@ export default function FormsList() {
   const [importWizardYoungId, setImportWizardYoungId] = useState('');
   const [importWizardMonths, setImportWizardMonths] = useState<any[]>([]);
 
+  const handleWizardSuccess = (reportId: string) => {
+    window.location.href = '/reports';
+  };
+
   const handleExcelImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -632,6 +636,7 @@ export default function FormsList() {
           youngId={importWizardYoungId}
           importedMonths={importWizardMonths}
           onClose={() => setImportWizardOpen(false)}
+          onSuccess={handleWizardSuccess}
         />
       )}
     </div>

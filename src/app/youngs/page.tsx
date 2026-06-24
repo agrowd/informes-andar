@@ -237,6 +237,14 @@ export default function YoungsPage() {
     }
   };
 
+  const handleWizardSuccess = (reportId: string) => {
+    if (editingId) {
+      loadReportsHistory(String(editingId));
+      loadEvolution(String(editingId));
+    }
+    setActiveTab('historial');
+  };
+
   const handleExcelImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -1262,6 +1270,7 @@ export default function YoungsPage() {
           youngId={importWizardYoungId}
           importedMonths={importWizardMonths}
           onClose={() => setImportWizardOpen(false)}
+          onSuccess={handleWizardSuccess}
         />
       )}
     </div>

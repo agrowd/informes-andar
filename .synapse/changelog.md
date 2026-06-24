@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.7.2] - 2026-06-24
+### Added
+- Integración de `pcpAnio` y `periodoAnio` en la descarga de Word (DOCX) para el informe trimestral.
+- Detección más flexible de la solapa de PCP en la importación de Excel (soporta prefijos/sufijos PCP y caso-insensible).
+- Forzado de redacción en tiempo presente para la generación de narrativa de informes trimestrales mediante IA y en los fallbacks determinísticos.
+
+### Fixed
+- Corrección de superposiciones del membrete con el texto en PDFs alineando márgenes con estándar de Word y espaciado de página.
+- Exclusión robusta de la solapa de PCP del procesamiento de planillas mensuales durante la importación de Excel.
+
+## [1.7.1] - 2026-06-23
+### Added
+- Callback `onSuccess` en `ExcelImportWizardModal` para recargar el historial de informes y activar la pestaña "Historial" en el perfil del joven, y redirigir a `/reports` en el listado general de borradores.
+- Escaneo flexible y dinámico de metadatos (facilitador y taller) en las primeras filas de las planillas importadas de Excel para soportar variaciones en el diseño de celdas.
+
+### Fixed
+- Corrección de la importación de celdas de apoyos de PCP (auto-convertidas por Excel en objetos Date) convirtiéndolas a formato limpio "mes/día" (ej: "4/3") o "día/mes/año".
+
 ## [1.7.0] - 2026-06-23
 ### Added
 - Asistente interactivo de importación (`ExcelImportWizardModal`) para realizar fusión trimestral directamente tras la importación exitosa de planillas de Excel.

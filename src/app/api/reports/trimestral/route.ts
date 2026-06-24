@@ -151,13 +151,20 @@ export async function POST(req: NextRequest) {
     const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
     const fechaInforme = `${fechaActual.getDate()} de ${meses[fechaActual.getMonth()]} del ${fechaActual.getFullYear()}`;
 
+    // Determinar dinámicamente los años de PCP y período
+    const yearMatch = mergedPeriodo.match(/\b(20\d{2})\b/);
+    const periodoAnio = yearMatch ? yearMatch[1] : new Date().getFullYear().toString();
+    const pcpAnio = youngPcp?.anio || new Date().getFullYear().toString();
+
     const html = buildQuarterlyHtml({
       fechaInforme,
       nombreCompleto: youngName,
       grupo: youngTaller || 'Clave de Sol',
       facilitadores: facilitators || session.user.name || 'Sin facilitador',
       metaSueno,
-      secciones
+      secciones,
+      pcpAnio,
+      periodoAnio
     });
 
     // 6. Generar PDF
@@ -244,8 +251,10 @@ function buildQuarterlyHtml(params: {
   facilitadores: string;
   metaSueno: string;
   secciones: any;
+  pcpAnio: string;
+  periodoAnio: string;
 }): string {
-  const { fechaInforme, nombreCompleto, grupo, facilitadores, metaSueno, secciones } = params;
+  const { fechaInforme, nombreCompleto, grupo, facilitadores, metaSueno, secciones, pcpAnio, periodoAnio } = params;
 
   return `<!DOCTYPE html>
 <html>
@@ -254,7 +263,10 @@ function buildQuarterlyHtml(params: {
   <style>
     @page {
       size: A4;
-      margin: 25.4mm;
+      margin-top: 45mm;
+      margin-bottom: 25.4mm;
+      margin-left: 25.4mm;
+      margin-right: 25.4mm;
     }
     body {
       font-family: 'Georgia', serif;
@@ -306,13 +318,13 @@ function buildQuarterlyHtml(params: {
     <div class="meta-line"><strong>Nombre del Concurrente:</strong> ${nombreCompleto}</div>
     <div class="meta-line"><strong>Grupo:</strong> ${grupo}</div>
     <div class="meta-line"><strong>Facilitadoras:</strong> ${facilitadores}</div>
-    <div class="meta-line"><strong>Meta o Sueño para 2024:</strong> ${metaSueno}</div>
+    <div class="meta-line"><strong>Meta o Sueño para ${pcpAnio}:</strong> ${metaSueno}</div>
   </div>
   
-  <div class="section-title">¿Ha alcanzado su meta o sueño 2024?</div>
+  <div class="section-title">¿Ha alcanzado su meta o sueño ${pcpAnio}?</div>
   <div class="section-text">${secciones.metaAlcanzada || 'Sin registrar.'}</div>
 
-  <div class="section-title">Participación durante este periodo de 2025</div>
+  <div class="section-title">Participación durante este periodo de ${periodoAnio}</div>
   <div class="section-text">${secciones.participacion || 'Sin registrar.'}</div>
 
   <div class="section-title">Nivel de integración y relaciones interpersonales</div>

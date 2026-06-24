@@ -17,20 +17,33 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
     
     let repData: any = null;
     let isTrimestral = false;
+    let youngPcp: any = null;
     
     if (USE_POSTGRES && sql) {
       const result = await sql`
-        SELECT data, report_type FROM reports WHERE id = ${parseInt(params.id)}
+        SELECT r.data, r.report_type, y.pcp
+        FROM reports r
+        LEFT JOIN youngs y ON r.young_id = y.id
+        WHERE r.id = ${parseInt(params.id)}
       `;
       if (result.rows.length > 0) {
         repData = result.rows[0].data;
         isTrimestral = result.rows[0].report_type === 'TRIMESTRAL';
+        youngPcp = result.rows[0].pcp;
       }
     } else if (process.env.MONGODB_URI) {
       const rep = await ReportModel.findById(params.id).lean();
       if (rep) {
         repData = rep.data;
         isTrimestral = (rep as any).reportType === 'TRIMESTRAL';
+        
+        try {
+          const { YoungModel } = await import('@/models/Young');
+          const youngItem = await YoungModel.findById((rep as any).youngId).lean();
+          youngPcp = (youngItem as any)?.pcp;
+        } catch (e) {
+          console.error('Error fetching young from MongoDB:', e);
+        }
       }
     }
     
@@ -50,12 +63,19 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
           const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
           const fechaInforme = `${fechaActual.getDate()} de ${meses[fechaActual.getMonth()]} del ${fechaActual.getFullYear()}`;
 
+          const mergedPeriodo = repData?.datosGenerales?.periodo || '';
+          const yearMatch = mergedPeriodo.match(/\b(20\d{2})\b/);
+          const periodoAnio = yearMatch ? yearMatch[1] : new Date().getFullYear().toString();
+          const pcpAnio = youngPcp?.anio || new Date().getFullYear().toString();
+
           doc.setData({
             nombreCompleto: repData?.datosGenerales?.nombreCompleto || '',
             grupo: repData?.datosGenerales?.grupo || 'Clave de Sol',
             facilitadores: repData?.datosGenerales?.facilitadores || 'Sin facilitador',
             metaSueno: repData?.datosGenerales?.metaSueno || 'Estar en la playa...',
             fechaInforme,
+            pcpAnio,
+            periodoAnio,
             
             // 12 secciones narrativas
             metaAlcanzada: repData?.secciones?.metaAlcanzada || 'Sin registrar.',

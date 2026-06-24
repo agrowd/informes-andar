@@ -19,6 +19,23 @@ function isCellChecked(cell: ExcelJS.Cell) {
 
 function cleanText(val: any): string {
   if (val === null || val === undefined) return '';
+  if (val instanceof Date) {
+    const day = val.getDate();
+    const month = val.getMonth() + 1;
+    const year = val.getFullYear();
+    const hours = val.getHours();
+    const mins = val.getMinutes();
+    if (hours === 0 && mins === 0) {
+      if (year === 2022 || year === new Date().getFullYear()) {
+        // En Excel, fracciones como "4/3" se auto-convierten a fechas.
+        // Reconstruimos la fracción como "mes/día" (o "día/mes" según corresponda).
+        // Por ejemplo, "April 3rd" -> Month 4, Day 3 -> "4/3"
+        return `${month}/${day}`;
+      }
+      return `${day}/${month}/${year}`;
+    }
+    return val.toLocaleDateString('es-AR');
+  }
   return String(val).trim().replace(/\s+/g, ' ');
 }
 
@@ -41,7 +58,22 @@ export async function POST(req: NextRequest) {
     await workbook.xlsx.load(buffer as any);
 
     // 1. PARSEAR PCP
-    const pcpSheet = workbook.getWorksheet('PCP');
+    // Buscar la solapa de PCP de forma flexible y caso-insensible
+    const pcpSheet = workbook.worksheets.find(s => {
+      const name = s.name.trim().toUpperCase();
+      return (
+        name === 'PCP' || 
+        name === 'P.C.P' || 
+        name === 'P.C.P.' || 
+        name.includes('PLANIFICACION') || 
+        name.includes('PLANIFICACIÓN') ||
+        name.startsWith('PCP') ||
+        name.startsWith('P.C.P') ||
+        name.endsWith('PCP') ||
+        name.endsWith('P.C.P')
+      );
+    });
+
     const pcpData: any = {
       anio: '',
       rutinas: { semana: '', finDeSemana: '' },
@@ -53,10 +85,29 @@ export async function POST(req: NextRequest) {
     let anioPcp = '';
 
     if (pcpSheet) {
-      // Nombre y Apellido
-      const nameVal = pcpSheet.getCell('A3').value;
-      if (nameVal) {
-        nombreCompleto = String(nameVal).replace(/nombre y apellido:\s*/i, '').trim();
+      // Buscar nombre de manera flexible en el PCP (filas 1 a 6, columnas 1 a 4)
+      for (let r = 1; r <= 6; r++) {
+        for (let c = 1; c <= 4; c++) {
+          const val = pcpSheet.getCell(r, c).value;
+          if (val && typeof val === 'string') {
+            const cleanVal = val.trim();
+            if (/nombre/i.test(cleanVal)) {
+              nombreCompleto = cleanVal
+                .replace(/nombre y apellido:\s*/i, '')
+                .replace(/nombre:\s*/i, '')
+                .trim();
+              break;
+            }
+          }
+        }
+        if (nombreCompleto) break;
+      }
+      // Fallback a celda A3 si no se encontró por escaneo
+      if (!nombreCompleto) {
+        const nameVal = pcpSheet.getCell('A3').value;
+        if (nameVal) {
+          nombreCompleto = String(nameVal).replace(/nombre y apellido:\s*/i, '').trim();
+        }
       }
 
       // Año
@@ -110,8 +161,42 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Si aún no se encontró el nombre en el PCP, buscar en las solapas mensuales
     if (!nombreCompleto) {
-      return NextResponse.json({ error: 'No se pudo extraer el nombre del joven de la solapa PCP (Celda A3)' }, { status: 400 });
+      for (const sheet of workbook.worksheets) {
+        if (pcpSheet && sheet.id === pcpSheet.id) continue;
+        const sheetNameUpper = sheet.name.trim().toUpperCase();
+        if (
+          sheetNameUpper.includes('PLANIFICACION') ||
+          sheetNameUpper.includes('PLANIFICACIÓN') ||
+          sheetNameUpper.startsWith('SHEET') || 
+          sheetNameUpper === 'TEMPLATE' ||
+          sheetNameUpper === 'PLANTILLA' ||
+          sheetNameUpper.startsWith('HOJA')
+        ) continue;
+
+        for (let r = 1; r <= 6; r++) {
+          for (let c = 1; c <= 4; c++) {
+            const val = sheet.getCell(r, c).value;
+            if (val && typeof val === 'string') {
+              const cleanVal = val.trim();
+              if (/nombre/i.test(cleanVal)) {
+                nombreCompleto = cleanVal
+                  .replace(/nombre:\s*/i, '')
+                  .replace(/nombre y apellido:\s*/i, '')
+                  .trim();
+                break;
+              }
+            }
+          }
+          if (nombreCompleto) break;
+        }
+        if (nombreCompleto) break;
+      }
+    }
+
+    if (!nombreCompleto) {
+      return NextResponse.json({ error: 'No se pudo extraer el nombre del joven de la solapa PCP ni de las solapas mensuales (ej: Celda A3 o A2)' }, { status: 400 });
     }
 
     // 2. PARSEAR PLANILLAS MENSUALES
@@ -119,7 +204,16 @@ export async function POST(req: NextRequest) {
     let mainTaller = '';
 
     for (const sheet of workbook.worksheets) {
-      if (sheet.name === 'PCP' || sheet.name.startsWith('Sheet') || sheet.name === 'Template') continue;
+      if (pcpSheet && sheet.id === pcpSheet.id) continue;
+      const sheetNameUpper = sheet.name.trim().toUpperCase();
+      if (
+        sheetNameUpper.includes('PLANIFICACION') ||
+        sheetNameUpper.includes('PLANIFICACIÓN') ||
+        sheetNameUpper.startsWith('SHEET') || 
+        sheetNameUpper === 'TEMPLATE' ||
+        sheetNameUpper === 'PLANTILLA' ||
+        sheetNameUpper.startsWith('HOJA')
+      ) continue;
 
       const report: any = {
         periodo: sheet.name.trim().toUpperCase(),
@@ -129,17 +223,30 @@ export async function POST(req: NextRequest) {
         observaciones: ''
       };
 
-      // Facilitador (D4 o C4)
-      const facCell = sheet.getCell('D4').value || sheet.getCell('C4').value;
-      if (facCell) {
-        report.facilitadorNombre = String(facCell).replace(/facilitador\/a:\s*/i, '').trim();
+      // Buscar facilitador/a y taller de forma dinámica en las primeras filas para mayor compatibilidad
+      let facilitadorNombre = '';
+      let taller = '';
+      for (let r = 1; r <= 6; r++) {
+        for (let c = 1; c <= 8; c++) {
+          const val = sheet.getCell(r, c).value;
+          if (val && typeof val === 'string') {
+            const cleanVal = val.trim();
+            if (/facilitador/i.test(cleanVal)) {
+              facilitadorNombre = cleanVal
+                .replace(/facilitador\/a:\s*/i, '')
+                .replace(/facilitador:\s*/i, '')
+                .replace(/facilitadora:\s*/i, '')
+                .trim();
+            } else if (/taller:/i.test(cleanVal)) {
+              taller = cleanVal.replace(/taller:\s*/i, '').trim();
+            }
+          }
+        }
       }
-
-      // Taller (A5 o similar)
-      const tallerCell = sheet.getCell('A5').value;
-      if (tallerCell) {
-        report.taller = String(tallerCell).replace(/taller:\s*/i, '').trim();
-        if (!mainTaller) mainTaller = report.taller;
+      report.facilitadorNombre = facilitadorNombre || '';
+      report.taller = taller || '';
+      if (report.taller && !mainTaller) {
+        mainTaller = report.taller;
       }
 
       let currentTaller: any = null;

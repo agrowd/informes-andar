@@ -95,3 +95,28 @@
 **Root Cause:** Presencia de barras invertidas de escape `\` antes de las comillas invertidas (backticks) y antes del símbolo `$` en la cadena de impresión (`printWindow.document.write(\`...` y `\${form.nombreCompleto}`).
 **Solución:** Se eliminaron las barras de escape de la plantilla, permitiendo que Next.js compile y que las variables se evalúen dinámicamente en tiempo de ejecución.
 **Estado:** ✅ FIXED
+
+## ERR-17: Celdas de apoyos de PCP importadas como timezone string largo (2026-06-23)
+**Síntoma:** En la pestaña PCP, la columna "Apoyos" mostraba cadenas largas y confusas de zona horaria de JavaScript como `"Sat Apr 02 2022 21:00:00 GMT-0300..."`.
+**Root Cause:** Celdas que contienen fracciones o niveles de apoyo (como `4/3`) son automáticamente interpretadas por Excel como fechas y guardadas como objetos `Date` por ExcelJS. La función `cleanText` al no discriminar tipos de objetos Date, los convertía a string usando `String(val)`.
+**Solución:** Modificación de `cleanText` en `import-excel/route.ts` para capturar instancias de `Date` y convertirlas a una cadena limpia de texto `"mes/día"` (para niveles como `4/3`) o `"día/mes/año"` según corresponda.
+**Estado:** ✅ FIXED
+
+## ERR-18: Falta de actualización de UI/Historial post-fusión del Asistente (2026-06-23)
+**Síntoma:** Tras importar un Excel exitosamente y generar el informe trimestral en el modal del asistente, la pestaña "Historial" en el perfil del joven no mostraba el nuevo informe a menos que el usuario recargara la página manualmente.
+**Root Cause:** El modal `ExcelImportWizardModal` cerraba el flujo llamando a `onClose()` sin notificar al componente padre de la generación exitosa para actualizar su estado local.
+**Solución:** Incorporación de la prop `onSuccess` en `ExcelImportWizardModal` para ejecutar callbacks específicos: en la pestaña de jóvenes recarga el historial de informes/evolución y cambia a la pestaña `historial` automáticamente; en la pestaña de borradores redirige al usuario a `/reports` para ver el resultado final.
+**Estado:** ✅ FIXED
+
+## ERR-19: Años hardcodeados (2024 y 2025) en descarga de Word (DOCX) del Informe Trimestral (2026-06-24)
+**Síntoma:** Al descargar el informe trimestral en formato Word (.docx), la cabecera y títulos mostraban los años fijos "2024" y "2025" independientemente de los datos reales del concurrente.
+**Root Cause:** La plantilla `templates/trimestral_template.docx` contenía texto plano hardcodeado "2024" y "2025" en lugar de utilizar placeholders, y el endpoint de descarga `api/reports/[id]/.docx/route.ts` no enviaba variables de año a docxtemplater.
+**Solución:** Se reemplazó el texto estático por `{pcpAnio}` y `{periodoAnio}` en la plantilla de Word, y se actualizó el endpoint para consultar el PCP del joven realizando un JOIN en Postgres e inyectar dinámicamente ambos valores en `doc.setData()`.
+**Estado:** ✅ FIXED
+
+## ERR-20: Omisión de la solapa de PCP en el procesamiento de planillas mensuales (2026-06-24)
+**Síntoma:** Al importar planillas de Excel que contenían PCP, a veces se intentaba parsear la solapa de PCP como una planilla mensual o viceversa, o se producían errores al buscar el nombre del joven.
+**Root Cause:** La clasificación de las pestañas en `import-excel/route.ts` dependía de comparaciones exactas de strings que fallaban si la pestaña tenía espacios, prefijos o sufijos adicionales.
+**Solución:** Se implementó una lógica de coincidencia flexible y caso-insensible en la solapa de PCP, y se pasó a excluirla del mapeo de planillas mensuales mediante la validación directa de su ID de hoja (`sheet.id === pcpSheet.id`).
+**Estado:** ✅ FIXED
+
