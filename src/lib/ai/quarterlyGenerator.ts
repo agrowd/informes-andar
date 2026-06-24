@@ -126,33 +126,38 @@ ${pfpText}
 ## DATOS MENSUALES DEL TRIMESTRE (3 MESES)
 ${monthlyContext}
 
-## INSTRUCCIONES DE REDACCIÓN
-1. Redacta párrafos narrativos **completamente fluidos, integradores y profesionales**. Evita listas, viñetas o bullet points en las respuestas.
-2. Reemplaza la palabra "Persona" o el pronombre genérico por el nombre real del joven (**${jovenNombre}**) al referirte a él de forma directa.
-3. Adapta y asocia la grilla de habilidades marcadas y las observaciones de los facilitadores a cada sección. Por ejemplo:
+## INSTRUCCIONES DE REDACCIÓN Y FIDELIDAD A LOS DATOS (CRÍTICO)
+1. **Regla de veracidad absoluta**: Queda estrictamente PROHIBIDO inventar logros, tareas, progresos o niveles de autonomía que no estén explícitamente respaldados por los datos de entrada (observaciones escritas o habilidades marcadas con nivel > 0). No extrapoles ni asumas.
+2. **Respeto a la condición física y nivel de apoyos**:
+   - Lee con extrema atención la PCP y las observaciones mensuales. Si se indica que el concurrente tiene movilidad reducida, asiste en silla de ruedas o requiere asistencia total/máxima para la vida diaria, **no redactes oraciones que impliquen marcha independiente, manipulación compleja o autonomía física sin apoyo**.
+   - En su lugar, relata cómo participa con apoyos (ej. "con la guía y asistencia física constante del equipo...", "disfruta de forma contemplativa en espacios verdes...", "se beneficia de la estimulación sensorial...").
+3. **Secciones sin datos**: Si un área del JSON (por ejemplo, "metasDeportivas" o "habilidadesViajar") no presenta ninguna actividad ni observación relacionada en el trimestre, **NO inventes historias**. Redacta un texto honesto y profesional indicando que durante el trimestre el joven continúa recibiendo el acompañamiento y los apoyos necesarios en su taller sin novedades particulares registradas en esa área específica, o vinculándolo de forma realista a su nivel actual de participación asistida.
+4. Redacta párrafos narrativos **completamente fluidos, integradores y profesionales**. Evita listas, viñetas o bullet points en las respuestas.
+5. Reemplaza la palabra "Persona" o el pronombre genérico por el nombre real del joven (**${jovenNombre}**) al referirte a él de forma directa.
+6. Adapta y asocia la grilla de habilidades marcadas y las observaciones de los facilitadores a cada sección de manera fiel al input. Por ejemplo:
    - Si se trabajaron habilidades de higiene, lavado de dientes o descarte de pañal en talleres de autonomía, lúcelo en la sección de "Habilidades para vida independiente".
    - Si se trabajó en Manos Verdes con herramientas o traslados, vincúlalo con la meta de viajar, la adaptación, la paciencia y el contacto con la naturaleza.
    - Si se trabajaron caminatas o circuitos, lúcelo en "Habilidades para metas deportivas".
    - Si se trabajaron relajación, interacciones o musicoterapia, lúcelo en "Habilidades para metas sociales".
-4. Sigue estrictamente la estructura JSON indicada abajo y no agregues ninguna clave extra.
-5. **Tiempo verbal obligatorio**: Escribe toda la redacción estrictamente en tiempo presente (por ejemplo: 'Juan Pablo participa...', 'colabora...', 'realiza...', en lugar de usar formas en pasado como 'participó', 'colaboró', ni presente perfecto como 'ha participado'). Toda la narrativa debe dar la sensación de evolución actual, activa y continua. Transforma de forma proactiva cualquier observación o logro que venga redactado en pasado a su equivalente en presente (ej. cambia "asistió" por "asiste", "logró" por "logra").
+7. Sigue estrictamente la estructura JSON indicada abajo y no agregues ninguna clave extra.
+8. **Tiempo verbal obligatorio**: Escribe toda la redacción estrictamente en tiempo presente (por ejemplo: 'Juan Pablo participa...', 'colabora...', 'realiza...', en lugar de usar formas en pasado como 'participó', 'colaboró', ni presente perfecto como 'ha participado'). Toda la narrativa debe dar la sensación de evolución actual, activa y continua. Transforma de forma proactiva cualquier observación o logro que venga redactado en pasado a su equivalente en presente (ej. cambia "asistió" por "asiste", "logró" por "logra").
 
 ## FORMATO DE SALIDA (DEBE SER JSON ESTRICTO)
 Responde con un objeto JSON con las siguientes claves y con textos narrativos de al menos 4-5 líneas por sección:
 
 {
-  "metaAlcanzada": "Narrativa sobre cómo avanza o logra su meta/sueño anual (${pcpSuenos}) basado en los datos del trimestre. Describe la experiencia concreta y su disfrute.",
-  "participacion": "Narrativa sobre su asistencia regular y participación en los talleres. Detalla el nivel de apoyo (físico, verbal) brindado por los facilitadores y su predisposición.",
-  "integracionRelaciones": "Narrativa sobre cómo interactúa con sus compañeros y facilitadores. Describe su afecto, contacto gestual, físico y la relación de confianza.",
-  "actividadesRelacionadas": "Detalle de los talleres que realiza que se asocian con su meta principal (deportes, habilidades sociales, etc.), destacando su interés y logros.",
-  "vidaIndependiente": "Narrativa sobre las habilidades cotidianas trabajadas (colaborar en poner manteles, rutinas de aseo, cambio de ropa, descarte de pañal si aplica).",
-  "habilidadesViajar": "Narrativa sobre cómo se adapta a nuevos espacios, paciencia, adaptabilidad y tareas en el vivero o Manos Verdes (pala de mano, traslados) que fortalecen la paciencia y el contacto natural.",
-  "desarrolloPersonal": "Narrativa sobre las tareas grupales, juegos de encastres y concentración. Si las actividades artísticas le cuestan, detalla cómo se le motiva para la motricidad fina.",
-  "metasDeportivas": "Narrativa sobre destrezas físicas trabajadas (fuerza, resistencia, caminatas) y destrezas como lanzamiento, aros, bochas o tejo.",
-  "metasSociales": "Narrativa sobre comunicación verbal/no verbal, empatía, relajación, contacto natural y celebraciones de cumpleaños de los jóvenes del grupo.",
-  "dimensionesCalidadVida": "Cómo se trabajaron las dimensiones de calidad de vida (autodeterminación, bienestar físico y emocional, relaciones) a través de las bochas, caminatas, relajación, musicoterapia.",
-  "actividadesComplementarias": "Resumen de su participación en música/percusión (siguiendo instrucciones, flauta), arte (pinceles/esponjas) y cómo colabora ayudando a compañeros con movilidad reducida (como silla de ruedas).",
-  "mejoraCalidadVida": "Conclusión de cómo la incorporación de rutinas, estimulación sensorial, relajación y naturaleza mejoraron significativamente su bienestar general y salud."
+  "metaAlcanzada": "Narrativa honesta sobre el avance o estado de su meta/sueño anual (${pcpSuenos}) basándote únicamente en las observaciones y registros del trimestre. Si no hay datos específicos de avance, describe cómo se mantiene el acompañamiento general para esta meta.",
+  "participacion": "Narrativa sobre su asistencia regular y participación en los talleres. Detalla de manera fiel y realista el nivel de apoyo (asistencia total, apoyo físico constante, verbal, etc.) brindado por los facilitadores según se desprenda de los registros del trimestre.",
+  "integracionRelaciones": "Narrativa sobre su vinculación e interacción con pares y facilitadores basada en los datos del trimestre. Si hay contacto gestual, afecto o simplemente participación tranquila, descríbelo con veracidad y sin inventar.",
+  "actividadesRelacionadas": "Detalle de las actividades en los talleres que realiza que estén asociadas con su meta principal o intereses, destacando su nivel de respuesta real y los apoyos recibidos.",
+  "vidaIndependiente": "Narrativa realista sobre las habilidades cotidianas o de autonomía que efectivamente se trabajaron en el trimestre (ej. higiene, alimentación, orden). Si el joven requiere asistencia total y no realiza tareas de forma independiente, descríbelo detallando los apoyos y cuidados provistos por los facilitadores.",
+  "habilidadesViajar": "Narrativa de cómo se desenvuelve en salidas, traslados o actividades al aire libre (como vivero o jardinería si aplica) basándote estrictamente en los datos. Si no hay datos de traslados, narra de qué forma participa de actividades en espacios exteriores con los apoyos necesarios.",
+  "desarrolloPersonal": "Narrativa sobre su concentración, motricidad, tareas plásticas o estimulación cognitiva en los talleres. Describe con fidelidad su nivel de desempeño y cómo se lo motiva, sin asumir habilidades finas que no estén registradas.",
+  "metasDeportivas": "Narrativa de las actividades físicas o recreativas de movimiento trabajadas. Si el concurrente tiene movilidad reducida o está en silla de ruedas, enfoca la redacción en las dinámicas adaptadas de estiramiento, caminatas asistidas, juegos pasivos o el simple disfrute recreativo del movimiento físico con ayuda de los facilitadores.",
+  "metasSociales": "Narrativa sobre comunicación, dinámicas grupales, empatía o festejo de cumpleaños de forma fiel al input del trimestre.",
+  "dimensionesCalidadVida": "Cómo se favorecieron las dimensiones de calidad de vida del joven (bienestar emocional, autodeterminación, inclusión) a través de los talleres del trimestre, basándote en los datos reales del checklist y observaciones.",
+  "actividadesComplementarias": "Resumen de su participación en música, arte u otras actividades integradoras basándote estrictamente en las observaciones trimestrales. Si no realizó estas actividades o su participación fue pasiva, indícalo de manera profesional o describe los apoyos recibidos.",
+  "mejoraCalidadVida": "Conclusión integradora sobre el bienestar general, salud y estado anímico del joven a lo largo del trimestre, reflejando y resumiendo de forma fiel los apoyos que recibe y los registros de los facilitadores."
 }
 `;
 }
