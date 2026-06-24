@@ -31,6 +31,8 @@ export default function ChecklistFormPage() {
   const [currentFormId, setCurrentFormId] = useState<string | null>(null);
   const [saving, setSaving] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [toasts, setToasts] = useState<{ id: number; type: 'success'|'error'|'info'; text: string }[]>([]);
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+  const [duplicatePeriod, setDuplicatePeriod] = useState('');
 
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastSavedDataRef = useRef<string>('');
@@ -244,6 +246,56 @@ export default function ChecklistFormPage() {
     }
   };
 
+  const handleDuplicateForOtherMonth = async () => {
+    if (!duplicatePeriod) {
+      alert('Por favor seleccione un período/mes.');
+      return;
+    }
+    
+    setSaving('saving');
+    try {
+      // 1. Guardar el borrador actual antes de duplicar para no perder cambios recientes
+      const saveUrl = '/api/forms';
+      const saveMethod = currentFormId ? 'PUT' : 'POST';
+      const saveBody = currentFormId
+        ? JSON.stringify({ id: currentFormId, data })
+        : JSON.stringify({ data, saveAsDraft: true });
+
+      const saveRes = await fetch(saveUrl, {
+        method: saveMethod,
+        headers: { 'Content-Type': 'application/json' },
+        body: saveBody
+      });
+
+      if (!saveRes.ok) {
+        throw new Error('No se pudieron guardar los cambios del borrador actual antes de duplicar.');
+      }
+
+      // 2. Llamar a la API de duplicación pasando el nuevo período
+      const copyRes = await fetch(`/api/forms/${currentFormId}/copy`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ periodo: duplicatePeriod })
+      });
+
+      if (!copyRes.ok) {
+        const error = await copyRes.json().catch(() => ({ error: 'Error duplicando borrador' }));
+        throw new Error(error.error || `HTTP ${copyRes.status}`);
+      }
+
+      const copyData = await copyRes.json();
+      
+      // 3. Redirigir al nuevo borrador
+      alert(`✅ Borrador duplicado correctamente para ${duplicatePeriod}. Redirigiendo a la copia...`);
+      window.location.href = `/form?formId=${copyData.id}`;
+    } catch (err: any) {
+      console.error('Error al duplicar para otro mes:', err);
+      alert('Error: ' + (err.message || 'No se pudo duplicar el borrador'));
+      setSaving('error');
+    }
+  };
+
+
   // 6. Modificaciones de Talleres y Habilidades
   const updateDatosGenerales = (field: string, val: any) => {
     setData((prev: any) => ({
@@ -365,13 +417,25 @@ export default function ChecklistFormPage() {
           
           <button className="ga-btn secondary" onClick={() => router.push('/')}>Volver</button>
           {currentFormId && (
-            <a 
-              href={`/api/forms/${currentFormId}/export-excel`}
-              className="ga-btn secondary"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
-            >
-              📥 Exportar Excel
-            </a>
+            <>
+              <a 
+                href={`/api/forms/${currentFormId}/export-excel`}
+                className="ga-btn secondary"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+              >
+                📥 Exportar Excel
+              </a>
+              <button 
+                className="ga-btn" 
+                onClick={() => {
+                  setDuplicatePeriod('');
+                  setShowDuplicateModal(true);
+                }}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, border: '1px solid #bbf7d0', background: '#f0fdf4', color: '#166534', fontWeight: 600 }}
+              >
+                📋 Duplicar para otro mes
+              </button>
+            </>
           )}
           <button className="ga-btn primary" onClick={handleSaveManual}>Guardar borrador</button>
         </div>
@@ -749,6 +813,63 @@ export default function ChecklistFormPage() {
         ))}
       </div>
 
+      {/* Modal de Duplicación para otro mes */}
+      {showDuplicateModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 2000,
+          backdropFilter: 'blur(4px)'
+        }}>
+          <div className="ga-card" style={{ width: '90%', maxWidth: '450px', padding: '24px', borderRadius: '12px', background: '#ffffff', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' }}>
+            <h3 style={{ margin: '0 0 12px 0', color: '#1e3a8a', fontSize: '18px', fontWeight: 700 }}>📋 Duplicar para otro mes</h3>
+            <p style={{ margin: '0 0 20px 0', color: '#64748b', fontSize: '14px', lineHeight: 1.5 }}>
+              Esto guardará los cambios actuales y creará una copia exacta de este checklist mensual para el período que elijas, permitiéndote continuar desde aquí sin alterar el mes original.
+            </p>
+            
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 24 }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#475569' }}>Seleccionar nuevo período (Mes):</span>
+              <select 
+                className="ga-select" 
+                value={duplicatePeriod} 
+                onChange={(e) => setDuplicatePeriod(e.target.value)}
+                style={{ width: '100%' }}
+              >
+                <option value="">— Seleccionar mes siguiente —</option>
+                {PERIODS.map(p => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+              </select>
+            </label>
+            
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+              <button 
+                className="ga-btn secondary" 
+                onClick={() => setShowDuplicateModal(false)}
+                style={{ padding: '8px 16px' }}
+              >
+                Cancelar
+              </button>
+              <button 
+                className="ga-btn primary" 
+                onClick={handleDuplicateForOtherMonth}
+                disabled={!duplicatePeriod}
+                style={{ padding: '8px 20px' }}
+              >
+                Duplicar borrador
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <style jsx>{`
         @keyframes slideIn {
           from { transform: translateY(20px); opacity: 0; }
@@ -758,3 +879,5 @@ export default function ChecklistFormPage() {
     </div>
   );
 }
+
+

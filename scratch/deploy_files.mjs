@@ -8,6 +8,7 @@ const FILES_TO_DEPLOY = [
   'package.json',
   'tsconfig.json',
   'src/app/api/reports/[id]/.docx/route.ts',
+  'src/app/api/forms/[id]/copy/route.ts',
   'src/app/api/youngs/[id]/route.ts',
   'src/app/api/youngs/route.ts',
   'src/app/api/youngs/generate-pcp/route.ts',

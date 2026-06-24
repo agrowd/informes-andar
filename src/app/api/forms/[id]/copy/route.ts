@@ -35,16 +35,27 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       return NextResponse.json({ error: 'Formulario no encontrado' }, { status: 404 });
     }
 
+    // Intentar leer periodo personalizado del cuerpo del request
+    let customPeriod = '';
+    try {
+      const body = await req.json();
+      if (body && body.periodo) {
+        customPeriod = String(body.periodo).trim().toUpperCase();
+      }
+    } catch (e) {
+      // Ignorar si no hay cuerpo o no es JSON válido
+    }
+
     // Crear copia del formulario
+    const newPeriodo = customPeriod || (originalForm.data?.datosGenerales?.periodo || '') + ' (COPIA)';
     const newData = {
       ...originalForm.data,
       datosGenerales: {
         ...(originalForm.data?.datosGenerales || {}),
-        periodo: (originalForm.data?.datosGenerales?.periodo || '') + ' (COPIA)',
+        periodo: newPeriodo,
       }
     };
 
-    const newPeriodo = newData.datosGenerales.periodo || 'BORRADOR_COPIA';
 
     if (sql) {
       const newForm = await sql`

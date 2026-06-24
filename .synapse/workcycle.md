@@ -249,7 +249,13 @@
   - Desplegar cambios en caliente al VPS utilizando el script `deploy_files.mjs` con build y reinicio de PM2 exitosos.
   - Sincronizar todos los cambios en el repositorio de GitHub mediante SSH.
 - **Estado**: Completado. ✅
-
-
-
-
+## 2026-06-24 (Resolución de Márgenes, Años en DOCX, Redacción en Presente y Duplicación en Formulario)
+- **Objetivo**: Fixear márgenes de PDF, integrar años dinámicos en plantillas Word/PDF, obligar redacción en presente de IA y permitir la duplicación directa de borradores mensuales para otros meses en caliente desde el formulario.
+- **Actividades**:
+  - Unificar márgenes superior a 45mm y laterales/inferior a 25.4mm en Playwright y CSS para evitar superposiciones con el membrete.
+  - Reemplazar años hardcodeados en Word por placeholders `{pcpAnio}` y `{periodoAnio}` y cargarlos dinámicamente con un JOIN en Postgres.
+  - Agregar directiva temporal a la IA para redactar estrictamente en presente y reescribir fallbacks en presente.
+  - Modificar el endpoint POST `/api/forms/[id]/copy` para admitir el nuevo `periodo` en el cuerpo JSON de la petición.
+  - Agregar botón "📋 Duplicar para otro mes" en `/form/page.tsx` que despliega un selector de mes y crea el nuevo borrador de forma automática sin alterar el original.
+  - Validar build de producción local, correr Vitest, y desplegar en caliente al VPS reiniciando PM2 de forma exitosa.
+- **Estado**: Completado. ✅
