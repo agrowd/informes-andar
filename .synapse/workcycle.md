@@ -7,6 +7,7 @@
   - Ampliar el rango de lectura del Plan de Futuro Personal a partir de la fila 24, capturando correctamente la dimensión "BF" (fila 25).
   - Validar los cambios localmente con el script de prueba `scratch/test_import_marisol.mjs` usando la planilla de Marisol Fernanda Brito.
   - Verificar la compatibilidad estructural de los 3 archivos Excel (`Marisol Fernanda Brito.xlsx`, `Celis Analia Noemi.xlsx` y `Juan Pablo Herrera.xlsx`) en Descargas, corroborando que la lógica es 100% genérica y funciona perfectamente para todos.
+  - Diseñar e implementar un banner de alerta en la UI (`src/app/youngs/page.tsx`) que avisa al facilitador o coordinador si al joven le faltan sueños, escalas o dimensiones completas en su PCP, guiándolos para corregirlo de forma manual.
   - Realizar commit y push de la corrección a GitHub.
   - Ejecutar el script `scratch/deploy_files.mjs` para desplegar la actualización en caliente en el VPS de producción y reiniciar PM2.
 - **Estado**: Completado ✅
