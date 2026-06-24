@@ -83,8 +83,135 @@ export async function POST(req: NextRequest) {
 
     let nombreCompleto = '';
     let anioPcp = '';
+    let mainTaller = '';
+    let fotoBase64: string | null = null;
+    let pcpLegajo = '';
+    let pcpObraSocial = '';
+    let pcpDni = '';
+    let pcpFechaNacimiento: Date | null = null;
 
     if (pcpSheet) {
+      // Extract profile photo
+      const images = pcpSheet.getImages();
+      if (images && images.length > 0) {
+        let largestMedia: any = null;
+        let largestSize = 0;
+        for (const img of images) {
+          const media = workbook.model.media && (workbook.model.media as any)[img.imageId];
+          if (media && media.buffer) {
+            const size = media.buffer.length;
+            if (size > largestSize) {
+              largestSize = size;
+              largestMedia = media;
+            }
+          }
+        }
+        if (largestMedia) {
+          const mimeType = largestMedia.extension === 'png' ? 'image/png' : 'image/jpeg';
+          fotoBase64 = `data:${mimeType};base64,${largestMedia.buffer.toString('base64')}`;
+        }
+      }
+
+      // Escalas (SIS, GENCAT, INICO, SAN MARTIN)
+      // Las celdas de escalas suelen estar mergeadas (ej: A21-C21 = "SIS", D21-F21 = "GENCAT").
+      // Solo procesamos la primera aparición de cada label y validamos que el valor siguiente no sea otro label.
+      const scaleLabels = new Set(['sis', 'gencat', 'inico', 'san martin', 'san martín']);
+      const foundScales = new Set<string>();
+      for (let r = 1; r <= 40; r++) {
+        for (let c = 1; c <= 10; c++) {
+          const val = pcpSheet.getCell(r, c).value;
+          if (val && typeof val === 'string') {
+            const txt = val.trim().toLowerCase();
+            // Verificar si esta celda es un label de escala que aún no procesamos
+            let matchedScale = '';
+            if (txt === 'sis') matchedScale = 'sis';
+            else if (txt.trim().toLowerCase().startsWith('gencat')) matchedScale = 'gencat';
+            else if (txt.includes('inico')) matchedScale = 'inico';
+            else if (txt.includes('san martin') || txt.includes('san martín')) matchedScale = 'sanmartin';
+
+            if (matchedScale && !foundScales.has(matchedScale)) {
+              foundScales.add(matchedScale);
+              // Buscar el valor de la escala debajo (r+1, c) - prioridad sobre la celda a la derecha
+              const belowVal = pcpSheet.getCell(r + 1, c).value;
+              const rightVal = pcpSheet.getCell(r, c + 1).value;
+              // Elegir el valor que no sea null ni otro label de escala
+              const isScaleLabel = (v: any) => {
+                if (!v || typeof v !== 'string') return false;
+                const vl = String(v).trim().toLowerCase();
+                return scaleLabels.has(vl) || vl === txt;
+              };
+              const scoreVal = (belowVal && !isScaleLabel(belowVal)) ? belowVal 
+                             : (rightVal && !isScaleLabel(rightVal)) ? rightVal 
+                             : null;
+              if (scoreVal) {
+                const cleaned = cleanText(scoreVal);
+                if (matchedScale === 'sis') pcpData.perfil.resultadosEscalas.sis = cleaned;
+                else if (matchedScale === 'gencat') pcpData.perfil.resultadosEscalas.gencat = cleaned;
+                else if (matchedScale === 'inico') pcpData.perfil.resultadosEscalas.inico = cleaned;
+                else if (matchedScale === 'sanmartin') pcpData.perfil.resultadosEscalas.sanMartin = cleaned;
+              }
+            }
+          }
+        }
+      }
+
+      // Scan PCP sheet dynamically for legajo, obraSocial, dni, fechaNacimiento, taller
+      for (let r = 1; r <= 20; r++) {
+        for (let c = 1; c <= 8; c++) {
+          const val = pcpSheet.getCell(r, c).value;
+          if (val) {
+            const txt = String(val).trim();
+            const low = txt.toLowerCase();
+            if (/legajo/i.test(low)) {
+              const matched = txt.replace(/legajo:\s*/i, '').trim();
+              if (matched) pcpLegajo = matched;
+              else {
+                const nextVal = pcpSheet.getCell(r, c + 1).value || pcpSheet.getCell(r + 1, c).value;
+                if (nextVal) pcpLegajo = cleanText(nextVal);
+              }
+            } else if (/obra\s*social/i.test(low)) {
+              const matched = txt.replace(/obra\s*social:\s*/i, '').trim();
+              if (matched) pcpObraSocial = matched;
+              else {
+                const nextVal = pcpSheet.getCell(r, c + 1).value || pcpSheet.getCell(r + 1, c).value;
+                if (nextVal) pcpObraSocial = cleanText(nextVal);
+              }
+            } else if (/dni/i.test(low) && !low.includes('dimensi')) {
+              const matched = txt.replace(/dni:\s*/i, '').trim();
+              if (matched) pcpDni = matched;
+              else {
+                const nextVal = pcpSheet.getCell(r, c + 1).value || pcpSheet.getCell(r + 1, c).value;
+                if (nextVal) pcpDni = cleanText(nextVal);
+              }
+            } else if (/fecha\s*de\s*nacimiento/i.test(low) || /nacimiento/i.test(low)) {
+              const nextVal = pcpSheet.getCell(r, c + 1).value || pcpSheet.getCell(r + 1, c).value;
+              if (nextVal instanceof Date) {
+                pcpFechaNacimiento = nextVal;
+              } else if (nextVal) {
+                const parsedDate = new Date(String(nextVal).trim());
+                if (!isNaN(parsedDate.getTime())) pcpFechaNacimiento = parsedDate;
+              }
+            } else if (/taller/i.test(low)) {
+              const parsedTaller = txt
+                .replace(/taller:\s*/i, '')
+                .replace(/taller de\s*/i, '')
+                .trim();
+              if (parsedTaller) {
+                mainTaller = parsedTaller;
+              } else {
+                const nextVal = pcpSheet.getCell(r, c + 1).value || pcpSheet.getCell(r + 1, c).value;
+                if (nextVal) {
+                  mainTaller = String(nextVal)
+                    .replace(/taller de\s*/i, '')
+                    .replace(/taller:\s*/i, '')
+                    .trim();
+                }
+              }
+            }
+          }
+        }
+      }
+
       // Buscar nombre de manera flexible en el PCP (filas 1 a 6, columnas 1 a 4)
       for (let r = 1; r <= 6; r++) {
         for (let c = 1; c <= 4; c++) {
@@ -201,7 +328,6 @@ export async function POST(req: NextRequest) {
 
     // 2. PARSEAR PLANILLAS MENSUALES
     const monthlyReports: any[] = [];
-    let mainTaller = '';
 
     for (const sheet of workbook.worksheets) {
       if (pcpSheet && sheet.id === pcpSheet.id) continue;
@@ -306,27 +432,71 @@ export async function POST(req: NextRequest) {
 
     // 3. GUARDAR JOVEN EN LA BASE DE DATOS
     let youngIdStr = '';
+    const userId = session?.user?.id ? (USE_POSTGRES ? Number(session.user.id) : session.user.id) : null;
     
     if (USE_POSTGRES && sql) {
       // Buscar si el joven existe
       const existing = await sql`
-        SELECT id, pcp FROM youngs WHERE nombre_completo ILIKE ${nombreCompleto} LIMIT 1
+        SELECT id, pcp, foto, legajo, obra_social, dni, fecha_nacimiento, assigned_facilitators, taller 
+        FROM youngs WHERE nombre_completo ILIKE ${nombreCompleto} LIMIT 1
       `;
       
       if (existing.rows.length > 0) {
-        youngIdStr = String(existing.rows[0].id);
+        const youngRow = existing.rows[0];
+        youngIdStr = String(youngRow.id);
+        
         // Mezclar PCP existente con el nuevo
-        const mergedPcp = { ...(existing.rows[0].pcp || {}), ...pcpData };
+        const mergedPcp = { ...(youngRow.pcp || {}), ...pcpData };
+        
+        // Mezclar facilitadores asignados
+        let facilitators = youngRow.assigned_facilitators || [];
+        if (userId && !facilitators.includes(userId)) {
+          facilitators = [...facilitators, userId];
+        }
+        const arrayString = facilitators.length > 0 ? `{${facilitators.join(',')}}` : '{}';
+
+        // Mantener datos existentes si el Excel no los proveyó
+        const finalPhoto = fotoBase64 || youngRow.foto || null;
+        const finalLegajo = pcpLegajo || youngRow.legajo || null;
+        const finalObraSocial = pcpObraSocial || youngRow.obra_social || null;
+        const finalDni = pcpDni || youngRow.dni || null;
+        const finalBirth = pcpFechaNacimiento ? pcpFechaNacimiento.toISOString() : (youngRow.fecha_nacimiento || null);
+        const finalTaller = mainTaller || youngRow.taller || null;
+
         await sql`
           UPDATE youngs 
-          SET pcp = ${JSON.stringify(mergedPcp)}::jsonb, taller = ${mainTaller || null}, updated_at = NOW()
+          SET 
+            pcp = ${JSON.stringify(mergedPcp)}::jsonb, 
+            taller = ${finalTaller}, 
+            foto = ${finalPhoto},
+            legajo = ${finalLegajo},
+            obra_social = ${finalObraSocial},
+            dni = ${finalDni},
+            fecha_nacimiento = ${finalBirth},
+            assigned_facilitators = ${arrayString}::int4[],
+            updated_at = NOW()
           WHERE id = ${parseInt(youngIdStr)}
         `;
       } else {
         // Crear nuevo
+        const facilitators = userId ? [userId] : [];
+        const arrayString = facilitators.length > 0 ? `{${facilitators.join(',')}}` : '{}';
+
         const result = await sql`
-          INSERT INTO youngs (nombre_completo, taller, pcp, created_at, updated_at)
-          VALUES (${nombreCompleto}, ${mainTaller || null}, ${JSON.stringify(pcpData)}::jsonb, NOW(), NOW())
+          INSERT INTO youngs (nombre_completo, taller, pcp, foto, legajo, obra_social, dni, fecha_nacimiento, assigned_facilitators, created_at, updated_at)
+          VALUES (
+            ${nombreCompleto}, 
+            ${mainTaller || null}, 
+            ${JSON.stringify(pcpData)}::jsonb, 
+            ${fotoBase64 || null},
+            ${pcpLegajo || null},
+            ${pcpObraSocial || null},
+            ${pcpDni || null},
+            ${pcpFechaNacimiento ? pcpFechaNacimiento.toISOString() : null},
+            ${arrayString}::int4[], 
+            NOW(), 
+            NOW()
+          )
           RETURNING id
         `;
         youngIdStr = String(result.rows[0].id);
@@ -334,16 +504,36 @@ export async function POST(req: NextRequest) {
     } else if (process.env.MONGODB_URI) {
       const { YoungModel } = await import('@/models/Young');
       const existing = await YoungModel.findOne({ nombreCompleto: { $regex: new RegExp('^' + nombreCompleto + '$', 'i') } });
+      
       if (existing) {
         youngIdStr = existing._id.toString();
         existing.pcp = { ...(existing.pcp || {}), ...pcpData };
         if (mainTaller) existing.taller = mainTaller;
+        if (fotoBase64) existing.foto = fotoBase64;
+        if (pcpLegajo) existing.legajo = pcpLegajo;
+        if (pcpObraSocial) existing.obraSocial = pcpObraSocial;
+        if (pcpDni) existing.dni = pcpDni;
+        if (pcpFechaNacimiento) existing.fechaNacimiento = pcpFechaNacimiento;
+        
+        if (userId) {
+          const facilitators = existing.assignedFacilitators || [];
+          if (!facilitators.map(f => f.toString()).includes(userId.toString())) {
+            existing.assignedFacilitators.push(userId);
+          }
+        }
         await existing.save();
       } else {
+        const facilitators = userId ? [userId] : [];
         const created = await YoungModel.create({
           nombreCompleto,
           taller: mainTaller || undefined,
-          pcp: pcpData
+          pcp: pcpData,
+          foto: fotoBase64 || undefined,
+          legajo: pcpLegajo || undefined,
+          obraSocial: pcpObraSocial || undefined,
+          dni: pcpDni || undefined,
+          fechaNacimiento: pcpFechaNacimiento || undefined,
+          assignedFacilitators: facilitators
         });
         youngIdStr = created._id.toString();
       }
@@ -351,7 +541,6 @@ export async function POST(req: NextRequest) {
 
     // 4. REGISTRAR O ACTUALIZAR PLANILLAS MENSUALES (FORMS)
     const createdFormIds: string[] = [];
-    const userId = session?.user?.id ? (USE_POSTGRES ? Number(session.user.id) : session.user.id) : null;
 
     for (const report of monthlyReports) {
       const formData = {
