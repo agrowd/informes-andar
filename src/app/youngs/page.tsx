@@ -491,6 +491,24 @@ export default function YoungsPage() {
     return items.filter(y => y.nombreCompleto?.toLowerCase().includes(v) || y.dni?.includes(v));
   }, [items, search]);
 
+  const missingPcpData = useMemo(() => {
+    if (!form.pcp?.anio) return null;
+    const suenos = form.pcp?.perfil?.suenos || [];
+    const hasSuenos = suenos.some((s: string) => s && s.trim().length > 0);
+    const hasEscalas = (form.pcp?.perfil?.resultadosEscalas?.sis && form.pcp?.perfil?.resultadosEscalas?.sis.trim().length > 0) || 
+                       (form.pcp?.perfil?.resultadosEscalas?.gencat && form.pcp?.perfil?.resultadosEscalas?.gencat.trim().length > 0);
+    const missingDims = ['BF', 'BE', 'DP', 'AU', 'RI', 'IS'].filter(d => !form.pcp?.planFuturo?.[d]?.objetivos?.trim());
+    
+    if (!hasSuenos || !hasEscalas || missingDims.length > 0) {
+      return {
+        noSuenos: !hasSuenos,
+        noEscalas: !hasEscalas,
+        missingDims
+      };
+    }
+    return null;
+  }, [form.pcp]);
+
   const initializePCP = (pcp?: any) => {
     const base = pcp || {};
     return {
@@ -698,6 +716,42 @@ export default function YoungsPage() {
           <button className="ga-btn" onClick={() => setView('list')} style={{ padding: '8px 12px' }}>← Volver</button>
           <h1 style={{ margin: 0 }}>Perfil de {selectedYoung.nombreCompleto}</h1>
         </div>
+
+        {missingPcpData && (
+          <div style={{
+            background: '#fffbeb',
+            border: '1px solid #fef3c7',
+            borderRadius: '8px',
+            padding: '16px 20px',
+            marginBottom: '25px',
+            color: '#92400e',
+            fontSize: '14px',
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '12px',
+            boxShadow: '0 2px 8px rgba(245, 158, 11, 0.08)'
+          }}>
+            <span style={{ fontSize: '20px', lineHeight: 1 }}>⚠️</span>
+            <div style={{ flex: 1 }}>
+              <strong style={{ display: 'block', fontSize: '15px', marginBottom: '4px', color: '#78350f' }}>Datos Faltantes en la PCP</strong>
+              <span>
+                Algunos datos importantes de la PCP no se detectaron o no están cargados en el archivo Excel:
+              </span>
+              <ul style={{ margin: '8px 0 0 0', paddingLeft: '20px', lineHeight: '1.6' }}>
+                {missingPcpData.noSuenos && <li><strong>Metas o Sueños:</strong> No se encontró ningún sueño registrado.</li>}
+                {missingPcpData.noEscalas && <li><strong>Escalas Cuantitativas:</strong> Los resultados de SIS y GENCAT no están cargados.</li>}
+                {missingPcpData.missingDims.length > 0 && (
+                  <li>
+                    <strong>Plan de Futuro Personal:</strong> Faltan objetivos para las dimensiones: {missingPcpData.missingDims.join(', ')}.
+                  </li>
+                )}
+              </ul>
+              <div style={{ marginTop: '12px', fontSize: '13px', fontWeight: 600, color: '#b45309' }}>
+                👉 Por favor, completalos manualmente en la pestaña <strong>"PCP"</strong> para asegurar la máxima calidad en los informes trimestrales.
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="ga-tabs-nav">
           <button className={`ga-tab ${activeTab === 'perfil' ? 'active' : ''}`} onClick={() => setActiveTab('perfil')}>Ficha Técnica</button>
