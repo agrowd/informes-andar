@@ -66,3 +66,29 @@
   - En la sección de borradores (`/forms`), tras una generación exitosa, redirige al usuario a la página `/reports` para ver su nuevo informe trimestral.
 - Ejecutó `npm run build` y `npm run test` con éxito (0 errores, todas las pruebas pasadas).
 - Actualizó la bitácora y los archivos de memoria en `.synapse/`.
+
+# Registro de Conversación - 2026-06-24 (Resolución de Márgenes, Años en DOCX y Redacción en Presente)
+
+## Usuario:
+- Solicitó exportar el PDF con el membrete que no se coma el texto, configurando márgenes similares a los de Word para que se pueda descargar correctamente.
+- Reportó errores con respecto a los años en el informe trimestral (años hardcodeados) y exigió que la redacción de los informes trimestrales generados esté estrictamente en tiempo presente.
+- Preguntó si la importación e interpretación completa del Excel con la PCP y los meses ya funciona a la perfección.
+
+## Antigravity:
+- **Estandarizó los Márgenes del PDF**:
+  - Unificó el margen superior en `45 mm` y los laterales/inferior en `25.4 mm` (margen de Word) tanto en las opciones de impresión de Playwright (`src/lib/pdf/render.ts`) como en los estilos CSS `@page` en `report.njk` y `trimestral/route.ts`.
+  - Con esto, la cabecera membretada institucional se posiciona elegantemente en todas las páginas sin solaparse ("comerse") el texto de los informes.
+- **Alineó Años Dinámicos en la Plantilla de Word (DOCX)**:
+  - Reemplazó los años fijos ("2024" y "2025") en el archivo XML de `templates/trimestral_template.docx` por los campos dinámicos `{pcpAnio}` y `{periodoAnio}`.
+  - Modificó `src/app/api/reports/[id]/.docx/route.ts` para realizar un JOIN en PostgreSQL para obtener la PCP del joven (`youngs.pcp`) e inyectar `pcpAnio` y `periodoAnio` en `doc.setData()`.
+- **Redacción de la IA estrictamente en Tiempo Presente**:
+  - Modificó la instrucción en `src/lib/ai/quarterlyGenerator.ts` para que OpenAI redacte los textos trimestrales estrictamente en tiempo presente.
+  - Reescribió las narrativas de fallback determinísticas del generador trimestral para estar redactadas en presente.
+- **Optimización y Validación del Importador Excel**:
+  - Robusteció el parser en `src/app/api/youngs/import-excel/route.ts` con búsquedas flexibles y caso-insensibles del PCP y escaneo dinámico de filas para metadatos (facilitador, taller).
+  - Corrió localmente el script `scratch/test_full_flow.ts` verificando que todo el flujo (importar Excel real, fusionar checklists de 3 meses, redactar con IA en presente y generar el DOCX con años dinámicos) funciona perfectamente.
+  - Ejecutó las pruebas unitarias (`npm run test`) exitosamente.
+- **Despliegue y Commit**:
+  - Corrió `node scratch/deploy_files.mjs` para subir en caliente todos los cambios al VPS de producción, realizar la compilación exitosa y reiniciar PM2.
+  - Realizó el commit y push correspondiente a origin main de GitHub de manera exitosa.
+
