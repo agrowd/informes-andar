@@ -41,6 +41,8 @@
 | D-37 | **Fidelidad Absoluta de Datos en IA** | Prohibir inductores (biasing examples) en la definición de claves JSON del prompt de fusión trimestral, forzando a la IA a redactar sobre apoyos recreativos en lugar de alucinar destrezas motrices o independencia física no registradas en concurrentes con movilidad reducida (silla de ruedas). | 🔒 LOCKED |
 | D-38 | **Búsqueda Dinámica de Sueños en PCP** | Escanear de forma secuencial la columna A del PCP identificando el inicio mediante la palabra clave `"SUEÑO"` / `"SUEÑOS"` y deteniéndose ante etiquetas como `"SIS"` o `"PLAN DE FUTURO"`, logrando una captura fiel del sueño y evitando capturar erróneamente siglas de escalas. | 🔒 LOCKED |
 | D-39 | **Ampliación de Escaneo de Dimensiones PFP** | Iniciar el barrido del plan de futuro del PCP en la fila 24 (en lugar de la 26) para permitir capturar la dimensión `BF` (Bienestar Físico) que se ubica en la fila 25 de la plantilla oficial de Andar. | 🔒 LOCKED |
+| D-40 | **Clasificación de imágenes por coordenadas** | Usar las coordenadas de fila (`range.tl.row`) de Excel para identificar y separar inequívocamente la foto de perfil (filas 2-7) del gráfico GENCAT (filas 18-23). | 🔒 LOCKED |
+| D-41 | **OpenAI Vision para lectura de gráficos GENCAT** | Usar GPT-4o Vision como fallback automático al importar para extraer puntuaciones cuantitativas de la escala GENCAT directamente del gráfico embebido cuando no existen en formato de texto. | 🔒 LOCKED |
 
 
 

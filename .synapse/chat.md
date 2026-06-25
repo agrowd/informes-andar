@@ -245,3 +245,35 @@
   - Corrió `node scratch/deploy_files.mjs` para subir en caliente todos los cambios al VPS de producción, realizar la compilación exitosa y reiniciar PM2.
   - Realizó el commit y push correspondiente a origin main de GitHub de manera exitosa.
 
+# Registro de Conversación - 2026-06-24 (Extracción de Foto, Asignación del Facilitador y Metadatos de PCP)
+
+## Usuario:
+- Reportó que al importar un joven con Excel no se reconoció la PCP completamente (solo los meses, no el taller, etc.).
+- Pidió completar todos los datos del joven con la información del PCP y extraer la foto de perfil desde la hoja PCP del Excel.
+- Pidió que al subir o importar el perfil del alumno, el sistema asocie automáticamente a ese facilitador como asignado a dicho alumno.
+
+## Antigravity:
+- Modificó la base de datos Postgres alterando la columna `foto` a `TEXT` para soportar Base64.
+- Modificó `import-excel/route.ts` para extraer de forma dinámica la foto embebida en la solapa PCP y guardarla como Base64.
+- Agregó escaneo flexible de metadatos (taller, legajo, obra social, DNI y fecha de nacimiento) en el PCP.
+- Asoció automáticamente al facilitador autenticado (`session.user.id`) en el array `assigned_facilitators` del joven en la base de datos.
+- Desplegó los cambios al VPS en caliente y realizó commit/push.
+
+# Registro de Conversación - 2026-06-25 (Análisis de Escalas Cuantitativas y Dimensiones PCP)
+ 
+ ## Usuario:
+ - Reportó que las escalas cuantitativas (SIS y GENCAT) no se cargan y que en el plan de futuro faltan los objetivos para las dimensiones DP, AU, RI y IS de Marisol.
+ - Proporcionó capturas de pantalla de la solapa PCP y solicitó encontrar la forma de subirlas y cargarlas solas sin que el facilitador tenga que cargarlas manualmente al importar (sugiriendo usar capturas virtuales y la API de ChatGPT Vision si es necesario).
+ 
+ ## Antigravity:
+ - **Hallazgo**: Confirmó que el gráfico GENCAT es una imagen pegada en el Excel y que los valores numéricos no están en formato texto en las celdas.
+ - **Implementó Clasificación por Coordenadas**: Utilizó `range.tl.row` de ExcelJS para identificar la foto de perfil (filas 2-7) y el gráfico lineal GENCAT (filas 18-23).
+ - **Integró GPT-4o Vision**: Desarrolló una llamada a la API de OpenAI GPT-4o Vision que recibe la imagen del gráfico lineal de GENCAT, lee con precisión los valores de cada una de las 8 dimensiones y retorna los resultados formateados en JSON.
+ - **Robusteció la actualización de base de datos**: Aseguró que las re-importaciones de planillas unan la PCP actualizando los datos de forma acumulativa y manteniendo intactos los campos como foto, legajo, DNI, fecha de nacimiento y obra social si no están en el nuevo archivo.
+ - **Verificó la precisión al 100%**: Corrió pruebas de visión exitosas sobre los archivos de Marisol, Analía y Juan Pablo en Descargas.
+ - **Desplegó y Reinició en Producción**: Subió los archivos al VPS, ejecutó el build Next.js y reinició PM2 con éxito.
+ - **Creó Walkthrough**: Detalló la implementación en el artefacto `walkthrough.md`.
+
+
+
+

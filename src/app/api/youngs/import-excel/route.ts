@@ -3,8 +3,89 @@ import { connectToDB, sql } from '@/lib/db';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import ExcelJS from 'exceljs';
+import OpenAI from 'openai';
 
 const USE_POSTGRES = !!(process.env.POSTGRES_URL || process.env.POSTGRES_PRISMA_URL);
+
+async function parseGencatChartWithVision(base64Image: string): Promise<string> {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    console.warn("OpenAI API Key not configured. Skipping GENCAT vision parsing.");
+    return '';
+  }
+
+  try {
+    const client = new OpenAI({ apiKey });
+    const response = await client.chat.completions.create({
+      model: 'gpt-4o',
+      temperature: 0,
+      response_format: { type: 'json_object' },
+      messages: [
+        {
+          role: 'system',
+          content: 'Eres un analista de datos experto en escalas de calidad de vida. Tu tarea es extraer la información cuantitativa de un gráfico de la escala GENCAT / INICO FEAPS.'
+        },
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: `Analiza la imagen del gráfico de la escala GENCAT de Calidad de Vida e identifica las puntuaciones estándar asignadas a cada una de las siguientes 8 dimensiones. 
+              El gráfico muestra valores del 0 al 20 en el eje vertical (Y) y los nombres de las dimensiones en el eje horizontal (X).
+              
+              El orden típico de las dimensiones de izquierda a derecha en el gráfico es:
+              1. Bienestar Emocional (BE)
+              2. Relaciones Interpersonales (RI)
+              3. Bienestar Material (BM)
+              4. Desarrollo Personal (DP)
+              5. Bienestar Físico (BF)
+              6. Autodeterminación (AU)
+              7. Inclusión Social (IS)
+              8. Derechos (DR)
+              
+              Lee con mucha precisión los números que figuran sobre el gráfico (puntos o etiquetas del gráfico) y devuelve un objeto JSON con las claves exactas de las dimensiones y sus puntuaciones como números. Por ejemplo:
+              {
+                "BE": 7,
+                "RI": 8,
+                "BM": 6,
+                "DP": 9,
+                "BF": 6,
+                "AU": 9,
+                "IS": 5,
+                "DR": 7
+              }
+              
+              Si la imagen no es un gráfico de la escala GENCAT o no se pueden leer los valores, devuelve un objeto vacío.`
+            },
+            {
+              type: 'image_url',
+              image_url: {
+                url: base64Image
+              }
+            }
+          ]
+        }
+      ]
+    } as any);
+
+    const content = response.choices?.[0]?.message?.content;
+    if (!content) return '';
+
+    const parsed = JSON.parse(content);
+    const dims = ['BE', 'RI', 'BM', 'DP', 'BF', 'AU', 'IS', 'DR'];
+    const parts: string[] = [];
+    for (const d of dims) {
+      if (typeof parsed[d] !== 'undefined' && parsed[d] !== null) {
+        parts.push(`${d}: ${parsed[d]}`);
+      }
+    }
+    return parts.join(' | ');
+  } catch (error) {
+    console.error("Error in parseGencatChartWithVision:", error);
+    return '';
+  }
+}
+
 
 function isCellChecked(cell: ExcelJS.Cell) {
   const fill = cell.fill;
@@ -91,24 +172,41 @@ export async function POST(req: NextRequest) {
     let pcpFechaNacimiento: Date | null = null;
 
     if (pcpSheet) {
-      // Extract profile photo
+      // Extract profile photo and GENCAT chart by row coordinates
       const images = pcpSheet.getImages();
+      let gencatBase64: string | null = null;
+
       if (images && images.length > 0) {
-        let largestMedia: any = null;
-        let largestSize = 0;
+        let largestMediaFallback: any = null;
+        let largestSizeFallback = 0;
+
         for (const img of images) {
+          const range = img.range;
+          if (!range || !range.tl) continue;
+          
           const media = workbook.model.media && (workbook.model.media as any)[img.imageId];
           if (media && media.buffer) {
+            const row = range.tl.row;
+            const mimeType = media.extension === 'png' ? 'image/png' : 'image/jpeg';
             const size = media.buffer.length;
-            if (size > largestSize) {
-              largestSize = size;
-              largestMedia = media;
+
+            if (row >= 2 && row <= 7) {
+              // Profile picture range
+              fotoBase64 = `data:${mimeType};base64,${media.buffer.toString('base64')}`;
+            } else if (row >= 18 && row <= 23) {
+              // GENCAT chart range
+              gencatBase64 = `data:${mimeType};base64,${media.buffer.toString('base64')}`;
+            } else if (row > 7 && size > largestSizeFallback) {
+              // General fallback for profile photo
+              largestSizeFallback = size;
+              largestMediaFallback = media;
             }
           }
         }
-        if (largestMedia) {
-          const mimeType = largestMedia.extension === 'png' ? 'image/png' : 'image/jpeg';
-          fotoBase64 = `data:${mimeType};base64,${largestMedia.buffer.toString('base64')}`;
+
+        if (!fotoBase64 && largestMediaFallback) {
+          const mimeType = largestMediaFallback.extension === 'png' ? 'image/png' : 'image/jpeg';
+          fotoBase64 = `data:${mimeType};base64,${largestMediaFallback.buffer.toString('base64')}`;
         }
       }
 
@@ -154,6 +252,17 @@ export async function POST(req: NextRequest) {
           }
         }
       }
+
+      // Si se extrajo la imagen del gráfico GENCAT y no se detectó texto en las celdas, usar OpenAI Vision
+      if (gencatBase64 && (!pcpData.perfil.resultadosEscalas.gencat || pcpData.perfil.resultadosEscalas.gencat.trim().length === 0)) {
+        console.log("Analyzing GENCAT chart with OpenAI Vision...");
+        const parsedGencat = await parseGencatChartWithVision(gencatBase64);
+        if (parsedGencat) {
+          pcpData.perfil.resultadosEscalas.gencat = parsedGencat;
+          console.log("Successfully parsed GENCAT scores using Vision:", parsedGencat);
+        }
+      }
+
 
       // Scan PCP sheet dynamically for legajo, obraSocial, dni, fechaNacimiento, taller
       for (let r = 1; r <= 20; r++) {

@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.7.3] - 2026-06-25
+### Added
+- Integración de OpenAI GPT-4o Vision para parsear automáticamente la escala cuantitativa GENCAT desde el gráfico lineal incrustado en el Excel cuando no existen valores numéricos de texto en las celdas.
+- Clasificación inteligente de imágenes por rango de coordenadas de fila (`range.tl.row`) en el importador de Excel, distinguiendo inequívocamente la foto del concurrente (filas 2-7) del gráfico GENCAT (filas 18-23).
+- Mecanismo seguro de fusión y actualización de datos de jóvenes en base de datos para no pisar ni blanquear la foto, DNI, fecha de nacimiento, legajo u obra social si no están presentes en la importación.
+
 ## [1.7.2] - 2026-06-24
 ### Added
 - Integración de `pcpAnio` y `periodoAnio` en la descarga de Word (DOCX) para el informe trimestral.

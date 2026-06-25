@@ -294,5 +294,17 @@
 - **Actividades**:
   - Crear e implementar un plan de trabajo.
   - Modificar la base de datos Postgres alterando la columna `foto` a `TEXT`.
-  - [En Progreso] Modificar `import-excel/route.ts` para extraer la imagen más grande del PCP (foto) y guardar metadatos.
+  - Modificar `import-excel/route.ts` para extraer la imagen más grande del PCP (foto) y guardar metadatos.
+- **Estado**: Completado. ✅
+
+- **Objetivo**: Resolver la falta de carga de escalas cuantitativas (SIS/GENCAT) y de dimensiones de la PCP en los perfiles de los concurrentes a partir de las planillas de Excel provistas en Descargas mediante visión por computadora y coordenadas.
+- **Actividades**:
+  - Inspección de los libros Excel y verificación de la ausencia de puntajes GENCAT en formato texto.
+  - Implementación en `import-excel/route.ts` de la clasificación de imágenes por coordenadas de fila (`range.tl.row`), distinguiendo la foto (filas 2-7) del gráfico (filas 18-23).
+  - Integración de la API de OpenAI GPT-4o Vision para parsear las puntuaciones de calidad de vida del gráfico GENCAT automáticamente al importar, resolviendo la necesidad de carga manual por parte del facilitador.
+  - Creación y ejecución de scripts de prueba (`test_import_with_vision.ts`) verificando extracción de puntajes estándar con 100% de precisión para Marisol Fernanda Brito, Celis Analia Noemi y Juan Pablo Herrera.
+  - Ejecución exitosa de build local Next.js y de pruebas unitarias (`npm run test`).
+  - Despliegue de los archivos modificados al VPS de producción mediante `deploy_files.mjs` y reinicio exitoso de PM2.
+- **Estado**: Completado. ✅
+
 
