@@ -103,9 +103,13 @@ export default function ReportReview({ params }: { params: { id: string } }) {
     return raw;
   };
 
+  const getReportType = () => {
+    return data?.reportType || data?.data?.reportType || 'MENSUAL';
+  };
+
   const handleEditStart = () => {
     if (!data?.data?.secciones) return;
-    const normalized = normalizeSections(data.data.secciones, reportType);
+    const normalized = normalizeSections(data.data.secciones, getReportType());
     setEditedSections(normalized);
     setEditMode(true);
   };
@@ -129,7 +133,7 @@ export default function ReportReview({ params }: { params: { id: string } }) {
     if (!editedSections) return;
     setSaving(true);
     try {
-      const toSave = denormalizeSections(editedSections, reportType);
+      const toSave = denormalizeSections(editedSections, getReportType());
       const res = await fetch(`/api/reports/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -196,9 +200,9 @@ export default function ReportReview({ params }: { params: { id: string } }) {
   if (!data?.data) return <div>No encontrado</div>;
 
   const rep = data.data;
-  const sections = editMode ? editedSections : (rep.secciones || {});
+  const reportType = getReportType();
+  const sections = normalizeSections(editMode ? editedSections : (rep.secciones || {}), reportType);
   const openCount = comments.filter((c) => c.status !== 'RESOLVED').length;
-  const reportType = data.reportType || rep.reportType || 'MENSUAL';
 
   return (
     <div>
