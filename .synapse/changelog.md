@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.7.4] - 2026-06-25
+### Added
+- Inyección automática de metadatos del perfil del joven (DNI, Legajo, Obra Social, Fecha de Nacimiento) en la cabecera HTML/PDF del informe trimestral.
+- Enriquecimiento del Word trimestral (.docx) mediante `doc.setData` con múltiples variables compatibles (`dni`, `legajo`, `numeroLegajo`, `obraSocial`, `obra_social`, `fechaNacimiento`, `fecha_nacimiento`).
+- Enriquecimiento del Excel de borrador mensual inyectando de forma dinámica la PCP y los metadatos del joven en la solapa `PCP`.
+- Reconocimiento por OpenAI Vision de la escala cuantitativa SIS a partir de imágenes en el rango A-C de las filas 18-23 de la solapa PCP.
+- Endpoint de exportación consolidada a Excel de informes de habilidades.
+
+### Fixed
+- Corrección de error de tipado estricto en el build al parametrizar arrays de enteros (`number[]`) en las consultas sql del driver Neon Postgres, resolviéndolo con el formato `{1,2,3}` y casteo explícito `::int4[]`.
+
 ## [1.7.3] - 2026-06-25
 ### Added
 - Integración de OpenAI GPT-4o Vision para parsear automáticamente la escala cuantitativa GENCAT desde el gráfico lineal incrustado en el Excel cuando no existen valores numéricos de texto en las celdas.

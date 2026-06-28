@@ -92,3 +92,47 @@
   - Corrió `node scratch/deploy_files.mjs` para subir en caliente todos los cambios al VPS de producción, realizar la compilación exitosa y reiniciar PM2.
   - Realizó el commit y push correspondiente a origin main de GitHub de manera exitosa.
 
+# Registro de Conversación - 2026-06-25 (Reconocimiento de SIS por Vision y Metadatos de Perfil en Trimestrales)
+
+## Usuario:
+- Solicitó que la escala SIS, que también viene como una imagen embebida en la solapa PCP del Excel, sea reconocida automáticamente mediante la API OpenAI Vision al importar.
+- Solicitó que al realizar la generación del informe trimestral se consoliden/sumen los datos de los 3 meses mensuales y la PCP, y que también se inyecten los datos del joven cargados en el perfil (DNI, Legajo, Obra Social, Fecha de Nacimiento) para que el informe trimestral en formato Word y PDF se genere perfectamente completo.
+- Aclaró posteriormente que el informe trimestral es en formato Word (.docx), no Excel.
+
+## Antigravity:
+- **Reconocimiento por Vision de la Escala SIS**:
+  - Implementó la función `parseSisChartWithVision` en `import-excel/route.ts` utilizando OpenAI Vision para extraer puntuaciones cuantitativas del gráfico radial de la escala de intensidad de apoyos (SIS) a partir de la imagen embebida.
+  - Refactorizó el extractor de imágenes en la importación de Excel para clasificar las imágenes del rango de filas 18-23 por columna: si caen en las columnas A-C se clasifican como `sisBase64` y se envían a parsear; si caen en D-G se clasifican como `gencatBase64`.
+- **Inyección de Metadatos de Perfil en Informe Trimestral (Word/PDF)**:
+  - Modificó `api/reports/trimestral/route.ts` para renderizar el DNI, Legajo, Obra Social, Nacimiento en la cabecera HTML/PDF del informe trimestral y guardar `source_report_ids` como array de enteros en Postgres.
+  - Modificó `.docx/route.ts` inyectando los campos de perfil del concurrente mediante múltiples variantes de variables para asegurar la compatibilidad con cualquier diseño de la plantilla oficial de Word.
+  - Modificó `api/forms/[id]/export-excel/route.ts` para rellenar la solapa `PCP` del Excel mensual exportado de manera dinámica con la PCP y datos personales de la base de datos de jóvenes.
+- **Creada la API de Exportación de Reportes a Excel**:
+  - Creó la API `/api/reports/[id]/export-excel/route.ts` para exportar reportes (mensuales o consolidados trimestrales) sumando/tomando los niveles máximos de habilidades de los meses de origen.
+- **Verificación de Calidad y Estructura**:
+  - Ejecutó con éxito la compilación del proyecto Next.js (`npm run build`) validando tipos de TypeScript y corrigiendo la inyección de arrays de Postgres mediante string arrays (`::int4[]`).
+  - Corrió un script de test local corroborando que las variables y celdas de PCP en el Excel se rellenan de manera impecable.
+
+# Registro de Conversación - 2026-06-28 (Edición/Carga de Word Personalizado y Reemplazo de "Borradores" por "Cuadrícula Mensual")
+
+## Usuario:
+- Solicitó agregar la funcionalidad de editar los Word generados mediante un "pseudo Word" integrado en el sistema, o que puedan descargarse, editarse y luego volver a importarse como actualización (o ambas opciones).
+- Pidió que al ser aprobados queden guardados en la base de datos tanto el original generado como el Word final editado.
+- Pidió reemplazar toda aparición de la palabra "Borradores" por "Cuadrícula Mensual" en la interfaz.
+
+## Antigravity:
+- **Evolución del Backend y DB**:
+  - Creó la migración SQL `add-docx-edit-columns.sql` y el script `run-docx-migration.js` para añadir las columnas `original_data` (copia original del JSON de la IA), `edited_docx_base64` (archivo Word editado subido), `edited_docx_filename` y `edited_at` a la tabla `reports`. Ejecutó la migración en Postgres Neon con éxito.
+  - Actualizó el esquema Mongoose `ReportSchema` en `src/models/Report.ts` para dar soporte a estos nuevos campos en MongoDB.
+- **Implementación del Endpoint de Importación de Word**:
+  - Creó `/api/reports/[id]/upload-docx` para procesar la subida del archivo `.docx` editado localmente. Utiliza Mammoth para extraer su texto y segmentar inteligentemente en las 12 secciones oficiales mediante expresiones regulares flexibles, actualizando el JSON del informe y guardando el archivo Word físico completo en base64 en la base de datos.
+- **Descarga Inteligente de Word**:
+  - Modificó `/api/reports/[id]/.docx/route.ts` para devolver directamente el archivo Word editado físico si existe. Si no existe (o si se pasa `original=true` en la URL), se genera dinámicamente con los datos originales.
+- **Diseño del "Pseudo-Word Editor" en el Frontend**:
+  - Diseñó e integró un editor con interfaz visual que simula una página A4 de Word en `reports/[id]/page.tsx` para cuando el usuario edita el texto. Incluye barra de herramientas para guardar/cancelar y para importar/descargar.
+  - Implementó la visualización de un banner destacado si existe un Word personalizado, y de botones diferenciados para descargar la versión original de IA y la versión editada.
+  - Normalizó la lectura de secciones para que no falle en informes trimestrales donde las secciones son strings en lugar de arrays de fragmentos.
+- **Renombrado visual a Cuadrícula Mensual**:
+  - Realizó reemplazos completos de los textos que decían "Borrador/es" por "Cuadrícula/s Mensual/es" en Nav, Dashboard, listados e importador de Excel.
+- **Validación**:
+  - Compiló Next.js (`npm run build`) para verificar la consistencia del código.

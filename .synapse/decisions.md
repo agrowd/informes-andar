@@ -43,9 +43,10 @@
 | D-39 | **Ampliación de Escaneo de Dimensiones PFP** | Iniciar el barrido del plan de futuro del PCP en la fila 24 (en lugar de la 26) para permitir capturar la dimensión `BF` (Bienestar Físico) que se ubica en la fila 25 de la plantilla oficial de Andar. | 🔒 LOCKED |
 | D-40 | **Clasificación de imágenes por coordenadas** | Usar las coordenadas de fila (`range.tl.row`) de Excel para identificar y separar inequívocamente la foto de perfil (filas 2-7) del gráfico GENCAT (filas 18-23). | 🔒 LOCKED |
 | D-41 | **OpenAI Vision para lectura de gráficos GENCAT** | Usar GPT-4o Vision como fallback automático al importar para extraer puntuaciones cuantitativas de la escala GENCAT directamente del gráfico embebido cuando no existen en formato de texto. | 🔒 LOCKED |
-
-
-
-
-
+| D-42 | **Inyección de Metadatos de Perfil** | Consolidar DNI, Legajo, Obra Social y Fecha de Nacimiento desde la BD e inyectarlos tanto en la cabecera HTML/PDF del informe trimestral como en la solapa PCP de las planillas Excel exportadas. | 🔒 LOCKED |
+| D-43 | **Parametrización de Arrays en Postgres** | Usar formato de string `{1,2,3}` con casteo explícito `::int4[]` en template literals de Neon SQL para evitar errores de tipado de TypeScript. | 🔒 LOCKED |
+| D-44 | **Almacenamiento de Doble Versión de Informe** | Guardar tanto los datos originales de la IA como el archivo Word final físico editado localmente en la base de datos (con `original_data` y `edited_docx_base64`), asegurando que no se sobrescriba ni se pierda la generación inicial. | 🔒 LOCKED |
+| D-45 | **Interfaz Pseudo-Word tipo Hoja A4** | Diseñar un editor interactivo en el frontend que simula visualmente un documento Word A4 (fondo blanco, márgenes, bordes) para la edición de las secciones evolutivas del informe. | 🔒 LOCKED |
+| D-46 | **Parseo Segmentado de Word Importado** | Utilizar Mammoth para extraer texto de archivos `.docx` editados localmente y un segmentador por expresiones regulares para separar el texto en las 12 secciones oficiales e inyectarlo automáticamente en el JSON del informe. | 🔒 LOCKED |
+| D-47 | **Renombrado visual a Cuadrícula Mensual** | Cambiar en toda la interfaz de usuario el nombre de "Borradores" por "Cuadrícula Mensual" para evitar confusiones de flujo con los borradores temporales e informes finales. | 🔒 LOCKED |
 

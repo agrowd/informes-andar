@@ -29,7 +29,16 @@ const FILES_TO_DEPLOY = [
   'templates/trimestral_template.docx',
   'src/app/api/forms/route.ts',
   'src/lib/pdf/render.ts',
-  'src/lib/templates/report.njk'
+  'src/lib/templates/report.njk',
+  'src/app/_components/Nav.tsx',
+  'src/app/page.tsx',
+  'src/app/audit/page.tsx',
+  'src/models/Report.ts',
+  'src/app/api/reports/[id]/upload-docx/route.ts',
+  'src/app/api/reports/[id]/.json/route.ts',
+  'src/app/reports/[id]/page.tsx',
+  'scripts/add-docx-edit-columns.sql',
+  'scripts/run-docx-migration.js'
 ];
 
 const REMOTE_BASE_DIR = '/srv/informes-andar';
@@ -111,6 +120,7 @@ function runPostDeployCommands() {
   const commands = [
     `cd ${REMOTE_BASE_DIR}`,
     'node scripts/run-migration.js',
+    'node scripts/run-docx-migration.js',
     'npm install --legacy-peer-deps',
     'npm run build',
     'pm2 restart ecosystem.config.cjs',

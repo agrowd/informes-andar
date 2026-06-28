@@ -16,37 +16,49 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
     }
 
-    const formId = params.id;
-    let formData: any = null;
+    const reportId = params.id;
+    let reportData: any = null;
+    let reportType = 'MENSUAL';
+    let sourceFormIds: any[] = [];
+    let youngId: string = '';
     let young: any = null;
 
+    // 1. Obtener datos del reporte
     if (USE_POSTGRES && sql) {
       const result = await sql`
-        SELECT f.data, f.periodo, f.young_id, y.nombre_completo, y.dni, y.taller, y.fecha_nacimiento, y.legajo, y.obra_social, y.pcp
-        FROM forms f
-        LEFT JOIN youngs y ON f.young_id = y.id
-        WHERE f.id = ${parseInt(formId)}
+        SELECT r.data, r.report_type, r.source_report_ids, r.young_id, y.nombre_completo, y.dni, y.taller, y.fecha_nacimiento, y.legajo, y.obra_social, y.pcp
+        FROM reports r
+        LEFT JOIN youngs y ON r.young_id = y.id
+        WHERE r.id = ${parseInt(reportId)}
       `;
       if (result.rows.length > 0) {
-        formData = result.rows[0].data;
+        const row = result.rows[0];
+        reportData = row.data;
+        reportType = row.report_type || 'MENSUAL';
+        sourceFormIds = row.source_report_ids || [];
+        youngId = String(row.young_id);
         young = {
-          nombre_completo: result.rows[0].nombre_completo,
-          dni: result.rows[0].dni,
-          taller: result.rows[0].taller,
-          fecha_nacimiento: result.rows[0].fecha_nacimiento,
-          legajo: result.rows[0].legajo,
-          obra_social: result.rows[0].obra_social,
-          pcp: result.rows[0].pcp
+          nombre_completo: row.nombre_completo,
+          dni: row.dni,
+          taller: row.taller,
+          fecha_nacimiento: row.fecha_nacimiento,
+          legajo: row.legajo,
+          obra_social: row.obra_social,
+          pcp: row.pcp
         };
       }
     } else if (process.env.MONGODB_URI) {
-      const { FormModel } = await import('@/models/Form');
-      const item = await FormModel.findById(formId).lean();
-      if (item) {
-        formData = item.data;
+      const { ReportModel } = await import('@/models/Report');
+      const rep = await ReportModel.findById(reportId).lean();
+      if (rep) {
+        reportData = rep.data;
+        reportType = (rep as any).reportType || 'MENSUAL';
+        sourceFormIds = (rep as any).sourceFormIds || (rep as any).sourceReportIds || [];
+        youngId = rep.youngId?.toString() || '';
+
         try {
           const { YoungModel } = await import('@/models/Young');
-          const youngItem = await YoungModel.findById(item.youngId).lean();
+          const youngItem = await YoungModel.findById(youngId).lean();
           if (youngItem) {
             young = {
               nombre_completo: (youngItem as any).nombreCompleto || (youngItem as any).nombre_completo,
@@ -59,15 +71,47 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
             };
           }
         } catch (e) {
-          console.error('Error fetching young in Mongo export-excel:', e);
+          console.error('Error fetching young in Mongo reports export-excel:', e);
         }
       }
     }
 
-    if (!formData) {
-      return NextResponse.json({ error: 'Borrador no encontrado' }, { status: 404 });
+    if (!reportData) {
+      return NextResponse.json({ error: 'Reporte no encontrado' }, { status: 404 });
     }
 
+    // 2. Obtener los formularios origen para consolidar los datos de habilidades
+    let forms: any[] = [];
+    if (sourceFormIds.length > 0) {
+      if (USE_POSTGRES && sql) {
+        const ids = sourceFormIds.map(id => parseInt(id));
+        const arrayString = `{${ids.join(',')}}`;
+        const result = await sql`
+          SELECT data, periodo FROM forms WHERE id = ANY(${arrayString}::int4[])
+        `;
+        forms = result.rows.map(r => r.data);
+      } else if (process.env.MONGODB_URI) {
+        const { FormModel } = await import('@/models/Form');
+        const found = await FormModel.find({ _id: { $in: sourceFormIds } }).lean();
+        forms = found.map(f => f.data);
+      }
+    } else {
+      // Fallback: si es de tipo MENSUAL y no tiene sourceFormIds, buscar el formulario original
+      if (reportType === 'MENSUAL' && reportData.id) {
+        if (USE_POSTGRES && sql) {
+          const result = await sql`
+            SELECT data FROM forms WHERE id = ${parseInt(reportData.id)}
+          `;
+          if (result.rows.length > 0) forms = [result.rows[0].data];
+        } else if (process.env.MONGODB_URI) {
+          const { FormModel } = await import('@/models/Form');
+          const found = await FormModel.findById(reportData.id).lean();
+          if (found) forms = [found.data];
+        }
+      }
+    }
+
+    // 3. Cargar la plantilla de Excel
     const templatePath = path.join(process.cwd(), 'templates', 'monthly_template.xlsx');
     if (!fs.existsSync(templatePath)) {
       return NextResponse.json({ error: 'Plantilla de Excel no encontrada en el servidor' }, { status: 500 });
@@ -76,12 +120,12 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.readFile(templatePath);
 
-    const targetPeriod = (formData.datosGenerales?.periodo || 'JULIO').trim().toUpperCase();
+    // Período
+    const targetPeriod = (reportData.datosGenerales?.periodo || 'TRIMESTRE').trim().toUpperCase();
 
-    // 1. Encontrar o crear la solapa correspondiente
+    // Encontrar o crear la solapa correspondiente
     let sheet = workbook.getWorksheet(targetPeriod);
     if (!sheet) {
-      // Si no existe, tomar la primera solapa que no sea 'PCP' como base y renombrarla
       const baseSheet = workbook.worksheets.find(w => w.name !== 'PCP');
       if (baseSheet) {
         baseSheet.name = targetPeriod;
@@ -91,22 +135,22 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       }
     }
 
-    // Dejar solo la solapa actual y borrar el resto (opcionalmente dejar PCP)
+    // Eliminar las demás solapas excepto PCP
     for (const w of [...workbook.worksheets]) {
       if (w.name !== targetPeriod && w.name !== 'PCP') {
         workbook.removeWorksheet(w.id);
       }
     }
 
-    // Rellenar solapa PCP con datos del perfil del joven
+    // Rellenar solapa PCP
     const pcpSheet = workbook.getWorksheet('PCP');
     if (pcpSheet && young) {
       writePcpSheet(pcpSheet, young);
     }
 
-    // 2. Escribir Datos Generales
-    const nombreCompleto = formData.datosGenerales?.nombreCompleto || young?.nombre_completo || '';
-    const facilitadorNombre = formData.datosGenerales?.facilitadorNombre || '';
+    // 4. Escribir Datos Generales en la cabecera del período mensual/trimestral
+    const nombreCompleto = young?.nombre_completo || reportData.datosGenerales?.nombreCompleto || '';
+    const facilitadorNombre = reportData.datosGenerales?.facilitadores || reportData.datosGenerales?.facilitadorNombre || '';
     
     sheet.getCell('A3').value = `Nombre y Apellido: ${nombreCompleto}`;
     
@@ -117,34 +161,29 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       sheet.getCell('C4').value = `Facilitador/a: ${facilitadorNombre}`;
     }
 
-    // 3. Limpiar checkboxes existentes en la planilla plantilla
-    // Escaneamos las columnas A, E, I, M, Q, U, Y, AC (c = 1, 5, 9, 13, 17, 21, 25, 29)
+    // 5. Limpiar checkboxes de la plantilla
     const cols = [1, 5, 9, 13, 17, 21, 25, 29];
     for (let r = 5; r <= 120; r++) {
       for (const c of cols) {
         const itemCell = sheet.getCell(r, c);
         const val = itemCell.value;
         if (val && typeof val === 'string' && val.trim().length > 2 && !val.toUpperCase().includes('REFERENCIAS') && !val.toUpperCase().includes('ENSEÑADO')) {
-          // Limpiar celdas de la grilla 2x2 (filas r+2 y r+3, columnas c+1 a c+4)
           for (let rowOffset = 2; rowOffset <= 3; rowOffset++) {
             for (let colOffset = 1; colOffset <= 4; colOffset++) {
               const cell = sheet.getCell(r + rowOffset, c + colOffset);
-              cell.fill = {
-                type: 'pattern',
-                pattern: 'none'
-              };
+              cell.fill = { type: 'pattern', pattern: 'none' };
             }
           }
         }
       }
     }
 
-    // Helpers para pintar celdas combinadas de la grilla 2x2
+    // Helpers de coloreado
     const paintLeftCell = (row: number, col: number) => {
       const fillStyle: ExcelJS.Fill = {
         type: 'pattern',
         pattern: 'solid',
-        fgColor: { argb: 'FFA4C2F4' } // Color celeste de la grilla
+        fgColor: { argb: 'FFA4C2F4' }
       };
       sheet.getCell(row, col).fill = fillStyle;
       sheet.getCell(row, col + 1).fill = fillStyle;
@@ -154,20 +193,46 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       const fillStyle: ExcelJS.Fill = {
         type: 'pattern',
         pattern: 'solid',
-        fgColor: { argb: 'FFA4C2F4' } // Color celeste de la grilla
+        fgColor: { argb: 'FFA4C2F4' }
       };
       sheet.getCell(row, col + 2).fill = fillStyle;
       sheet.getCell(row, col + 3).fill = fillStyle;
     };
 
-    // 4. Mapear y colorear los checklists guardados
-    const talleres = formData.talleres || [];
-    let obsRowStart = 62;
+    // 6. Consolidar habilidades: sumar (tomar máximo) de las planillas mensuales
+    // Agrupamos por taller y nombre de habilidad.
+    const consolidatedSkills: Record<string, Record<string, number>> = {};
+    const consolidatedObservations: string[] = [];
 
-    for (const taller of talleres) {
-      const tallerName = String(taller.nombre).trim().toUpperCase();
-      
-      // Buscar la fila de inicio del taller en la columna A
+    forms.forEach((formDataItem) => {
+      const period = formDataItem.datosGenerales?.periodo || '';
+      const obs = formDataItem.observaciones || '';
+      if (obs.trim()) {
+        consolidatedObservations.push(`[${period}]: ${obs.trim()}`);
+      }
+
+      const talleres = formDataItem.talleres || [];
+      talleres.forEach((taller: any) => {
+        const tName = String(taller.nombre).trim().toUpperCase();
+        if (!consolidatedSkills[tName]) consolidatedSkills[tName] = {};
+
+        const items = taller.items || [];
+        items.forEach((item: any) => {
+          const iName = String(item.nombre).trim().toLowerCase();
+          const nivel = Number(item.nivel || 0);
+
+          if (!consolidatedSkills[tName][iName]) {
+            consolidatedSkills[tName][iName] = nivel;
+          } else {
+            consolidatedSkills[tName][iName] = Math.max(consolidatedSkills[tName][iName], nivel);
+          }
+        });
+      });
+    });
+
+    // 7. Colorear las habilidades consolidadas en el Excel
+    for (const [tallerName, itemsMap] of Object.entries(consolidatedSkills)) {
+      // Buscar la fila de inicio del taller
       let tallerRow = -1;
       for (let r = 5; r <= 120; r++) {
         const val = sheet.getCell(r, 1).value;
@@ -177,56 +242,31 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
         }
       }
 
-      // Si no se encuentra exactamente, buscar por coincidencia parcial o ignorar para posicionar
       if (tallerRow === -1) continue;
 
-      // Buscar ítems dentro del taller
-      for (const item of taller.items) {
-        const itemNameNormalized = String(item.nombre).trim().toLowerCase();
-        let itemFound = false;
+      // Escanear el bloque de habilidades de ese taller
+      for (let r = tallerRow + 1; r <= tallerRow + 30 && r <= 120; r++) {
+        const valA = sheet.getCell(r, 1).value;
+        if (valA && String(valA).toUpperCase().includes('TALLER:')) break;
+        if (valA && String(valA).toLowerCase().includes('observaciones:')) break;
 
-        // Escanear el bloque del taller (desde tallerRow hasta el siguiente "TALLER:" o "Observaciones:")
-        for (let r = tallerRow + 1; r <= tallerRow + 30 && r <= 120; r++) {
-          const valA = sheet.getCell(r, 1).value;
-          if (valA && String(valA).toUpperCase().includes('TALLER:')) break;
-          if (valA && String(valA).toLowerCase().includes('observaciones:')) {
-            obsRowStart = r + 1;
-            break;
-          }
+        for (const c of cols) {
+          const cell = sheet.getCell(r, c);
+          const val = cell.value;
+          if (val && typeof val === 'string') {
+            const iNameNormalized = val.trim().toLowerCase();
+            const nivel = itemsMap[iNameNormalized] || 0;
 
-          for (const c of cols) {
-            const cell = sheet.getCell(r, c);
-            const val = cell.value;
-            if (val && typeof val === 'string' && val.trim().toLowerCase() === itemNameNormalized) {
-              const nivel = Number(item.nivel || 0);
-              // Pintar según nivel (acumulativo)
-              if (nivel >= 1) {
-                // Arriba-Izquierda
-                paintLeftCell(r + 2, c + 1);
-              }
-              if (nivel >= 2) {
-                // Abajo-Izquierda
-                paintLeftCell(r + 3, c + 1);
-              }
-              if (nivel >= 3) {
-                // Arriba-Derecha
-                paintRightCell(r + 2, c + 1);
-              }
-              if (nivel >= 4) {
-                // Abajo-Derecha
-                paintRightCell(r + 3, c + 1);
-              }
-              itemFound = true;
-              break;
-            }
+            if (nivel >= 1) paintLeftCell(r + 2, c + 1);
+            if (nivel >= 2) paintLeftCell(r + 3, c + 1);
+            if (nivel >= 3) paintRightCell(r + 2, c + 1);
+            if (nivel >= 4) paintRightCell(r + 3, c + 1);
           }
-          if (itemFound) break;
         }
       }
     }
 
-    // 5. Escribir Observaciones
-    // Encontrar la celda de Observaciones:
+    // 8. Escribir Observaciones
     let obsRow = -1;
     for (let r = 30; r <= 130; r++) {
       const val = sheet.getCell(r, 1).value;
@@ -237,12 +277,14 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     }
 
     if (obsRow !== -1) {
-      // Limpiar celdas de observaciones abajo de la cabecera
       for (let r = obsRow + 1; r <= obsRow + 25; r++) {
         sheet.getCell(r, 1).value = null;
       }
-      // Escribir las observaciones
-      const obsText = formData.observaciones || '';
+      
+      const obsText = consolidatedObservations.length > 0 
+        ? consolidatedObservations.join('\n\n') 
+        : (reportData.secciones?.mejoraCalidadVida || '');
+        
       const lines = obsText.split('\n');
       lines.forEach((line: string, idx: number) => {
         sheet.getCell(obsRow + 1 + idx, 1).value = line;
@@ -250,26 +292,18 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     }
 
     const buffer = await workbook.xlsx.writeBuffer();
-    
+
     return new Response(buffer, {
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'Content-Disposition': `attachment; filename="checklist-${nombreCompleto.replace(/\s+/g, '_')}-${targetPeriod}.xlsx"`
+        'Content-Disposition': `attachment; filename="informe-${reportType.toLowerCase()}-${nombreCompleto.replace(/\s+/g, '_')}-${targetPeriod}.xlsx"`
       }
     });
 
   } catch (error: any) {
-    console.error('Error al exportar Excel:', error);
-    return NextResponse.json({ error: error?.message || 'Error desconocido al exportar planilla' }, { status: 500 });
+    console.error('Error al exportar reporte a Excel:', error);
+    return NextResponse.json({ error: error?.message || 'Error interno al exportar a Excel' }, { status: 500 });
   }
-}
-
-function cleanText(v: any): string {
-  if (v === null || v === undefined) return '';
-  if (typeof v === 'string') return v.trim();
-  if (v instanceof Date) return v.toLocaleDateString('es-AR');
-  if (typeof v === 'object' && v.text) return String(v.text).trim();
-  return String(v).trim();
 }
 
 function writePcpSheet(pcpSheet: ExcelJS.Worksheet, young: any) {
@@ -363,11 +397,9 @@ function writePcpSheet(pcpSheet: ExcelJS.Worksheet, young: any) {
     }
   }
   if (dreamRow !== -1 && pcp.perfil?.suenos && Array.isArray(pcp.perfil.suenos)) {
-    // Limpiar filas de abajo
     for (let r = dreamRow + 1; r < 21; r++) {
       pcpSheet.getCell(r, 1).value = '';
     }
-    // Escribir los sueños
     pcp.perfil.suenos.forEach((s: string, idx: number) => {
       if (dreamRow + 1 + idx < 21) {
         pcpSheet.getCell(dreamRow + 1 + idx, 1).value = s;
@@ -386,7 +418,6 @@ function writePcpSheet(pcpSheet: ExcelJS.Worksheet, young: any) {
   const inicoVal = pcp.perfil?.resultadosEscalas?.inico || '';
   const sanMartinVal = pcp.perfil?.resultadosEscalas?.sanMartin || '';
 
-  // Buscar celdas de las escalas
   for (let r = 15; r <= 25; r++) {
     for (let c = 1; c <= 8; c++) {
       const val = pcpSheet.getCell(r, c).value;

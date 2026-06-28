@@ -11,17 +11,22 @@ export const dynamic = 'force-dynamic';
 
 const USE_POSTGRES = !!(process.env.POSTGRES_URL || process.env.POSTGRES_PRISMA_URL);
 
-export async function GET(_: Request, { params }: { params: { id: string } }) {
+export async function GET(req: Request, { params }: { params: { id: string } }) {
   try {
     await connectToDB();
+    
+    const { searchParams } = new URL(req.url);
+    const downloadOriginal = searchParams.get('original') === 'true';
     
     let repData: any = null;
     let isTrimestral = false;
     let youngPcp: any = null;
+    let editedDocxBase64: string | null = null;
+    let editedDocxFilename: string | null = null;
     
     if (USE_POSTGRES && sql) {
       const result = await sql`
-        SELECT r.data, r.report_type, y.pcp
+        SELECT r.data, r.report_type, r.edited_docx_base64, r.edited_docx_filename, y.pcp
         FROM reports r
         LEFT JOIN youngs y ON r.young_id = y.id
         WHERE r.id = ${parseInt(params.id)}
@@ -30,12 +35,16 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
         repData = result.rows[0].data;
         isTrimestral = result.rows[0].report_type === 'TRIMESTRAL';
         youngPcp = result.rows[0].pcp;
+        editedDocxBase64 = result.rows[0].edited_docx_base64 || null;
+        editedDocxFilename = result.rows[0].edited_docx_filename || null;
       }
     } else if (process.env.MONGODB_URI) {
       const rep = await ReportModel.findById(params.id).lean();
       if (rep) {
         repData = rep.data;
         isTrimestral = (rep as any).reportType === 'TRIMESTRAL';
+        editedDocxBase64 = (rep as any).editedDocxBase64 || null;
+        editedDocxFilename = (rep as any).editedDocxFilename || null;
         
         try {
           const { YoungModel } = await import('@/models/Young');
@@ -48,6 +57,20 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
     }
     
     if (!repData) return NextResponse.json({ error: 'not found' }, { status: 404 });
+
+    // Si existe una versión editada del Word y NO se solicita explícitamente el original,
+    // devolver directamente el archivo subido convertido a buffer.
+    if (!downloadOriginal && editedDocxBase64) {
+      const docBuffer = Buffer.from(editedDocxBase64, 'base64');
+      const filename = editedDocxFilename || (isTrimestral ? `informe-trimestral-${params.id}.docx` : `informe-${params.id}.docx`);
+      return new Response(docBuffer, {
+        headers: {
+          'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          'Content-Disposition': `attachment; filename="${filename}"`
+        }
+      });
+    }
+
     
     let templatePath = path.join(process.cwd(), 'templates', isTrimestral ? 'trimestral_template.docx' : 'report.docx');
     let buf: Buffer;
@@ -76,8 +99,22 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
             fechaInforme,
             pcpAnio,
             periodoAnio,
-            
-            // 12 secciones narrativas
+            dni: repData?.datosGenerales?.dni || '',
+            legajo: repData?.datosGenerales?.legajo || '',
+            numeroLegajo: repData?.datosGenerales?.legajo || '',
+            legajoNumero: repData?.datosGenerales?.legajo || '',
+            obraSocial: repData?.datosGenerales?.obraSocial || '',
+            obra_social: repData?.datosGenerales?.obraSocial || '',
+            fechaNacimiento: repData?.datosGenerales?.fechaNacimiento 
+              ? (isNaN(new Date(repData.datosGenerales.fechaNacimiento).getTime()) 
+                ? repData.datosGenerales.fechaNacimiento 
+                : new Date(repData.datosGenerales.fechaNacimiento).toLocaleDateString('es-AR'))
+              : '',
+            fecha_nacimiento: repData?.datosGenerales?.fechaNacimiento 
+              ? (isNaN(new Date(repData.datosGenerales.fechaNacimiento).getTime()) 
+                ? repData.datosGenerales.fechaNacimiento 
+                : new Date(repData.datosGenerales.fechaNacimiento).toLocaleDateString('es-AR'))
+              : '',
             metaAlcanzada: repData?.secciones?.metaAlcanzada || 'Sin registrar.',
             participacion: repData?.secciones?.participacion || 'Sin registrar.',
             integracionRelaciones: repData?.secciones?.integracionRelaciones || 'Sin registrar.',

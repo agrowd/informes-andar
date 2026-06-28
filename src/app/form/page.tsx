@@ -85,7 +85,7 @@ export default function ChecklistFormPage() {
             setData(loaded);
             lastSavedDataRef.current = JSON.stringify(loaded);
             localStorage.setItem('checklistFormData', lastSavedDataRef.current);
-            addToast(`Borrador mensual cargado para ${loaded.datosGenerales?.nombreCompleto || 'joven'}`, 'success');
+            addToast(`Cuadrícula mensual cargada para ${loaded.datosGenerales?.nombreCompleto || 'joven'}`, 'success');
           }
         } else {
           // Es un formulario nuevo
@@ -105,8 +105,8 @@ export default function ChecklistFormPage() {
           localStorage.setItem('checklistFormData', lastSavedDataRef.current);
         }
       } catch (err: any) {
-        console.error('Error cargando borrador:', err);
-        addToast('Error al cargar datos del borrador', 'error');
+        console.error('Error cargando cuadrícula:', err);
+        addToast('Error al cargar datos de la cuadrícula', 'error');
       } finally {
         setLoading(false);
       }
@@ -237,7 +237,7 @@ export default function ChecklistFormPage() {
 
       lastSavedDataRef.current = JSON.stringify(data);
       setSaving('saved');
-      addToast('Borrador guardado exitosamente', 'success');
+      addToast('Cuadrícula Mensual guardada exitosamente', 'success');
       setTimeout(() => setSaving('idle'), 2000);
     } catch (err: any) {
       console.error('Error en guardado manual:', err);
@@ -254,7 +254,7 @@ export default function ChecklistFormPage() {
     
     setSaving('saving');
     try {
-      // 1. Guardar el borrador actual antes de duplicar para no perder cambios recientes
+      // 1. Guardar la cuadrícula actual antes de duplicar para no perder cambios recientes
       const saveUrl = '/api/forms';
       const saveMethod = currentFormId ? 'PUT' : 'POST';
       const saveBody = currentFormId
@@ -268,7 +268,7 @@ export default function ChecklistFormPage() {
       });
 
       if (!saveRes.ok) {
-        throw new Error('No se pudieron guardar los cambios del borrador actual antes de duplicar.');
+        throw new Error('No se pudieron guardar los cambios de la cuadrícula actual antes de duplicar.');
       }
 
       // 2. Llamar a la API de duplicación pasando el nuevo período
@@ -279,18 +279,18 @@ export default function ChecklistFormPage() {
       });
 
       if (!copyRes.ok) {
-        const error = await copyRes.json().catch(() => ({ error: 'Error duplicando borrador' }));
+        const error = await copyRes.json().catch(() => ({ error: 'Error duplicando cuadrícula mensual' }));
         throw new Error(error.error || `HTTP ${copyRes.status}`);
       }
 
       const copyData = await copyRes.json();
       
-      // 3. Redirigir al nuevo borrador
-      alert(`✅ Borrador duplicado correctamente para ${duplicatePeriod}. Redirigiendo a la copia...`);
+      // 3. Redirigir a la nueva cuadrícula
+      alert(`✅ Cuadrícula Mensual duplicada correctamente para ${duplicatePeriod}. Redirigiendo a la copia...`);
       window.location.href = `/form?formId=${copyData.id}`;
     } catch (err: any) {
       console.error('Error al duplicar para otro mes:', err);
-      alert('Error: ' + (err.message || 'No se pudo duplicar el borrador'));
+      alert('Error: ' + (err.message || 'No se pudo duplicar la cuadrícula mensual'));
       setSaving('error');
     }
   };
@@ -397,7 +397,7 @@ export default function ChecklistFormPage() {
   if (loading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '80vh', fontSize: 18, color: '#666' }}>
-        ⏳ Cargando borrador mensual...
+        ⏳ Cargando cuadrícula mensual...
       </div>
     );
   }
@@ -437,7 +437,7 @@ export default function ChecklistFormPage() {
               </button>
             </>
           )}
-          <button className="ga-btn primary" onClick={handleSaveManual}>Guardar borrador</button>
+          <button className="ga-btn primary" onClick={handleSaveManual}>Guardar cuadrícula</button>
         </div>
       </div>
 
@@ -525,7 +525,7 @@ export default function ChecklistFormPage() {
             color: '#64748b',
             marginTop: 15
           }}>
-            <p style={{ margin: '0 0 12px 0', fontSize: '15px', fontWeight: 600 }}>No hay talleres en este borrador mensual.</p>
+            <p style={{ margin: '0 0 12px 0', fontSize: '15px', fontWeight: 600 }}>No hay talleres en esta cuadrícula mensual.</p>
             <p style={{ margin: '0 0 20px 0', fontSize: '13px' }}>Puedes iniciar cargando la plantilla predefinida o agregar talleres y habilidades manualmente desde cero.</p>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
               <button className="ga-btn secondary" onClick={handleLoadDefaultTemplate}>
@@ -863,7 +863,7 @@ export default function ChecklistFormPage() {
                 disabled={!duplicatePeriod}
                 style={{ padding: '8px 20px' }}
               >
-                Duplicar borrador
+                Duplicar cuadrícula
               </button>
             </div>
           </div>

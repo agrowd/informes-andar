@@ -94,19 +94,19 @@ export default function Dashboard() {
   };
 
   const copyForm = async (formId: string) => {
-    if (!confirm('¿Deseas duplicar este borrador para crear uno nuevo basado en este?')) return;
+    if (!confirm('¿Deseas duplicar esta cuadrícula mensual para crear una nueva basada en esta?')) return;
     try {
       const res = await fetch(`/api/forms/${formId}/copy`, { method: 'POST' });
       if (!res.ok) {
-        const error = await res.json().catch(() => ({ error: 'Error duplicando borrador' }));
+        const error = await res.json().catch(() => ({ error: 'Error duplicando cuadrícula mensual' }));
         throw new Error(error.error || `HTTP ${res.status}`);
       }
       const data = await res.json();
-      alert('Borrador duplicado correctamente. Serás redirigido para editarlo.');
+      alert('Cuadrícula Mensual duplicada correctamente. Serás redirigido para editarla.');
       window.location.href = `/form?formId=${data.id}`;
     } catch (error: any) {
-      console.error('Error al duplicar borrador:', error);
-      alert('Error: ' + (error.message || 'No se pudo duplicar el borrador'));
+      console.error('Error al duplicar cuadrícula mensual:', error);
+      alert('Error: ' + (error.message || 'No se pudo duplicar la cuadrícula mensual'));
     }
   };
 
@@ -145,8 +145,8 @@ export default function Dashboard() {
               <button className="ga-btn secondary" onClick={() => exportData('reports')} title="Exportar informes a CSV">
                 📊 Exportar informes
               </button>
-              <button className="ga-btn secondary" onClick={() => exportData('forms')} title="Exportar borradores a CSV">
-                📝 Exportar borradores
+              <button className="ga-btn secondary" onClick={() => exportData('forms')} title="Exportar cuadrículas mensuales a CSV">
+                📝 Exportar cuadrículas
               </button>
               <button className="ga-btn secondary" onClick={() => exportData('youngs')} title="Exportar jóvenes a CSV">
                 👥 Exportar jóvenes
@@ -158,7 +158,7 @@ export default function Dashboard() {
       {!canViewGeneralDashboard && (
         <div className="ga-card" style={{ marginBottom: 12, padding: 16, background: '#f0f7ff', border: '1px solid #bfdbfe' }}>
           <p style={{ margin: 0, color: '#1e40af' }}>
-            <strong>Vista de facilitador:</strong> Solo puedes ver tus propios borradores e informes.
+            <strong>Vista de facilitador:</strong> Solo puedes ver tus propias cuadrículas e informes.
           </p>
         </div>
       )}
@@ -175,13 +175,13 @@ export default function Dashboard() {
             {stats?.missingReports || 0}
           </div>
           {stats?.missingReports > 0 && (
-            <span style={{ fontSize: 12, color: '#666' }}>Borradores sin informe</span>
+            <span style={{ fontSize: 12, color: '#666' }}>Cuadrículas sin informe</span>
           )}
         </div>
         <div className="ga-card">
-          <div style={{ fontSize: 12, color: '#666' }}>Borradores pendientes</div>
+          <div style={{ fontSize: 12, color: '#666' }}>Cuadrículas pendientes</div>
           <div style={{ fontSize: 28, fontWeight: 700 }}>{stats?.formsPending || forms.filter((f: any) => f.status === 'BORRADOR').length}</div>
-          <a href="/forms">Ver borradores</a>
+          <a href="/forms">Ver cuadrículas</a>
         </div>
         <div className="ga-card">
           <div style={{ fontSize: 12, color: '#666' }}>Jóvenes</div>
@@ -194,7 +194,7 @@ export default function Dashboard() {
         <div className="ga-card" style={{ marginTop: 12, border: '2px solid #f59e0b', background: '#FFF7ED' }}>
           <h3 style={{ color: '#f59e0b', marginTop: 0 }}>⚠️ Informes faltantes</h3>
           <p style={{ fontSize: 14, color: '#666', marginBottom: 12 }}>
-            Los siguientes borradores aún no tienen informe asociado:
+            Las siguientes cuadrículas aún no tienen informe asociado:
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {stats.missingReportsList.map((item: any, idx: number) => (
@@ -213,7 +213,7 @@ export default function Dashboard() {
                   className="ga-btn secondary"
                   style={{ alignSelf: 'flex-start', fontSize: 13 }}
                 >
-                  Ver borrador →
+                  Ver cuadrícula →
                 </a>
               </div>
             ))}

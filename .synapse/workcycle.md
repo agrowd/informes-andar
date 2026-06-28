@@ -1,5 +1,17 @@
 # 🗓️ Workcycle Log
 
+## 2026-06-28 (Edición/Carga de Word Personalizado y Reemplazo de "Borradores" por "Cuadrícula Mensual")
+- **Objetivo**: Integrar un "Pseudo-Word Editor" interactivo para los informes evolutivos en el frontend, permitir descargar/subir el archivo Word editado (.docx) preservándolo al 100% en la base de datos, y renombrar todos los textos de "Borradores" a "Cuadrícula Mensual" para alinear con la denominación oficial.
+- **Actividades**:
+  - Crear e integrar migración de Postgres (`add-docx-edit-columns.sql` y `run-docx-migration.js`) agregando columnas `original_data`, `edited_docx_base64`, `edited_docx_filename` y `edited_at` en `reports`.
+  - Actualizar modelo Mongoose de MongoDB (`src/models/Report.ts`) agregando el soporte de estos mismos campos.
+  - Implementar endpoint `/api/reports/[id]/upload-docx` para recibir archivos Word subidos, extraer su texto con Mammoth y actualizar las secciones de forma adaptada a mensual o trimestral, y almacenar la versión física del Word en base64.
+  - Modificar los endpoints de descarga `.docx` y visualización `.json` para servir y reportar la existencia del archivo Word editado de forma transparente.
+  - Diseñar e integrar la interfaz de "Pseudo-Word Editor" en `reports/[id]/page.tsx` con una hoja A4 interactiva premium cuando el modo edición está activo.
+  - Reemplazar visualmente todo lo relacionado con la palabra "Borradores" por "Cuadrícula Mensual" o "Cuadrículas Mensuales" en Nav, Dashboard, listados e importador de Excel.
+  - Validar build local del proyecto Next.js (`npm run build`) de forma exitosa.
+- **Estado**: Completado ✅
+
 ## 2026-06-24 (Corrección de Sueño "SIS" y Omisión de Dimensión BF en Importador de Excel)
 - **Objetivo**: Solucionar el problema en el importador de Excel por el cual se capturaba la sigla "SIS" como meta o sueño de la persona y se omitía la dimensión de Bienestar Físico (BF) en el PCP de Marisol Fernanda Brito.
 - **Actividades**:
@@ -304,7 +316,16 @@
   - Integración de la API de OpenAI GPT-4o Vision para parsear las puntuaciones de calidad de vida del gráfico GENCAT automáticamente al importar, resolviendo la necesidad de carga manual por parte del facilitador.
   - Creación y ejecución de scripts de prueba (`test_import_with_vision.ts`) verificando extracción de puntajes estándar con 100% de precisión para Marisol Fernanda Brito, Celis Analia Noemi y Juan Pablo Herrera.
   - Ejecución exitosa de build local Next.js y de pruebas unitarias (`npm run test`).
-  - Despliegue de los archivos modificados al VPS de producción mediante `deploy_files.mjs` y reinicio exitoso de PM2.
 - **Estado**: Completado. ✅
 
-
+## 2026-06-25 (Consolidación Trimestral en Excel e Inyección de Datos Personales de Perfil)
+- **Objetivo**: Asegurar la descarga en Excel del informe trimestral y mensual consolidando los 3 meses de habilidades, la PCP y los metadatos institucionales del perfil del joven (DNI, Legajo, Obra Social, Fecha de Nacimiento) cargados en la base de datos.
+- **Actividades**:
+  - Planificar el desarrollo (crear implementation_plan.md y task.md).
+  - Modificar `/api/forms/[id]/export-excel/route.ts` para enriquecer la exportación mensual de borrador a Excel inyectando la PCP y metadatos del perfil.
+  - Modificar `/api/reports/trimestral/route.ts` para renderizar el DNI, Legajo, Obra Social, Nacimiento en la cabecera HTML/PDF del informe trimestral.
+  - Modificar `/api/reports/[id]/.docx/route.ts` para inyectar estos metadatos en el Word.
+  - Crear la nueva API `/api/reports/[id]/export-excel/route.ts` para exportar informes (incluyendo trimestrales consolidados) a Excel.
+  - Modificar la UI `/reports/page.tsx` agregando la acción para descargar informes en formato Excel.
+  - Probar localmente que la generación e inyección funcionen de forma impecable.
+- **Estado**: En progreso 🚀

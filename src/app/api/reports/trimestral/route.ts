@@ -29,6 +29,10 @@ export async function POST(req: NextRequest) {
     let youngName: string = '';
     let youngPcp: any = null;
     let youngTaller: string = '';
+    let youngLegajo: string = '';
+    let youngObraSocial: string = '';
+    let youngDni: string = '';
+    let youngFechaNacimiento: any = null;
 
     if (USE_POSTGRES && sql) {
       // 1. Obtener formularios de Postgres
@@ -60,13 +64,17 @@ export async function POST(req: NextRequest) {
 
       // Obtener datos del joven
       const youngRes = await sql`
-        SELECT nombre_completo, pcp, taller FROM youngs WHERE id = ${parseInt(youngId)}
+        SELECT nombre_completo, pcp, taller, legajo, obra_social, dni, fecha_nacimiento FROM youngs WHERE id = ${parseInt(youngId)}
       `;
       if (youngRes.rows.length > 0) {
         const yRow = youngRes.rows[0];
         youngName = yRow.nombre_completo;
         youngPcp = yRow.pcp;
         youngTaller = yRow.taller || '';
+        youngLegajo = yRow.legajo || '';
+        youngObraSocial = yRow.obra_social || '';
+        youngDni = yRow.dni || '';
+        youngFechaNacimiento = yRow.fecha_nacimiento || null;
       } else {
         return NextResponse.json({ error: 'Concurrente no encontrado en Postgres' }, { status: 404 });
       }
@@ -103,6 +111,10 @@ export async function POST(req: NextRequest) {
         youngName = youngItem.nombreCompleto;
         youngPcp = youngItem.pcp;
         youngTaller = youngItem.taller || '';
+        youngLegajo = (youngItem as any).legajo || '';
+        youngObraSocial = (youngItem as any).obraSocial || '';
+        youngDni = (youngItem as any).dni || '';
+        youngFechaNacimiento = (youngItem as any).fechaNacimiento || null;
       } else {
         return NextResponse.json({ error: 'Concurrente no encontrado en MongoDB' }, { status: 404 });
       }
@@ -141,7 +153,11 @@ export async function POST(req: NextRequest) {
         periodo: mergedPeriodo,
         grupo: youngTaller || 'Clave de Sol',
         facilitadores: facilitators || session.user.name || 'Sin facilitador',
-        metaSueno: metaSueno
+        metaSueno: metaSueno,
+        legajo: youngLegajo,
+        obraSocial: youngObraSocial,
+        dni: youngDni,
+        fechaNacimiento: youngFechaNacimiento ? (youngFechaNacimiento instanceof Date ? youngFechaNacimiento.toISOString() : String(youngFechaNacimiento)) : null
       },
       secciones: secciones
     };
@@ -156,6 +172,13 @@ export async function POST(req: NextRequest) {
     const periodoAnio = yearMatch ? yearMatch[1] : new Date().getFullYear().toString();
     const pcpAnio = youngPcp?.anio || new Date().getFullYear().toString();
 
+    const formatBirth = (dateVal: any) => {
+      if (!dateVal) return '';
+      const d = new Date(dateVal);
+      if (isNaN(d.getTime())) return String(dateVal);
+      return d.toLocaleDateString('es-AR');
+    };
+
     const html = buildQuarterlyHtml({
       fechaInforme,
       nombreCompleto: youngName,
@@ -164,7 +187,11 @@ export async function POST(req: NextRequest) {
       metaSueno,
       secciones,
       pcpAnio,
-      periodoAnio
+      periodoAnio,
+      legajo: youngLegajo,
+      obraSocial: youngObraSocial,
+      dni: youngDni,
+      fechaNacimiento: formatBirth(youngFechaNacimiento)
     });
 
     // 6. Generar PDF
@@ -182,10 +209,12 @@ export async function POST(req: NextRequest) {
 
     if (USE_POSTGRES && sql) {
       const generatedByNum = Number(generatedBy) || null;
+      const formIdsInts = formIds.map(id => parseInt(id));
+      const formIdsArrayStr = `{${formIdsInts.join(',')}}`;
       const insertResult = await sql`
         INSERT INTO reports (
           young_id, periodo, data, html, pdf_url, 
-          report_type, status, version, generated_by,
+          report_type, source_report_ids, status, version, generated_by,
           created_at, updated_at
         ) VALUES (
           ${parseInt(youngId)},
@@ -194,6 +223,7 @@ export async function POST(req: NextRequest) {
           ${html},
           ${pdfUrl},
           'TRIMESTRAL',
+          ${formIdsArrayStr}::int4[],
           'BORRADOR',
           1,
           ${generatedByNum},
@@ -253,8 +283,12 @@ function buildQuarterlyHtml(params: {
   secciones: any;
   pcpAnio: string;
   periodoAnio: string;
+  legajo?: string;
+  obraSocial?: string;
+  dni?: string;
+  fechaNacimiento?: string;
 }): string {
-  const { fechaInforme, nombreCompleto, grupo, facilitadores, metaSueno, secciones, pcpAnio, periodoAnio } = params;
+  const { fechaInforme, nombreCompleto, grupo, facilitadores, metaSueno, secciones, pcpAnio, periodoAnio, legajo, obraSocial, dni, fechaNacimiento } = params;
 
   return `<!DOCTYPE html>
 <html>
@@ -316,6 +350,10 @@ function buildQuarterlyHtml(params: {
   </div>
   <div class="meta-container">
     <div class="meta-line"><strong>Nombre del Concurrente:</strong> ${nombreCompleto}</div>
+    ${dni ? `<div class="meta-line"><strong>DNI:</strong> ${dni}</div>` : ''}
+    ${legajo ? `<div class="meta-line"><strong>Número de Legajo:</strong> ${legajo}</div>` : ''}
+    ${fechaNacimiento ? `<div class="meta-line"><strong>Fecha de Nacimiento:</strong> ${fechaNacimiento}</div>` : ''}
+    ${obraSocial ? `<div class="meta-line"><strong>Obra Social:</strong> ${obraSocial}</div>` : ''}
     <div class="meta-line"><strong>Grupo:</strong> ${grupo}</div>
     <div class="meta-line"><strong>Facilitadoras:</strong> ${facilitadores}</div>
     <div class="meta-line"><strong>Meta o Sueño para ${pcpAnio}:</strong> ${metaSueno}</div>

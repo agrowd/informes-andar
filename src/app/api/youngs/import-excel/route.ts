@@ -86,6 +86,82 @@ async function parseGencatChartWithVision(base64Image: string): Promise<string> 
   }
 }
 
+async function parseSisChartWithVision(base64Image: string): Promise<string> {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    console.warn("OpenAI API Key not configured. Skipping SIS vision parsing.");
+    return '';
+  }
+
+  try {
+    const client = new OpenAI({ apiKey });
+    const response = await client.chat.completions.create({
+      model: 'gpt-4o',
+      temperature: 0,
+      response_format: { type: 'json_object' },
+      messages: [
+        {
+          role: 'system',
+          content: 'Eres un analista de datos experto en escalas de intensidad de apoyos. Tu tarea es extraer la información cuantitativa de un gráfico de la escala SIS (Supports Intensity Scale / Escala de Intensidad de Apoyos).'
+        },
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: `Analiza la imagen del gráfico de la escala SIS e identifica las puntuaciones estándar o valores numéricos asignados a cada sección o dimensión del gráfico.
+              Las secciones típicas de la escala SIS suelen ser:
+              - A: Vida en el hogar (Home Living)
+              - B: Vida en la comunidad (Community Living)
+              - C: Aprendizaje (Lifelong Learning)
+              - D: Empleo (Employment)
+              - E: Salud y seguridad (Health and Safety)
+              - F: Social (Social Activities)
+              - G: Protección y defensa (Advocacy)
+              
+              Lee con mucha precisión los números que figuran sobre el gráfico y devuelve un objeto JSON con las claves exactas de las dimensiones encontradas y sus puntuaciones como números. Por ejemplo:
+              {
+                "Vida en el hogar": 8,
+                "Vida en la comunidad": 9,
+                "Aprendizaje": 7,
+                "Empleo": 6,
+                "Salud y seguridad": 8,
+                "Social": 9,
+                "Protección y defensa": 8
+              }
+              
+              Si la imagen no es un gráfico de la escala SIS o no se pueden leer los valores, devuelve un objeto vacío.`
+            },
+            {
+              type: 'image_url',
+              image_url: {
+                url: base64Image
+              }
+            }
+          ]
+        }
+      ]
+    } as any);
+
+    const content = response.choices?.[0]?.message?.content;
+    if (!content) return '';
+
+    const parsed = JSON.parse(content);
+    const parts: string[] = [];
+    for (const [key, val] of Object.entries(parsed)) {
+      if (val !== undefined && val !== null) {
+        parts.push(`${key}: ${val}`);
+      }
+    }
+    return parts.join(' | ');
+  } catch (error) {
+    console.error("Error in parseSisChartWithVision:", error);
+    return '';
+  }
+}
+
+
+
 
 function isCellChecked(cell: ExcelJS.Cell) {
   const fill = cell.fill;
@@ -175,6 +251,7 @@ export async function POST(req: NextRequest) {
       // Extract profile photo and GENCAT chart by row coordinates
       const images = pcpSheet.getImages();
       let gencatBase64: string | null = null;
+      let sisBase64: string | null = null;
 
       if (images && images.length > 0) {
         let largestMediaFallback: any = null;
@@ -187,6 +264,7 @@ export async function POST(req: NextRequest) {
           const media = workbook.model.media && (workbook.model.media as any)[img.imageId];
           if (media && media.buffer) {
             const row = range.tl.row;
+            const col = range.tl.col;
             const mimeType = media.extension === 'png' ? 'image/png' : 'image/jpeg';
             const size = media.buffer.length;
 
@@ -194,8 +272,14 @@ export async function POST(req: NextRequest) {
               // Profile picture range
               fotoBase64 = `data:${mimeType};base64,${media.buffer.toString('base64')}`;
             } else if (row >= 18 && row <= 23) {
-              // GENCAT chart range
-              gencatBase64 = `data:${mimeType};base64,${media.buffer.toString('base64')}`;
+              // GENCAT / SIS chart range
+              if (col >= 0 && col <= 2) {
+                // Column A-C is SIS chart
+                sisBase64 = `data:${mimeType};base64,${media.buffer.toString('base64')}`;
+              } else {
+                // Column D-G is GENCAT chart
+                gencatBase64 = `data:${mimeType};base64,${media.buffer.toString('base64')}`;
+              }
             } else if (row > 7 && size > largestSizeFallback) {
               // General fallback for profile photo
               largestSizeFallback = size;
@@ -260,6 +344,16 @@ export async function POST(req: NextRequest) {
         if (parsedGencat) {
           pcpData.perfil.resultadosEscalas.gencat = parsedGencat;
           console.log("Successfully parsed GENCAT scores using Vision:", parsedGencat);
+        }
+      }
+
+      // Si se extrajo la imagen del gráfico SIS y no se detectó texto en las celdas, usar OpenAI Vision
+      if (sisBase64 && (!pcpData.perfil.resultadosEscalas.sis || pcpData.perfil.resultadosEscalas.sis.trim().length === 0)) {
+        console.log("Analyzing SIS chart with OpenAI Vision...");
+        const parsedSis = await parseSisChartWithVision(sisBase64);
+        if (parsedSis) {
+          pcpData.perfil.resultadosEscalas.sis = parsedSis;
+          console.log("Successfully parsed SIS scores using Vision:", parsedSis);
         }
       }
 

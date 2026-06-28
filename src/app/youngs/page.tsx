@@ -1307,11 +1307,11 @@ export default function YoungsPage() {
               )}
             </div>
 
-            {/* Sección de Borradores Mensuales (Checklists) */}
+            {/* Sección de Cuadrículas Mensuales (Checklists) */}
             <div className="ga-card" style={{ padding: 30 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 10 }}>
                 <h3 style={{ margin: 0, color: '#1e3a8a', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span>📋</span> Borradores / Formularios Mensuales (Checklists)
+                  <span>📋</span> Cuadrícula Mensual / Formularios Mensuales (Checklists)
                 </h3>
                 <div style={{ display: 'flex', gap: 10 }}>
                   <button 
@@ -1322,14 +1322,14 @@ export default function YoungsPage() {
                     }}
                     style={{ padding: '8px 16px', fontSize: 13, fontWeight: 600 }}
                   >
-                    {selectionMode ? '✅ Cancelar Fusión' : '🔗 Fusionar Borradores'}
+                    {selectionMode ? '✅ Cancelar Fusión' : '🔗 Fusionar Cuadrículas'}
                   </button>
                   <a 
                     href={`/form?youngId=${editingId}`}
                     className="ga-btn primary"
                     style={{ padding: '8px 16px', fontSize: 13, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}
                   >
-                    <span>➕</span> Nuevo Borrador
+                    <span>➕</span> Nueva Cuadrícula Mensual
                   </a>
                 </div>
               </div>
@@ -1345,15 +1345,15 @@ export default function YoungsPage() {
                   fontWeight: 500,
                   marginBottom: 15
                 }}>
-                  💡 Selecciona entre 1 y 3 borradores mensuales para generar el informe trimestral.
+                  💡 Selecciona entre 1 y 3 cuadrículas mensuales para generar el informe trimestral.
                 </div>
               )}
 
               {loadingMonthlyForms ? (
-                <div style={{ padding: 40, textAlign: 'center' }}>Cargando borradores...</div>
+                <div style={{ padding: 40, textAlign: 'center' }}>Cargando cuadrículas...</div>
               ) : monthlyForms.length === 0 ? (
                 <div style={{ padding: 40, textAlign: 'center', color: 'var(--muted)', background: '#f8fafc', borderRadius: 12 }}>
-                  No hay borradores mensuales cargados para este joven. Puedes crear uno desde el botón "Nuevo Borrador".
+                  No hay cuadrículas mensuales cargadas para este joven. Puedes crear una desde el botón "Nueva Cuadrícula Mensual".
                 </div>
               ) : (
                 <div className="ga-table-mobile-wrap">
@@ -1444,11 +1444,11 @@ export default function YoungsPage() {
                                   className="ga-btn" 
                                   style={{ background: '#fee2e2', borderColor: '#fca5a5', color: '#991b1b', fontSize: 12, padding: '4px 8px' }}
                                   onClick={async () => {
-                                    if (!confirm('¿Estás seguro de que deseas ELIMINAR este borrador mensual?')) return;
+                                    if (!confirm('¿Estás seguro de que deseas ELIMINAR esta cuadrícula mensual?')) return;
                                     try {
                                       const res = await fetch(`/api/forms/${id}`, { method: 'DELETE' });
                                       if (res.ok) {
-                                        alert('Borrador eliminado');
+                                        alert('Cuadrícula Mensual eliminada');
                                         if (editingId) loadMonthlyForms(String(editingId));
                                       } else {
                                         alert('Error al eliminar');

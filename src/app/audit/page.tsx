@@ -43,7 +43,7 @@ export default function AuditPage() {
               style={{ minWidth: 150 }}
             >
               <option value="">Todos</option>
-              <option value="FORM">Borradores</option>
+              <option value="FORM">Cuadrículas</option>
               <option value="REPORT">Informes</option>
               <option value="YOUNG">Jóvenes</option>
               <option value="USER">Usuarios</option>

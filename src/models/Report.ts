@@ -20,7 +20,11 @@ const ReportSchema = new Schema({
   status: { type: String, enum: ['BORRADOR', 'EN_REVISION', 'CAMBIOS_SOLICITADOS', 'APROBADO'], default: 'BORRADOR' },
   version: { type: Number, default: 1 },
   generatedBy: { type: Schema.Types.ObjectId, ref: 'User' },
-  comments: { type: [CommentSchema], default: [] }
+  comments: { type: [CommentSchema], default: [] },
+  originalData: { type: Schema.Types.Mixed },
+  editedDocxBase64: { type: String },
+  editedDocxFilename: { type: String },
+  editedAt: { type: Date }
 }, { timestamps: true });
 
 export type Report = InferSchemaType<typeof ReportSchema> & { _id: any };

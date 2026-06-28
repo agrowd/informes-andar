@@ -120,7 +120,7 @@ export default function ExcelImportWizardModal({
           border: '1px solid #e2e8f0'
         }}>
           <h4 style={{ margin: '0 0 12px 0', fontSize: '13px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            Borradores Mensuales Detectados
+            Cuadrículas Mensuales Detectadas
           </h4>
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -197,7 +197,7 @@ export default function ExcelImportWizardModal({
               cursor: 'pointer'
             }}
           >
-            Cerrar y ver borradores
+            Cerrar y ver cuadrículas
           </button>
           
           <button

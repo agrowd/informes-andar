@@ -231,7 +231,7 @@ export default function FormsList() {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <h1>Borradores</h1>
+        <h1>Cuadrículas Mensuales</h1>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           <button 
             className={`ga-btn ${selectionMode ? 'accent' : 'secondary'}`}
@@ -241,7 +241,7 @@ export default function FormsList() {
             }}
             style={{ padding: '10px 20px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6 }}
           >
-            {selectionMode ? `✅ Cancelar Fusión` : '🔗 Fusionar Borradores'}
+            {selectionMode ? `✅ Cancelar Fusión` : '🔗 Fusionar Cuadrículas'}
           </button>
           <label className="ga-btn secondary" style={{ padding: '10px 20px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
             {isImporting ? 'Importando...' : '📥 Importar Excel'}
@@ -291,7 +291,7 @@ export default function FormsList() {
               checked={showDraftsOnly} 
               onChange={(e) => setShowDraftsOnly(e.target.checked)}
             />
-            <span>Mostrar solo borradores</span>
+            <span>Mostrar solo en borrador</span>
           </label>
         </div>
 
@@ -312,7 +312,7 @@ export default function FormsList() {
           alignItems: 'center',
           gap: '8px'
         }}>
-          💡 <span>Selecciona entre 1 y 3 borradores mensuales (checklists de cuadraditos) del <strong>mismo joven</strong> para generar el informe trimestral.</span>
+          💡 <span>Selecciona entre 1 y 3 cuadrículas mensuales (checklists de cuadraditos) del <strong>mismo joven</strong> para generar el informe trimestral.</span>
         </div>
       )}
 
@@ -349,7 +349,7 @@ export default function FormsList() {
           <div>
             {groupedList.length === 0 ? (
               <div className="ga-card" style={{ textAlign: 'center', padding: '40px 20px', color: '#64748b' }}>
-                No se encontraron borradores mensuales.
+                No se encontraron cuadrículas mensuales.
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -399,7 +399,7 @@ export default function FormsList() {
                             fontWeight: 600,
                             border: '1px solid #bfdbfe'
                           }}>
-                            {group.drafts.length} {group.drafts.length === 1 ? 'borrador mensual' : 'borradores mensuales'}
+                            {group.drafts.length} {group.drafts.length === 1 ? 'cuadrícula mensual' : 'cuadrículas mensuales'}
                           </span>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -502,11 +502,11 @@ export default function FormsList() {
                                           className="ga-btn" 
                                           style={{ background: '#FEE2E2', borderColor: '#FCA5A5', color: '#991B1B', fontSize: 12, padding: '4px 8px', whiteSpace: 'nowrap' }}
                                           onClick={async () => {
-                                            if (!confirm('¿Estás seguro de que deseas ELIMINAR este borrador? Esta acción no se puede deshacer.')) return;
+                                            if (!confirm('¿Estás seguro de que deseas ELIMINAR esta cuadrícula mensual? Esta acción no se puede deshacer.')) return;
                                             try {
                                               const r = await fetch(`/api/forms/${id}`, { method: 'DELETE' });
                                               if (r.ok) {
-                                                alert('Borrador eliminado correctamente');
+                                                alert('Cuadrícula Mensual eliminada correctamente');
                                                 loadData(page);
                                               } else {
                                                 const err = await r.json().catch(() => ({ error: 'Error eliminando' }));
@@ -516,7 +516,7 @@ export default function FormsList() {
                                               alert(`Error: ${err.message || 'Error al eliminar'}`);
                                             }
                                           }}
-                                          title="Eliminar borrador"
+                                          title="Eliminar cuadrícula"
                                         >
                                           🗑️
                                         </button>
@@ -537,7 +537,7 @@ export default function FormsList() {
 
             <div style={{ marginTop: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
               <div style={{ color: 'var(--muted)', fontSize: 14 }}>
-                Mostrando {filteredItems.length} de {total} borradores
+                Mostrando {filteredItems.length} de {total} cuadrículas
               </div>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 <button 
@@ -588,7 +588,7 @@ export default function FormsList() {
         }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             <span style={{ fontSize: '15px', fontWeight: 700, color: '#f8fafc' }}>
-              {selectedIds.size} {selectedIds.size === 1 ? 'borrador seleccionado' : 'borradores seleccionados'}
+              {selectedIds.size} {selectedIds.size === 1 ? 'cuadrícula seleccionada' : 'cuadrículas seleccionadas'}
             </span>
             {sameYoung && selectedItems.length > 0 && (
               <span style={{ fontSize: '13px', color: '#93c5fd' }}>
@@ -597,12 +597,12 @@ export default function FormsList() {
             )}
             {!sameYoung && (
               <span style={{ fontSize: '13px', color: '#fca5a5', fontWeight: 600 }}>
-                ⚠️ Los borradores deben ser del mismo joven.
+                ⚠️ Las cuadrículas deben ser del mismo joven.
               </span>
             )}
             {sameYoung && !countIsValid && (
               <span style={{ fontSize: '13px', color: '#fde047', fontWeight: 600 }}>
-                ⚠️ Selecciona entre 1 y 3 borradores (máximo 3).
+                ⚠️ Selecciona entre 1 y 3 cuadrículas (máximo 3).
               </span>
             )}
           </div>
