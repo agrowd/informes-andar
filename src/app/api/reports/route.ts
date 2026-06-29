@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDB, sql } from '@/lib/db';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
@@ -25,6 +27,10 @@ function mapReportRow(r: any) {
 export async function GET(req: NextRequest) {
   try {
     await connectToDB();
+    const session = await getServerSession(authOptions as any) as any;
+    const role = (session?.user as any)?.role || 'FACILITADOR';
+    const userId = session?.user ? Number((session.user as any).id) : null;
+
     const url = new URL(req.url);
     const page = parseInt(url.searchParams.get('page') || '1');
     const pageSize = parseInt(url.searchParams.get('pageSize') || '20');
@@ -37,17 +43,33 @@ export async function GET(req: NextRequest) {
     if (sql) {
       // Si es búsqueda específica (sin paginación), retornar directamente
       if (periodoFilter && youngIdFilter) {
-        const specificResult = await sql`
-          SELECT 
-            r.id, r.periodo, r.status, r.pdf_url, r.created_at, r.comments,
-            r.young_id, r.version, r.report_type, r.source_report_ids,
-            y.taller as grupo, y.nombre_completo as joven_nombre
-          FROM reports r
-          LEFT JOIN youngs y ON r.young_id = y.id
-          WHERE r.periodo = ${periodoFilter} AND r.young_id = ${parseInt(youngIdFilter)}
-          ORDER BY r.created_at DESC
-          LIMIT 1
-        `;
+        let specificResult;
+        if (role === 'FACILITADOR' && userId) {
+          specificResult = await sql`
+            SELECT 
+              r.id, r.periodo, r.status, r.pdf_url, r.created_at, r.comments,
+              r.young_id, r.version, r.report_type, r.source_report_ids,
+              y.taller as grupo, y.nombre_completo as joven_nombre
+            FROM reports r
+            LEFT JOIN youngs y ON r.young_id = y.id
+            WHERE r.periodo = ${periodoFilter} AND r.young_id = ${parseInt(youngIdFilter)} AND r.generated_by = ${userId}
+            ORDER BY r.created_at DESC
+            LIMIT 1
+          `;
+        } else {
+          specificResult = await sql`
+            SELECT 
+              r.id, r.periodo, r.status, r.pdf_url, r.created_at, r.comments,
+              r.young_id, r.version, r.report_type, r.source_report_ids,
+              y.taller as grupo, y.nombre_completo as joven_nombre
+            FROM reports r
+            LEFT JOIN youngs y ON r.young_id = y.id
+            WHERE r.periodo = ${periodoFilter} AND r.young_id = ${parseInt(youngIdFilter)}
+            ORDER BY r.created_at DESC
+            LIMIT 1
+          `;
+        }
+        
         if (specificResult.rows.length > 0) {
           return NextResponse.json({
             items: [mapReportRow(specificResult.rows[0])],
@@ -61,45 +83,89 @@ export async function GET(req: NextRequest) {
       let countResult;
       let dataResult;
       
-      if (reportTypeFilter && periodoFilter) {
-        countResult = await sql`SELECT COUNT(*) as total FROM reports WHERE report_type = ${reportTypeFilter} AND periodo = ${periodoFilter}`;
-        dataResult = await sql`
-          SELECT r.id, r.periodo, r.status, r.pdf_url, r.created_at, r.comments,
-                 r.young_id, r.version, r.report_type, r.source_report_ids,
-                 y.taller as grupo, y.nombre_completo as joven_nombre
-          FROM reports r LEFT JOIN youngs y ON r.young_id = y.id
-          WHERE r.report_type = ${reportTypeFilter} AND r.periodo = ${periodoFilter}
-          ORDER BY r.created_at DESC LIMIT ${pageSize} OFFSET ${offset}
-        `;
-      } else if (reportTypeFilter) {
-        countResult = await sql`SELECT COUNT(*) as total FROM reports WHERE report_type = ${reportTypeFilter}`;
-        dataResult = await sql`
-          SELECT r.id, r.periodo, r.status, r.pdf_url, r.created_at, r.comments,
-                 r.young_id, r.version, r.report_type, r.source_report_ids,
-                 y.taller as grupo, y.nombre_completo as joven_nombre
-          FROM reports r LEFT JOIN youngs y ON r.young_id = y.id
-          WHERE r.report_type = ${reportTypeFilter}
-          ORDER BY r.created_at DESC LIMIT ${pageSize} OFFSET ${offset}
-        `;
-      } else if (periodoFilter) {
-        countResult = await sql`SELECT COUNT(*) as total FROM reports WHERE periodo = ${periodoFilter}`;
-        dataResult = await sql`
-          SELECT r.id, r.periodo, r.status, r.pdf_url, r.created_at, r.comments,
-                 r.young_id, r.version, r.report_type, r.source_report_ids,
-                 y.taller as grupo, y.nombre_completo as joven_nombre
-          FROM reports r LEFT JOIN youngs y ON r.young_id = y.id
-          WHERE r.periodo = ${periodoFilter}
-          ORDER BY r.created_at DESC LIMIT ${pageSize} OFFSET ${offset}
-        `;
+      if (role === 'FACILITADOR' && userId) {
+        if (reportTypeFilter && periodoFilter) {
+          countResult = await sql`SELECT COUNT(*) as total FROM reports WHERE report_type = ${reportTypeFilter} AND periodo = ${periodoFilter} AND generated_by = ${userId}`;
+          dataResult = await sql`
+            SELECT r.id, r.periodo, r.status, r.pdf_url, r.created_at, r.comments,
+                   r.young_id, r.version, r.report_type, r.source_report_ids,
+                   y.taller as grupo, y.nombre_completo as joven_nombre
+            FROM reports r LEFT JOIN youngs y ON r.young_id = y.id
+            WHERE r.report_type = ${reportTypeFilter} AND r.periodo = ${periodoFilter} AND r.generated_by = ${userId}
+            ORDER BY r.created_at DESC LIMIT ${pageSize} OFFSET ${offset}
+          `;
+        } else if (reportTypeFilter) {
+          countResult = await sql`SELECT COUNT(*) as total FROM reports WHERE report_type = ${reportTypeFilter} AND generated_by = ${userId}`;
+          dataResult = await sql`
+            SELECT r.id, r.periodo, r.status, r.pdf_url, r.created_at, r.comments,
+                   r.young_id, r.version, r.report_type, r.source_report_ids,
+                   y.taller as grupo, y.nombre_completo as joven_nombre
+            FROM reports r LEFT JOIN youngs y ON r.young_id = y.id
+            WHERE r.report_type = ${reportTypeFilter} AND r.generated_by = ${userId}
+            ORDER BY r.created_at DESC LIMIT ${pageSize} OFFSET ${offset}
+          `;
+        } else if (periodoFilter) {
+          countResult = await sql`SELECT COUNT(*) as total FROM reports WHERE periodo = ${periodoFilter} AND generated_by = ${userId}`;
+          dataResult = await sql`
+            SELECT r.id, r.periodo, r.status, r.pdf_url, r.created_at, r.comments,
+                   r.young_id, r.version, r.report_type, r.source_report_ids,
+                   y.taller as grupo, y.nombre_completo as joven_nombre
+            FROM reports r LEFT JOIN youngs y ON r.young_id = y.id
+            WHERE r.periodo = ${periodoFilter} AND r.generated_by = ${userId}
+            ORDER BY r.created_at DESC LIMIT ${pageSize} OFFSET ${offset}
+          `;
+        } else {
+          countResult = await sql`SELECT COUNT(*) as total FROM reports WHERE generated_by = ${userId}`;
+          dataResult = await sql`
+            SELECT r.id, r.periodo, r.status, r.pdf_url, r.created_at, r.comments,
+                   r.young_id, r.version, r.report_type, r.source_report_ids,
+                   y.taller as grupo, y.nombre_completo as joven_nombre
+            FROM reports r LEFT JOIN youngs y ON r.young_id = y.id
+            WHERE r.generated_by = ${userId}
+            ORDER BY r.created_at DESC LIMIT ${pageSize} OFFSET ${offset}
+          `;
+        }
       } else {
-        countResult = await sql`SELECT COUNT(*) as total FROM reports`;
-        dataResult = await sql`
-          SELECT r.id, r.periodo, r.status, r.pdf_url, r.created_at, r.comments,
-                 r.young_id, r.version, r.report_type, r.source_report_ids,
-                 y.taller as grupo, y.nombre_completo as joven_nombre
-          FROM reports r LEFT JOIN youngs y ON r.young_id = y.id
-          ORDER BY r.created_at DESC LIMIT ${pageSize} OFFSET ${offset}
-        `;
+        if (reportTypeFilter && periodoFilter) {
+          countResult = await sql`SELECT COUNT(*) as total FROM reports WHERE report_type = ${reportTypeFilter} AND periodo = ${periodoFilter}`;
+          dataResult = await sql`
+            SELECT r.id, r.periodo, r.status, r.pdf_url, r.created_at, r.comments,
+                   r.young_id, r.version, r.report_type, r.source_report_ids,
+                   y.taller as grupo, y.nombre_completo as joven_nombre
+            FROM reports r LEFT JOIN youngs y ON r.young_id = y.id
+            WHERE r.report_type = ${reportTypeFilter} AND r.periodo = ${periodoFilter}
+            ORDER BY r.created_at DESC LIMIT ${pageSize} OFFSET ${offset}
+          `;
+        } else if (reportTypeFilter) {
+          countResult = await sql`SELECT COUNT(*) as total FROM reports WHERE report_type = ${reportTypeFilter}`;
+          dataResult = await sql`
+            SELECT r.id, r.periodo, r.status, r.pdf_url, r.created_at, r.comments,
+                   r.young_id, r.version, r.report_type, r.source_report_ids,
+                   y.taller as grupo, y.nombre_completo as joven_nombre
+            FROM reports r LEFT JOIN youngs y ON r.young_id = y.id
+            WHERE r.report_type = ${reportTypeFilter}
+            ORDER BY r.created_at DESC LIMIT ${pageSize} OFFSET ${offset}
+          `;
+        } else if (periodoFilter) {
+          countResult = await sql`SELECT COUNT(*) as total FROM reports WHERE periodo = ${periodoFilter}`;
+          dataResult = await sql`
+            SELECT r.id, r.periodo, r.status, r.pdf_url, r.created_at, r.comments,
+                   r.young_id, r.version, r.report_type, r.source_report_ids,
+                   y.taller as grupo, y.nombre_completo as joven_nombre
+            FROM reports r LEFT JOIN youngs y ON r.young_id = y.id
+            WHERE r.periodo = ${periodoFilter}
+            ORDER BY r.created_at DESC LIMIT ${pageSize} OFFSET ${offset}
+          `;
+        } else {
+          countResult = await sql`SELECT COUNT(*) as total FROM reports`;
+          dataResult = await sql`
+            SELECT r.id, r.periodo, r.status, r.pdf_url, r.created_at, r.comments,
+                   r.young_id, r.version, r.report_type, r.source_report_ids,
+                   y.taller as grupo, y.nombre_completo as joven_nombre
+            FROM reports r LEFT JOIN youngs y ON r.young_id = y.id
+            ORDER BY r.created_at DESC LIMIT ${pageSize} OFFSET ${offset}
+          `;
+        }
       }
       
       const total = parseInt(countResult.rows[0].total);
@@ -110,8 +176,12 @@ export async function GET(req: NextRequest) {
     // Si usa MongoDB (backward compatibility)
     if (process.env.MONGODB_URI) {
       const { ReportModel } = await import('@/models/Report');
-      const total = await ReportModel.countDocuments({});
-      const items = await ReportModel.find({})
+      const filter: any = {};
+      if (role === 'FACILITADOR' && session?.user) {
+        filter.generatedBy = (session.user as any).id;
+      }
+      const total = await ReportModel.countDocuments(filter);
+      const items = await ReportModel.find(filter)
         .populate('youngId', 'nombreCompleto taller')
         .sort({ createdAt: -1 })
         .limit(pageSize)

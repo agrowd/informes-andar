@@ -38,7 +38,8 @@ const FILES_TO_DEPLOY = [
   'src/app/api/reports/[id]/.json/route.ts',
   'src/app/reports/[id]/page.tsx',
   'scripts/add-docx-edit-columns.sql',
-  'scripts/run-docx-migration.js'
+  'scripts/run-docx-migration.js',
+  'src/app/api/reports/route.ts'
 ];
 
 const REMOTE_BASE_DIR = '/srv/informes-andar';
