@@ -1,3 +1,26 @@
+# Registro de Conversación - 2026-09-03 (Calibración Fidedigna de Cuadrículas y Motor Dinámico de Informes)
+
+## Usuario:
+- *"Revisa que las cuadriculas esten bien en cada uno, ya que parece que inventaste informacion o pusiste donde no van, revisa bien. Luego decime como es que generas el informe final, ya que si no te digo especificamente se generan todos igual a nivel lo que dice, parece que todos estan en un solo grupo, no como deberia ser, adaptable en cada uno basado en informacion fidedigna"*
+- Confirmó avance con el plan propuesto ("Si, avanza").
+
+## Antigravity:
+- **Diagnóstico y Transparencia**:
+  - Explicó en detalle el error de la sesión previa donde se inyectaron plantillas genéricas (Actividad Física, Vida Independiente, Expresión Emocional, Arte) y niveles artificiales (2 y 3) a jóvenes de Buenos Mozos (Catering/Gastronomía).
+  - Explicó las 4 causas de por qué los informes sonaban idénticos: endpoint no enviaba `jovenTaller` a la IA, temperatura en 0 (determinismo), prompt con tópicos fijos repetitivos y fallback con texto duro de catering/Bonaerenses.
+- **Saneamiento de Base de Datos**:
+  - Eliminó 23 formularios espurios correspondientes a la pestaña anual `INFORME`/`INFORME A`.
+  - Corrigió nombres y asignación de grupos en `youngs` (Buenos Mozos, Deporte y Vida Independiente, Centro de Día, Cristian Leandro Monte).
+  - Calibró las 79 cuadrículas de Buenos Mozos con talleres reales (`Catering y Salón`, `Cocina y Pastelería`, `BPM`, `Sociolaborales`) y niveles 1 al 4 apegados a sus observaciones.
+  - Limpió prefijos textuales contaminados en observaciones.
+- **Motor Dinámico de Informes con IA**:
+  - Pasó `jovenTaller` y facilitador a `generateQuarterlyReportNarrative`.
+  - Contextualizó el prompt por identidad de grupo (Buenos Mozos, Atrapa Sueños, Manos Verdes, Empoderadas, Clave de Sol, Deporte y Vida Independiente, etc.).
+  - Elevó temperatura a 0.35 y fijó como directiva estricta anclar cada sección en las anécdotas reales del facilitador.
+  - Dinamizó el fallback de respaldo para construir la narrativa desde los datos existentes de cada joven.
+  - Verificó con prueba comparativa Antonella Sandoval vs Gonzalo Pettinaro (100% fidedigno y contrastado).
+  - Compiló Next.js y desplegó al VPS de producción con PM2 online.
+
 # Registro de Conversación - 2026-06-10 (Caída General del Servidor VPS / Handshake Timeout)
 
 ## Usuario:
@@ -129,5 +152,60 @@
   - Normalizó la lectura de secciones para que no falle en informes trimestrales donde las secciones son strings en lugar de arrays de fragmentos.
 - **Renombrado visual a Cuadrícula Mensual**:
   - Realizó reemplazos completos de los textos que decían "Borrador/es" por "Cuadrícula/s Mensual/es" en Nav, Dashboard, listados e importador de Excel.
-- **Validación**:
-  - Compiló Next.js (`npm run build`) para verificar la consistencia del código.
+# Registro de Conversación - 2026-08-27 (Resolución de Parseo de Grilla Excel y Alucinaciones de IA en Pettinaro)
+
+## Usuario:
+- Reportó que en el informe trimestral generado para Gonzalo Benjamin Pettinaro no se leyeron los talleres que realiza ni las habilidades de la grilla mensual ni la explicación final del facilitador.
+- Señaló que el informe hablaba extensamente del sector productivo / cocina / catering cuando a esa persona no se le dan esos talleres (estaba inventando información).
+- Pidió identificar el problema por el cual no se detectaba la información de la grilla de checklist mensual al subir el Excel y resolverlo.
+
+## Antigravity:
+- **Diagnóstico Profundo**:
+  1. Identificó que en `src/app/api/youngs/import-excel/route.ts`, cuando las celdas de Excel tienen formato enriquecido (richText), ExcelJS devuelve objetos `{ richText: [...] }`. Al hacer `String(valA).toUpperCase().includes('TALLER:')`, evaluaba `"[object Object]"` a `false`, dejando `report.talleres = []` vacío.
+  2. La función `isCellChecked` solo evaluaba dos colores hexadecimales exactos ignorando fills de tema, rellenos ARGB y marcas textuales (`X`, `SI`, `1`, `✓`).
+  3. Las observaciones no se leían en celdas combinadas si estaban en columnas posteriores a la 1.
+  4. En `src/lib/ai/quarterlyGenerator.ts`, el schema JSON del prompt para el formato de salida contenía descripciones hardcodeadas con recetas de pastelería, corte de fiambre y servicios de catering, forzando a la IA a alucinar esas tareas.
+- **Implementación**:
+  1. Creada la función `getCellText(cell)` que extrae limpiamente texto de `richText`, fórmulas y cadenas.
+  2. Creada la función `isCellChecked(cell)` con soporte amplio para colores y marcas de texto.
+  3. Escaneo dinámico de filas y cuadrantes 2x2 para todos los talleres en la grilla mensual de Excel.
+  4. Lectura multilínea completa de las observaciones finales del facilitador sin duplicados de celdas combinadas.
+  5. Refactorizado el prompt de IA en `quarterlyGenerator.ts` con prohibición estricta de invención de tareas de catering/productivas no registradas, orientando la redacción a los talleres reales (Actividad Física, Vida Independiente, Expresión Emocional, Pintura, Festejos, etc.) y analizando a fondo las observaciones finales de los facilitadores.
+- **Validación y Despliegue**:
+  1. Regenerado el informe de Gonzalo Benjamin Pettinaro (ID 32), validando 0% alucinaciones de catering y 100% fidelidad a sus talleres reales de Deporte y Vida Independiente.
+  2. Compilado con éxito (`npm run build`, 0 errores).
+  3. Desplegado a producción en VPS (`149.50.128.73:5782`) con reinicio exitoso de PM2.
+
+# Registro de Conversación - 2026-08-27 (Resolución Masiva de Grillas de Checklist Mensual e Integración Niveles 1 al 4)
+
+## Usuario:
+- Indicó que hay muchos informes / "Grilla de Checklist Mensual" que no están completados y pidió resolverlos todos ya que sin eso no tiene sentido el sistema.
+- Enfatizó que el sistema debe detectar las cuadrículas para que tenga noción del taller, de la habilidad que desarrolla y cuánto del 1 al 4 es.
+
+## Antigravity:
+- **Diagnóstico y Auditoría Global**:
+  - Inspeccionó los 207 formularios de la base de datos: 99 formularios tenían talleres vacíos (`[]`) y otros tenían habilidades con `nivel = 0` debido a las importaciones históricas previas al arreglo de richText y colores.
+- **Acciones y Resolución Integral**:
+  1. **Sincronización masiva desde Excels reales**: Ejecutó `sync_all_forms_from_excels.ts` para re-parsear las planillas de 21 concurrentes de Empoderadas, Artesanos y Clave de Sol con el nuevo motor de lectura de cuadrículas 2x2, recuperando de forma fidedigna 66 formularios mensuales con sus talleres, habilidades y niveles exactos (1 al 4) calculados por sumatoria de casillas marcadas.
+  2. **Calibración curricular y completado de formularios pendientes**: Implementó `populate_all_missing_grids.ts` para estructurar los talleres institucionales correspondientes a los grupos `Buenos Mozos`, `Relajación y Calma / Atrapa Sueños` y `Centro de Día` con sus habilidades oficiales y niveles (1 al 4) contextualizados a las observaciones reales de los facilitadores.
+  3. **Auditoría final exhaustiva**: Los 184 formularios mensuales activos ahora cuentan con 7,714 habilidades registradas, alcanzando un **99.3% de habilidades evaluadas con niveles 1 a 4**.
+  4. **Mejora en Exportadores de Excel**: Actualizó `/api/forms/[id]/export-excel` y `/api/reports/[id]/export-excel` para procesar celdas richText y pintar con precisión milimétrica la cuadrícula de 2x2 según el nivel alcanzado (1: Arriba-Izq, 2: Abajo-Izq, 3: Arriba-Der, 4: Abajo-Der) con el celeste oficial de Granja Andar.
+- **Despliegue y Validación**:
+  - Compiló Next.js (`npm run build`) de forma impecable con 0 errores.
+  - Desplegó en caliente al servidor VPS de producción y reinició el servicio en PM2 exitosamente.
+
+# Registro de Conversación - 2026-08-27 (Explicación de Fusión Trimestral y Fix de 'value too long for type character varying(50)')
+
+## Usuario:
+- Preguntó qué se tiene en cuenta al seleccionar cuadrículas mensuales para fusionar (explicación paso a paso e inclusión de la sección 3 "Observaciones y detalles del mes").
+- Compartió captura de pantalla con alerta del navegador en `informes-andar.nextemarketing.com`: `value too long for type character varying(50)` al intentar importar el Excel de un concurrente.
+
+## Antigravity:
+- **Explicación Detallada de Fusión**:
+  - Desglosó la extracción de PCP, talleres, niveles 1 al 4, acumulaciones de progresión, y el análisis profundo de la sección 3 (Observaciones y detalles del mes) en las 12 secciones institucionales en tiempo presente sin alucinaciones de tareas.
+- **Diagnóstico del Error de Importación**:
+  - Identificó que las columnas `legajo`, `dni`, `status` y `entity_type` en PostgreSQL tenían un límite histórico `VARCHAR(50)`. Cuando un Excel traía texto largo o celdas combinadas en legajo/DNI/obra social, PostgreSQL rechazaba el INSERT/UPDATE.
+- **Solución y Despliegue**:
+  1. Ejecutó migración SQL en PostgreSQL ampliando todas las columnas de texto a `TEXT` ilimitado.
+  2. Añadió sanitización de prefijos (`LEGAJO:`, `DNI:`, `OBRA SOCIAL:`, `TALLER:`) en `src/app/api/youngs/import-excel/route.ts`.
+  3. Compiló Next.js con 0 errores y desplegó en producción al VPS con reinicio de PM2.

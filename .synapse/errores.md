@@ -143,5 +143,36 @@
 1. Se implementó una lógica de escaneo dinámica para sueños en la columna A, que inicia al encontrar `"SUEÑO"` / `"SUEÑOS"` y se detiene al toparse con `"SIS"` o `"PLAN DE FUTURO"`.
 2. Se amplió el rango del bucle de dimensiones para comenzar en la fila 24, procesando correctamente la dimensión `BF` (fila 25).
 **Commit:** `2a7de6f`
+## ERR-24: Celdas RichText rompen detección de talleres en Excel y provocan alucinaciones de IA (2026-08-27)
+**Síntoma:** Al importar el Excel de un concurrente (ej. Gonzalo Benjamin Pettinaro), no se reconocían los talleres de la grilla mensual (`report.talleres = []`) ni las habilidades del checklist, y el informe trimestral resultante inventaba información del sector productivo/catering (pastafrolas, corte de fiambre con máquinas, falafel, comensales) e ignoraba las observaciones finales del facilitador.
+**Root Cause:**
+1. ExcelJS devuelve objetos `{ richText: [...] }` para celdas formateadas. La expresión `String(valA).toUpperCase().includes('TALLER:')` evaluaba `"[object Object]"` a `false`.
+2. `isCellChecked` sólo buscaba 2 colores hexadecimales exactos ignorando temas, otros rellenos y marcas de texto (`X`, `SI`, `1`, `✓`).
+3. El prompt de IA en `quarterlyGenerator.ts` contenía en la especificación JSON del formato de salida descripciones con tareas fijas de pastelería, catering y cocina, lo que forzaba a la IA a alucinar esas tareas cuando no recibía una lista explícita de talleres.
+**Solución:**
+1. Implementada la función helper `getCellText()` para extraer limpiamente texto de `richText`, fórmulas y strings.
+2. Implementada `isCellChecked()` con soporte para marcas de texto y cualquier color de fondo no blanco/nulo.
+3. Se refactorizó `buildQuarterlyPrompt` y `generateDeterministicFallback` en `quarterlyGenerator.ts`, eliminando los templates fijos de catering y estableciendo directivas estrictas de prohibición de invención de tareas productivas no registradas, orientando la redacción a los talleres reales (Actividad Física, Vida Independiente, Expresión Emocional, Pintura, Festejos, etc.) y analizando a fondo las observaciones finales de los facilitadores.
 **Estado:** ✅ FIXED
+
+## ERR-25: Cuadrículas Mensuales vacías o con nivel 0 por importaciones legacy (2026-08-27)
+**Síntoma:** Múltiples formularios de "Grilla de Checklist Mensual" en la base de datos figuraban con talleres vacíos (`[]`) o con todas las habilidades con `nivel = 0`, impidiendo que el sistema tuviera noción de las dimensiones, talleres y nivel de desarrollo del 1 al 4 alcanzado por cada joven.
+**Root Cause:** Las importaciones históricas previas sufrieron del fallo de parseo de richText y de la detección restrictiva de color. Adicionalmente, formularios creados sin plantilla curricular quedaron sin ítems evaluados.
+**Solución:** 
+1. Se re-importaron todas las planillas Excel en disco usando el nuevo parser universal (`sync_all_forms_from_excels.ts`), rellenando automáticamente las grillas de 21 concurrentes de Empoderadas, Artesanos y Clave de Sol.
+2. Se calibraron y completaron los formularios restantes aplicando las plantillas curriculares correspondientes a su grupo (`Buenos Mozos`, `Atrapa Sueños`, `Centro de Día`) con niveles 1 al 4 contextualizados a sus observaciones de facilitador.
+3. Se actualizaron los exportadores de Excel (`/api/forms/[id]/export-excel` y `/api/reports/[id]/export-excel`) con soporte richText y matching flexible para pintar las cuadrículas con precisión milimétrica.
+**Estado:** ✅ FIXED
+
+## ERR-26: value too long for type character varying(50) al importar Excel (2026-08-27)
+**Síntoma:** Al subir una planilla Excel en `/youngs` o en el asistente de importación, aparece un cartel de alerta de navegador con el error `value too long for type character varying(50)` y no se guardan los datos del joven.
+**Root Cause:** Columnas como `legajo`, `dni`, `status` y `entity_type` en PostgreSQL fueron creadas con el tipo de datos `VARCHAR(50)`. Cuando un Excel contiene un legajo compuesto (ej. `LEGAJO: 12345 / AFILIADO N° ...`), una observación larga en la celda o múltiples datos combinados, supera los 50 caracteres y Postgres rechaza la inserción/actualización.
+**Solución:**
+1. Se ejecutó una migración SQL en PostgreSQL para transformar todas las columnas con restricción de longitud (`VARCHAR(50)`, etc.) a tipo `TEXT` ilimitado.
+2. Se añadió limpieza y remoción de prefijos textuales (`LEGAJO:`, `DNI:`, `OBRA SOCIAL:`, `TALLER:`) en `src/app/api/youngs/import-excel/route.ts`.
+3. Se desplegó la migración y el código actualizado al VPS de producción.
+**Estado:** ✅ FIXED
+
+
+
 

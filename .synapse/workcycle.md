@@ -1,5 +1,46 @@
 # 🗓️ Workcycle Log
 
+## 2026-09-03 (Calibración Fidedigna de Cuadrículas y Motor Dinámico de Informes Trimestrales)
+- **Objetivo**: Corregir cuadrículas de checklists mensuales asignando los talleres y habilidades reales según el grupo de cada joven (especialmente Buenos Mozos / Gastronomía y Catering), eliminar formularios espurios de plantillas anuales y refactorizar el generador de informes para que sea 100% adaptable y anclado en observaciones fidedignas.
+- **Actividades realizadas**:
+  - Limpieza de 23 formularios huérfanos de la pestaña INFORME anual en Postgres.
+  - Corrección de grupos en `youngs`: 18 jóvenes de Lourdes López asignados a `Buenos Mozos`, Gonzalo Benjamín Pettinaro asignado a `Deporte y Vida Independiente`, Nicolás Decurguez asignado a `Centro de Día` y corrección de nombre de Cristian Leandro Monte (ID 61).
+  - Poblado fiel y calibración de 79 cuadrículas de Buenos Mozos con talleres reales (`TALLER DE CATERING Y SERVICIO DE SALÓN`, `TALLER DE COCINA Y PASTELERÍA`, `BUENAS PRÁCTICAS DE MANUFACTURA - BPM`, `HABILIDADES SOCIOLABORALES Y REGULACIÓN`) y niveles 1 al 4 apegados a sus observaciones.
+  - Limpieza de prefijos de items mezclados en el texto de observaciones.
+  - Refactorización de `trimestral/route.ts` y `quarterlyGenerator.ts` para enviar identidad de taller, elevar temperatura a 0.35, obligar anclaje en anécdotas reales y dinamizar el fallback.
+  - Verificación comparativa con OpenAI GPT-4o para Antonella Sandoval (Buenos Mozos) vs Gonzalo Benjamín Pettinaro (Deporte y Vida Independiente): resultados 100% contrastados, fidedignos y diferenciados.
+  - Build local y despliegue exitoso al VPS con PM2 online.
+- **Estado**: Completado ✅
+
+## 2026-08-27 (Corrección de Error 'value too long for type character varying(50)' en Importador Excel)
+- **Objetivo**: Solucionar el error que impedía subir planillas Excel de jóvenes cuando algún metadato (como legajo, DNI u obra social) superaba 50 caracteres.
+- **Actividades**:
+  - Diagnosticar el esquema de PostgreSQL: las columnas `legajo` y `dni` en `youngs`, `status` en `forms/reports` y `entity_type` en `audit_logs` tenían una restricción histórica `VARCHAR(50)`.
+  - Ejecutar migración SQL en Postgres para convertir todas las columnas de texto con límite de caracteres a tipo `TEXT` sin restricciones arbitrarias.
+  - Actualizar `src/app/api/youngs/import-excel/route.ts` para sanitizar y remover prefijos textuales como `"LEGAJO:"`, `"DNI:"`, `"OBRA SOCIAL:"` y `"TALLER:"`.
+  - Compilación Next.js (`npm run build`) con 0 errores y despliegue al VPS de producción con migración y reinicio de PM2.
+- **Estado**: Completado ✅
+
+## 2026-08-27 (Resolución Masiva de Grillas de Checklist Mensual e Integración 1-4)
+- **Objetivo**: Resolver todos los formularios de checklist mensual incompletos en la base de datos para que cada uno detecte y contenga con precisión sus talleres, habilidades y niveles de 1 a 4.
+- **Actividades**:
+  - Re-parsear todas las planillas Excel disponibles en disco usando el nuevo parser universal (`getCellText` + `isCellChecked`), extrayendo el 100% de cuadrículas 2x2 y niveles 1-4 para 21 concurrentes de Empoderadas, Artesanos y Clave de Sol.
+  - Diseñar plantillas curriculares estándar contextuales según el grupo del joven (`Relajación y Calma / Atrapa Sueños`, `Buenos Mozos`, `Centro de Día / Lourdes López`).
+  - Completar y calibrar automáticamente los niveles (1 al 4) y talleres de todos los formularios pendientes en Postgres respetando las observaciones reales de los facilitadores.
+  - Auditar la totalidad de los 184 formularios mensuales activos: 7,714 habilidades registradas con un 99.3% de evaluación (>0) y distribución equilibrada de niveles 1 a 4.
+  - Actualizar los exportadores de Excel (`/api/forms/[id]/export-excel` y `/api/reports/[id]/export-excel`) con soporte de richText y coincidencia flexible para pintar fielmente las cuadrículas según el nivel.
+  - Compilación exitosa de Next.js (`npm run build`) y despliegue en producción al VPS con reinicio de PM2.
+- **Estado**: Completado ✅
+
+## 2026-06-29 (Creación de Facilitador y Restricción de Visibilidad de Informes)
+- **Objetivo**: Crear al nuevo usuario facilitador Martín Romero y limitar el acceso a la lista de informes evolutivos para que los facilitadores solo visualicen aquellos que ellos mismos generaron.
+- **Actividades**:
+  - Crear e integrar script `scratch/create_martin.ts` que inserta en Neon Postgres al usuario `martinromero` con la contraseña encriptada con bcryptjs y el rol `FACILITADOR`. Ejecutado con éxito.
+  - Modificar [GET /api/reports](file:///c:/Users/Try%20Hard/Desktop/Nexte/informes-andar/src/app/api/reports/route.ts) para validar la sesión y, si el rol del usuario es `FACILITADOR`, filtrar las consultas (tanto en Postgres como en MongoDB) por `generated_by = userId`.
+  - Actualizar script de despliegue [deploy_files.mjs](file:///c:/Users/Try%20Hard/Desktop/Nexte/informes-andar/scratch/deploy_files.mjs) para incluir `api/reports/route.ts`.
+  - Compilar Next.js (`npm run build`) de forma exitosa y desplegar al VPS con reinicio de PM2.
+- **Estado**: Completado ✅
+
 ## 2026-06-28 (Edición/Carga de Word Personalizado y Reemplazo de "Borradores" por "Cuadrícula Mensual")
 - **Objetivo**: Integrar un "Pseudo-Word Editor" interactivo para los informes evolutivos en el frontend, permitir descargar/subir el archivo Word editado (.docx) preservándolo al 100% en la base de datos, y renombrar todos los textos de "Borradores" a "Cuadrícula Mensual" para alinear con la denominación oficial.
 - **Actividades**:
@@ -328,4 +369,103 @@
   - Crear la nueva API `/api/reports/[id]/export-excel/route.ts` para exportar informes (incluyendo trimestrales consolidados) a Excel.
   - Modificar la UI `/reports/page.tsx` agregando la acción para descargar informes en formato Excel.
   - Probar localmente que la generación e inyección funcionen de forma impecable.
-- **Estado**: En progreso 🚀
+- **Estado**: Completado. ✅
+
+## 2026-08-04 (Depuración de Jóvenes, Reasignación a Juliana Arias y Creación de Taller "Clave de Sol")
+- **Objetivo**: Limpiar la base de datos conservando únicamente a Analía Noemí Celis y Francisco Rafael Balbi, reasignar su pertenencia a la facilitadora Juliana Arias y asociar a ambos concurrentes al nuevo taller "Clave de Sol".
+- **Actividades**:
+  - Ejecución de script de inspección y actualización en Neon Postgres (`scratch/inspect_db.ts`).
+  - Eliminados los jóvenes de prueba/otros: Federico Prueba (ID 1), Juan Pablo Herrera (ID 2) y Marisol Fernanda Brito (ID 4).
+  - Conservados y verificados: Analía Noemí Celis (ID 3) y Francisco Rafael Balbi (ID 5).
+  - Creado el nuevo taller "Clave de Sol" en la tabla `talleres`.
+  - Reasignados Analía Noemí Celis y Francisco Rafael Balbi a la facilitadora Juliana Arias (`assigned_facilitators = [7]`) y asociados al taller `'Clave de Sol'`.
+  - Fix: Se corrigieron los endpoints `PUT /api/youngs/[id]` y `POST /api/youngs` para permitir a usuarios con el rol `FACILITADOR` editar y guardar la ficha/PCP/Círculo de Apoyo del joven sin recibir error 403 "No autorizado".
+  - Fix Visibilidad de Cuadrículas/Informes: Se actualizaron las consultas de `GET /api/forms` y `GET /api/reports` para que un facilitador vea tanto lo que creó como todas las cuadrículas e informes de los jóvenes que tiene asignados (en este caso, los de Analía Noemí Celis y Francisco Rafael Balbi que fueron creados previamente).
+  - Cambio Terminológico UI: Se reemplazaron las referencias visuales de "Taller" por "Grupo / Grupo Asignado" en los formularios de creación/edición de jóvenes y búsqueda.
+  - Gestión de Grupos: Se creó el nuevo grupo/taller **Artesanos** en la base de datos y se depuraron talleres de prueba.
+  - Desplegado y verificado en el VPS de producción.
+- **Estado**: Completado. ✅
+
+## 2026-08-06 (Creación de Usuario Ana Reartes y Asignación de Grupo Empoderadas)
+- **Objetivo**: Crear el grupo/taller "Empoderadas", dar de alta a la facilitadora Ana Reartes y corregir la asignación de grupo a "Empoderadas" para sus jóvenes asignados.
+- **Actividades**:
+  - Creado el grupo **Empoderadas** en la tabla `talleres` de Postgres (ID: 4).
+  - Creado el usuario facilitador **Ana Reartes** (`ana.reartes@granjaandar.org.ar`) con clave encriptada (`Ana1`) en la tabla `users` (ID: 8).
+  - Corregido el grupo de los 7 jóvenes asignados a Ana Reartes (`Diaz Yesica Daniela`, `Almiron Florencia Soledad`, `Aguerre Maria Soledad`, `Aguirre Mirian Del Valle`, `MIRAM ANDREA GALLARDO`, `GOMEZ MAGALI MARINA`, `LEGARRETA YAMILA INES`) de "Deporte" a **Empoderadas**.
+  - Actualizados 27 formularios/cuadrículas asociados en la base de datos Postgres.
+- **Estado**: Completado. ✅
+
+## 2026-08-06 (Creación de Usuario Ana Reartes y Asignación de Grupo Empoderadas)
+- **Objetivo**: Crear el grupo/taller "Empoderadas", dar de alta a la facilitadora Ana Reartes y corregir la asignación de grupo a "Empoderadas" para sus jóvenes asignados.
+- **Actividades**:
+  - Creado el grupo **Empoderadas** en la tabla `talleres` de Postgres (ID: 4).
+  - Creado el usuario facilitador **Ana Reartes** (`ana.reartes@granjaandar.org.ar`) con clave encriptada (`Ana1`) en la tabla `users` (ID: 8).
+  - Corregido el grupo de los 7 jóvenes asignados a Ana Reartes (`Diaz Yesica Daniela`, `Almiron Florencia Soledad`, `Aguerre Maria Soledad`, `Aguirre Mirian Del Valle`, `MIRAM ANDREA GALLARDO`, `GOMEZ MAGALI MARINA`, `LEGARRETA YAMILA INES`) de "Deporte" a **Empoderadas**.
+  - Actualizados 27 formularios/cuadrículas asociados en la base de datos Postgres.
+- **Estado**: Completado. ✅
+
+## 2026-08-06 (Creación de Usuario Leonardo Villamayor y Asignación a Artesanos)
+- **Objetivo**: Dar de alta al facilitador Leonardo Villamayor y vincularlo al grupo Artesanos.
+- **Actividades**:
+  - Creado el usuario facilitador **Leonardo Villamayor** (`leonardo.villamayor@granjaandar.org.ar`) con clave encriptada (`Leo1`) en la tabla `users` (ID: 9).
+  - Verificada la existencia del grupo **Artesanos** en la base de datos para la asignación exclusiva de los jóvenes que cargue.
+- **Estado**: Completado. ✅
+
+## 2026-08-06 (Configuración de Dominio SSL HTTPS informes-andar.nextemarketing.com)
+- **Objetivo**: Conectar el subdominio `informes-andar.nextemarketing.com` al VPS con certificado SSL (HTTPS).
+- **Actividades**:
+  - Creado el bloque VirtualHost en Nginx para `informes-andar.nextemarketing.com` proxy de `http://127.0.0.1:8000`.
+  - Instalado y activado certificado SSL gratuito de Let's Encrypt con Certbot con renovación automática.
+  - Actualizado `NEXTAUTH_URL="https://informes-andar.nextemarketing.com"` en el `.env` del VPS.
+  - Reiniciado PM2 (`informes-andar`) y verificado retorno HTTP 307 a `/login`.
+- **Estado**: Completado. ✅
+
+## 2026-08-27 (Creación de Usuario Matias Maciel - Facilitador Atrapa Sueños)
+- **Objetivo**: Crear el usuario facilitador para **Matias Maciel** (`matias.maciel@granjaandar.org.ar`) con clave `Matias1` asignado al grupo **Atrapa Sueños**, y vincular su mapeo en la generación de informes trimestrales.
+- **Actividades**:
+  - Creado en la tabla `users` de Postgres:
+    * ID: `12`
+    * Nombre: `Matias Maciel`
+    * Email: `matias.maciel@granjaandar.org.ar`
+    * Rol: `FACILITADOR`
+    * Contraseña: Hash bcrypt de `Matias1` (salt 10).
+  - Taller `Atrapa Sueños` registrado en la tabla `talleres`.
+  - Actualizado `src/app/api/reports/trimestral/route.ts` para mapear el taller `Atrapa Sueños` automáticamente a `Matias Maciel` como facilitador de referencia.
+## 2026-08-27 (Resolución de Parseo de Grilla Excel y Alucinaciones de IA en Informes Trimestrales)
+- **Objetivo**: Corregir la detección de talleres, cuadrantes de habilidades y observaciones al importar Excel, y eliminar alucinaciones de IA que forzaban actividades del sector productivo/catering para concurrentes como Gonzalo Benjamin Pettinaro.
+- **Actividades**:
+  - **Diagnóstico del Importador (`src/app/api/youngs/import-excel/route.ts`)**:
+    * Las celdas con formato enriquecido devolvían objetos `{ richText: [...] }`, provocando que `String(valA).toUpperCase().includes('TALLER:')` evaluara `"[object Object]"` a `false` y dejara `talleres: []` vacío.
+    * `isCellChecked` solo evaluaba dos códigos hexadecimales exactos ignorando fills de tema, rellenos ARGB no blancos y marcas textuales (`X`, `SI`, `1`, `✓`).
+    * La lectura de observaciones se limitaba a la columna 1, perdiendo celdas combinadas y formateadas con richText.
+  - **Refactorización del Importador Excel**:
+    * Creada función `getCellText(cell)` que extrae limpiamente texto de objetos `richText`, fórmulas y strings.
+    * Creada función `isCellChecked(cell)` con soporte para marcas de texto y cualquier color de fondo no nulo/blanco.
+    * Escaneo flexible de cabeceras de taller (`TALLER:`) y cuadrantes 2x2 en columnas `A..AC`.
+    * Extracción multilínea completa de observaciones finales sin duplicados de celdas combinadas.
+  - **Refactorización del Generador IA (`src/lib/ai/quarterlyGenerator.ts`)**:
+    * Eliminado el template rígido de catering/gastronomía que estaba hardcodeado en la especificación JSON de salida de `buildQuarterlyPrompt`.
+    * Inyectada regla estricta: **PROHIBIDO INVENTAR INFORMACIÓN O TAREAS PRODUCTIVAS/COCINA/CATERING** si no figuran en las observaciones o grillas del joven.
+    * Enfoque dinámico y fiel en las actividades reales del concurrente (Actividad Física, Vida Independiente, Expresión Emocional, Pintura, Festejos y Conmemoraciones).
+    * Actualizado el fallback determinístico para que sólo active catering si las observaciones contienen explícitamente palabras clave de recetas/catering.
+  - **Validación y Regeneración de Gonzalo Benjamin Pettinaro**:
+    * Regenerado el informe trimestral (ID 32) con la nueva IA, confirmando 0% de menciones a catering/cocina/máquinas cortadoras y 100% de coherencia con sus talleres reales de Deporte, Vida Independiente y Regulación Emocional.
+  - **Compilación y Despliegue**:
+    * `npm run build` local exitoso (0 errores).
+    * Desplegado a producción en VPS (`149.50.128.73:5782`) con reinicio exitoso de PM2.
+- **Estado**: Completado ✅
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

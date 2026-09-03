@@ -4,6 +4,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { generateQuarterlyReportNarrative } from '@/lib/ai/quarterlyGenerator';
 import { htmlToPdfBuffer } from '@/lib/pdf/render';
+import { formatApellidoNombre } from '@/lib/formatters';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -33,6 +34,7 @@ export async function POST(req: NextRequest) {
     let youngObraSocial: string = '';
     let youngDni: string = '';
     let youngFechaNacimiento: any = null;
+    let assignedFacilitatorName: string = '';
 
     if (USE_POSTGRES && sql) {
       // 1. Obtener formularios de Postgres
@@ -64,7 +66,7 @@ export async function POST(req: NextRequest) {
 
       // Obtener datos del joven
       const youngRes = await sql`
-        SELECT nombre_completo, pcp, taller, legajo, obra_social, dni, fecha_nacimiento FROM youngs WHERE id = ${parseInt(youngId)}
+        SELECT nombre_completo, pcp, taller, legajo, obra_social, dni, fecha_nacimiento, assigned_facilitators FROM youngs WHERE id = ${parseInt(youngId)}
       `;
       if (youngRes.rows.length > 0) {
         const yRow = youngRes.rows[0];
@@ -75,6 +77,37 @@ export async function POST(req: NextRequest) {
         youngObraSocial = yRow.obra_social || '';
         youngDni = yRow.dni || '';
         youngFechaNacimiento = yRow.fecha_nacimiento || null;
+
+        if (yRow.assigned_facilitators && Array.isArray(yRow.assigned_facilitators) && yRow.assigned_facilitators.length > 0) {
+          try {
+            const facIdsArrayStr = `{${yRow.assigned_facilitators.join(',')}}`;
+            const facs = await sql`
+              SELECT name FROM users WHERE id = ANY(${facIdsArrayStr}::int4[])
+            `;
+            assignedFacilitatorName = facs.rows.map(r => r.name).filter(Boolean).join(' - ');
+          } catch (fErr) {
+            console.error('Error obteniendo facilitador asignado:', fErr);
+          }
+        }
+        if (!assignedFacilitatorName) {
+          const gNorm = (youngTaller || '').toLowerCase();
+          if (gNorm.includes('clave de sol')) assignedFacilitatorName = 'Juliana Arias';
+          else if (gNorm.includes('empoderadas')) assignedFacilitatorName = 'Ana Reartes';
+          else if (gNorm.includes('artesanos')) assignedFacilitatorName = 'Leonardo Villamayor';
+          else if (gNorm.includes('atrapa')) assignedFacilitatorName = 'Matias Maciel';
+          else if (gNorm.includes('buenos mozos') || gNorm.includes('catering') || gNorm.includes('mozo') || gNorm.includes('gastronom')) assignedFacilitatorName = 'Marina Trejo';
+          else if (gNorm.includes('emprendedor')) assignedFacilitatorName = 'Analia Almada';
+          else if (gNorm.includes('manos verdes') || gNorm.includes('vivero') || gNorm.includes('huerta')) assignedFacilitatorName = 'Martín Romero';
+          else {
+            // Verificar si los formularios tienen facilitador registrado
+            for (const f of forms) {
+              if (f?.data?.datosGenerales?.facilitadorNombre) {
+                assignedFacilitatorName = f.data.datosGenerales.facilitadorNombre;
+                break;
+              }
+            }
+          }
+        }
       } else {
         return NextResponse.json({ error: 'Concurrente no encontrado en Postgres' }, { status: 404 });
       }
@@ -115,6 +148,13 @@ export async function POST(req: NextRequest) {
         youngObraSocial = (youngItem as any).obraSocial || '';
         youngDni = (youngItem as any).dni || '';
         youngFechaNacimiento = (youngItem as any).fechaNacimiento || null;
+
+        const gNorm = (youngTaller || '').toLowerCase();
+        if (gNorm.includes('clave de sol')) assignedFacilitatorName = 'Juliana Arias';
+        else if (gNorm.includes('empoderadas')) assignedFacilitatorName = 'Ana Reartes';
+        else if (gNorm.includes('artesanos')) assignedFacilitatorName = 'Leonardo Villamayor';
+        else if (gNorm.includes('buenos mozos')) assignedFacilitatorName = 'Marina Trejo';
+        else if (gNorm.includes('emprendedor')) assignedFacilitatorName = 'Analia Almada';
       } else {
         return NextResponse.json({ error: 'Concurrente no encontrado en MongoDB' }, { status: 404 });
       }
@@ -125,8 +165,10 @@ export async function POST(req: NextRequest) {
     // 3. Generar la narrativa consolidada con IA
     const secciones = await generateQuarterlyReportNarrative({
       jovenNombre: youngName,
+      jovenTaller: youngTaller,
       pcp: youngPcp,
-      forms
+      forms,
+      facilitadorNombre: assignedFacilitatorName
     });
 
     // 4. Armar el objeto de datos consolidado
@@ -136,36 +178,64 @@ export async function POST(req: NextRequest) {
       : `${periodos[0]} – ${periodos[periodos.length - 1]}`;
 
     // Obtener facilitadores del período
-    const facilitators = forms
-      .map(f => f.data?.datosGenerales?.facilitadorNombre)
+    const facilitatorsFromForms = forms
+      .map(f => f.data?.datosGenerales?.facilitadorNombre || f.data?.datosGenerales?.facilitadores)
       .filter(Boolean)
       .filter((v, i, a) => a.indexOf(v) === i)
       .join(' - ');
 
+    const facilitators = assignedFacilitatorName || facilitatorsFromForms || (session.user.role === 'FACILITADOR' ? session.user.name : '') || 'Juliana Arias';
+
     // Obtener sueños de la PCP
-    const metaSueno = Array.isArray(youngPcp?.perfil?.suenos)
-      ? youngPcp.perfil.suenos.filter(Boolean).join('; ')
-      : (youngPcp?.metaSueño || 'Estar en la playa y disfrutar del viento en la cara...');
+    let metaSueno = '';
+    if (Array.isArray(youngPcp?.perfil?.suenos) && youngPcp.perfil.suenos.filter(Boolean).length > 0) {
+      metaSueno = youngPcp.perfil.suenos.filter(Boolean).join('; ');
+    } else if (youngPcp?.metaSueño && youngPcp.metaSueño.trim()) {
+      metaSueno = youngPcp.metaSueño.trim();
+    } else if (Array.isArray(youngPcp?.suenos) && youngPcp.suenos.filter(Boolean).length > 0) {
+      metaSueno = youngPcp.suenos.filter(Boolean).join('; ');
+    } else {
+      const objetivosPfp: string[] = [];
+      if (youngPcp?.planFuturo && typeof youngPcp.planFuturo === 'object') {
+        for (const val of Object.values(youngPcp.planFuturo)) {
+          if ((val as any)?.objetivos && (val as any).objetivos.trim()) {
+            objetivosPfp.push((val as any).objetivos.trim());
+          }
+        }
+      }
+      if (objetivosPfp.length > 0) {
+        metaSueno = objetivosPfp.slice(0, 2).join('; ');
+      } else {
+        metaSueno = 'Fortalecer su autonomía, bienestar integral y participación activa en los espacios grupales e institucionales';
+      }
+    }
+
+    const fechaActual = new Date();
+    const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+    const fechaInforme = `${fechaActual.getDate()} de ${meses[fechaActual.getMonth()]} del ${fechaActual.getFullYear()}`;
+    const fechaCreacionIso = fechaActual.toISOString();
+    const formattedYoungName = formatApellidoNombre(youngName);
 
     const reportData = {
       datosGenerales: {
-        nombreCompleto: youngName,
+        nombreCompleto: formattedYoungName,
+        nombreCompletoOriginal: youngName,
         periodo: mergedPeriodo,
         grupo: youngTaller || 'Clave de Sol',
-        facilitadores: facilitators || session.user.name || 'Sin facilitador',
+        taller: youngTaller || 'Clave de Sol',
+        facilitadores: facilitators,
         metaSueno: metaSueno,
         legajo: youngLegajo,
         obraSocial: youngObraSocial,
         dni: youngDni,
-        fechaNacimiento: youngFechaNacimiento ? (youngFechaNacimiento instanceof Date ? youngFechaNacimiento.toISOString() : String(youngFechaNacimiento)) : null
+        fechaNacimiento: youngFechaNacimiento ? (youngFechaNacimiento instanceof Date ? youngFechaNacimiento.toISOString() : String(youngFechaNacimiento)) : null,
+        fechaCreacion: fechaCreacionIso,
+        fechaInforme: fechaInforme
       },
       secciones: secciones
     };
 
     // 5. Renderizar HTML
-    const fechaActual = new Date();
-    const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-    const fechaInforme = `${fechaActual.getDate()} de ${meses[fechaActual.getMonth()]} del ${fechaActual.getFullYear()}`;
 
     // Determinar dinámicamente los años de PCP y período
     const yearMatch = mergedPeriodo.match(/\b(20\d{2})\b/);
@@ -198,7 +268,11 @@ export async function POST(req: NextRequest) {
     const pdfBuffer = await htmlToPdfBuffer(html);
     const reportsDir = path.join(process.cwd(), 'public', 'pdf-reports');
     await fs.promises.mkdir(reportsDir, { recursive: true });
-    const filename = `informe-trimestral-${Date.now()}.pdf`;
+    
+    const safeName = youngName.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_').trim();
+    const safeGroup = (youngTaller || 'Clave_de_Sol').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_').trim();
+    const safeDate = `${fechaActual.getFullYear()}-${String(fechaActual.getMonth() + 1).padStart(2, '0')}-${String(fechaActual.getDate()).padStart(2, '0')}`;
+    const filename = `informe-trimestral-${safeName}-${safeGroup}-${safeDate}-${Date.now()}.pdf`;
     const filePath = path.join(reportsDir, filename);
     await fs.promises.writeFile(filePath, pdfBuffer);
     const pdfUrl = `/pdf-reports/${filename}`;
@@ -252,25 +326,29 @@ export async function POST(req: NextRequest) {
         data: reportData,
         html,
         pdfUrl,
+        reportType: 'TRIMESTRAL',
+        sourceReportIds: formIds,
         status: 'BORRADOR',
         version: 1,
         generatedBy
       });
-      // Set report_type in MongoDB (saved as mixed/extra fields)
-      await ReportModel.updateOne({ _id: created._id }, { $set: { reportType: 'TRIMESTRAL', sourceFormIds: formIds } });
-      reportId = created._id.toString();
+      reportId = String(created._id);
     }
 
     return NextResponse.json({
-      success: true,
+      ok: true,
       reportId,
       periodo: mergedPeriodo,
+      youngName,
+      facilitators,
       pdfUrl
     });
 
   } catch (error: any) {
-    console.error('Error en generación trimestral:', error);
-    return NextResponse.json({ error: error?.message || 'Error interno al generar el informe trimestral' }, { status: 500 });
+    console.error('Error generando informe trimestral:', error);
+    return NextResponse.json({ 
+      error: error?.message || 'Error interno al generar informe trimestral' 
+    }, { status: 500 });
   }
 }
 
@@ -294,6 +372,7 @@ function buildQuarterlyHtml(params: {
 <html>
 <head>
   <meta charset="utf-8">
+  <title>Informe Trimestral - ${nombreCompleto} - ${grupo} - ${fechaInforme}</title>
   <style>
     @page {
       size: A4;
@@ -349,7 +428,7 @@ function buildQuarterlyHtml(params: {
     INFORME TRIMESTRAL<br>Asociación Civil Andar
   </div>
   <div class="meta-container">
-    <div class="meta-line"><strong>Nombre del Concurrente:</strong> ${nombreCompleto}</div>
+    <div class="meta-line"><strong>Apellido y Nombre:</strong> ${formatApellidoNombre(nombreCompleto)}</div>
     ${dni ? `<div class="meta-line"><strong>DNI:</strong> ${dni}</div>` : ''}
     ${legajo ? `<div class="meta-line"><strong>Número de Legajo:</strong> ${legajo}</div>` : ''}
     ${fechaNacimiento ? `<div class="meta-line"><strong>Fecha de Nacimiento:</strong> ${fechaNacimiento}</div>` : ''}

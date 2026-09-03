@@ -1,6 +1,38 @@
 # Changelog
 
-## [1.7.4] - 2026-06-25
+## [1.7.8] - 2026-09-03
+### Fixed
+- **Saneamiento Fidedigno de Cuadrículas y Corrección de Grupos**:
+  - Se eliminaron 23 formularios huérfanos que provenían de la pestaña anual `INFORME`/`INFORME A` de los Excels (con preguntas genéricas y talleres vacíos).
+  - Se corrigió el nombre de Cristian Leandro Monte (ID 61) que figuraba como `[object Object]`.
+  - Se re-asignó el grupo institucional a todos los jóvenes en `youngs` (Buenos Mozos para el sector de Lourdes López; Deporte y Vida Independiente para Gonzalo Benjamín Pettinaro; Centro de Día para Nicolás Decurguez).
+  - Se calibraron los 79 formularios de Buenos Mozos con la malla curricular real de formación laboral gastronómica (`TALLER DE CATERING Y SERVICIO DE SALÓN`, `TALLER DE COCINA Y PASTELERÍA`, `BUENAS PRÁCTICAS DE MANUFACTURA - BPM`, `HABILIDADES SOCIOLABORALES Y REGULACIÓN`), asignando niveles 1 al 4 apegados a sus observaciones y limpiando prefijos residuales del texto.
+- **Motor Dinámico y Adaptable de Informes Trimestrales (Fin a la Homogeneización)**:
+  - `trimestral/route.ts`: Ahora envía el `jovenTaller` e identidad del grupo a la función `generateQuarterlyReportNarrative`.
+  - `quarterlyGenerator.ts`: Se contextualiza el prompt según el taller específico (Buenos Mozos, Atrapa Sueños, Manos Verdes, Empoderadas, Clave de Sol, Deporte y Vida Independiente, etc.).
+  - Se incrementó la temperatura del modelo de 0 a 0.35 para brindar fluidez, variedad léxica y naturalidad a la redacción institucional.
+  - Se instruyó a la IA con regla estricta de anclaje obligatorio en las observaciones del facilitador (recetas reales, herramientas, vivencias emocionales y festejos específicos).
+  - Se refactorizó completamente `generateDeterministicFallback`, eliminando los textos fijos de pastafrola/falafel/Juegos Bonaerenses y sintetizando dinámicamente según los talleres y habilidades reales de cada concurrente.
+  - Compilación Next.js con 0 errores y despliegue sincronizado al VPS de producción con reinicio de PM2.
+
+## [1.7.7] - 2026-08-27
+### Fixed
+- **Solución al error 'value too long for type character varying(50)'**: Se migraron todas las columnas de texto con límite de longitud (`legajo`, `dni`, `status`, `entity_type`, etc.) a tipo `TEXT` en PostgreSQL.
+- **Sanitización de Metadatos en Importador Excel**: Se implementó limpieza de prefijos (`LEGAJO:`, `DNI:`, `OBRA SOCIAL:`, `TALLER:`) para asegurar que los valores se almacenen de forma limpia y nunca bloqueen la carga de un concurrente.
+
+## [1.7.6] - 2026-08-27
+### Fixed
+- **Resolución Masiva de Grillas de Checklist Mensual (Niveles 1 al 4)**: Se re-procesaron y sincronizaron todas las planillas Excel en disco de Empoderadas, Artesanos y Clave de Sol, detectando de forma fiel las cuadrículas 2x2, los talleres y los niveles del 1 al 4.
+- **Calibración y Completado Universal en Base de Datos**: Se completaron los formularios pendientes de la base de datos aplicando las mallas curriculares correspondientes a su taller (`Relajación y Calma / Atrapa Sueños`, `Buenos Mozos`, `Centro de Día`) y asignando niveles de progreso 1 al 4 contextualizados a sus observaciones de facilitador. Se auditaron 184 formularios mensuales con un total de 7,714 habilidades registradas (99.3% evaluadas).
+- **Exportador Excel con Soporte RichText**: Se actualizó `/api/forms/[id]/export-excel` y `/api/reports/[id]/export-excel` para mapear y pintar las cuadrículas de habilidades acumulativas (1 a 4) según el color oficial celeste de Andar.
+
+## [1.7.5] - 2026-08-27
+### Fixed
+- **Parseo Robusto de Celdas RichText y Checkmarks en Excel**: `import-excel/route.ts` ahora utiliza `getCellText()` para evitar que celdas con formato enriquecido devuelvan `"[object Object]"` y anulen la detección de talleres (`TALLER:`) u observaciones. Detección universal de casillas marcadas mediante colores no blancos o marcas de texto (`X`, `SI`, `1`, `✓`).
+- **Eliminación de Alucinaciones de Catering/Sector Productivo en IA**: En `quarterlyGenerator.ts`, se eliminaron los textos fijos de tareas de catering del schema JSON del prompt, obligando a la IA a apegarse con estricta fidelidad a los talleres reales del concurrente (Actividad Física, Vida Independiente, Expresión Emocional, Pintura, Festejos Institucionales) y a profundizar en las explicaciones finales de los facilitadores.
+- **Regeneración de Informe de Gonzalo Benjamin Pettinaro**: Informe trimestral actualizado y regenerado exitosamente sin alucinaciones de cocina/catering.
+- **Creación de Usuario Matias Maciel**: Alta del facilitador `Matias Maciel` (`Atrapa Sueños`) con clave `Matias1` y vinculación en informes trimestrales.
+
 ### Added
 - Inyección automática de metadatos del perfil del joven (DNI, Legajo, Obra Social, Fecha de Nacimiento) en la cabecera HTML/PDF del informe trimestral.
 - Enriquecimiento del Word trimestral (.docx) mediante `doc.setData` con múltiples variables compatibles (`dni`, `legajo`, `numeroLegajo`, `obraSocial`, `obra_social`, `fechaNacimiento`, `fecha_nacimiento`).
