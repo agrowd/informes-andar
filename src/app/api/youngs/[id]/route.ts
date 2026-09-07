@@ -12,8 +12,8 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     const session = await getServerSession(authOptions as any) as any;
     const role = (session?.user as any)?.role || 'FACILITADOR';
     
-    // Permitir editar a ADMIN, DIRECTOR y COORDINACION
-    if (!['ADMIN', 'COORDINACION', 'DIRECTOR'].includes(role)) {
+    // Permitir editar a ADMIN, DIRECTOR, COORDINACION y FACILITADOR
+    if (!['ADMIN', 'COORDINACION', 'DIRECTOR', 'FACILITADOR'].includes(role)) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
     }
 
@@ -51,6 +51,50 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
           updated_at = NOW()
         WHERE id = ${parseInt(params.id)}
       `;
+
+      // Sincronizar taller, grupo y nombre en las planillas forms asociadas
+      try {
+        await sql`
+          UPDATE forms
+          SET data = jsonb_set(
+            jsonb_set(
+              jsonb_set(COALESCE(data, '{}'::jsonb), '{datosGenerales,taller}', to_jsonb(${taller || ''}::text)),
+              '{datosGenerales,grupo}', to_jsonb(${taller || ''}::text)
+            ),
+            '{datosGenerales,nombreCompleto}', to_jsonb(${nombreCompleto}::text)
+          ),
+          updated_at = NOW()
+          WHERE young_id = ${parseInt(params.id)}
+        `;
+
+        // Si se asignó al menos un facilitador, sincronizar ownership y nombre en forms y reports
+        if (facilitatorIds.length > 0) {
+          const facId = facilitatorIds[0];
+          const facUserRes = await sql`SELECT id, name FROM users WHERE id = ${facId}`;
+          const facName = facUserRes.rows[0]?.name || '';
+
+          await sql`
+            UPDATE forms
+            SET 
+              created_by = ${facId},
+              data = jsonb_set(
+                jsonb_set(COALESCE(data, '{}'::jsonb), '{datosGenerales,facilitador}', to_jsonb(${facName}::text)),
+                '{datosGenerales,facilitadorNombre}', to_jsonb(${facName}::text)
+              ),
+              updated_at = NOW()
+            WHERE young_id = ${parseInt(params.id)}
+          `;
+
+          await sql`
+            UPDATE reports
+            SET generated_by = ${facId}, updated_at = NOW()
+            WHERE young_id = ${parseInt(params.id)}
+          `;
+        }
+      } catch (syncErr) {
+        console.error('[PUT /api/youngs/[id]] Error sincronizando forms/reports:', syncErr);
+      }
+
       return NextResponse.json({ ok: true });
     } else if (process.env.MONGODB_URI) {
       // MongoDB
@@ -87,25 +131,37 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     const session = await getServerSession(authOptions as any) as any;
     const role = (session?.user as any)?.role || 'FACILITADOR';
     
-    // Permitir eliminar solo a ADMIN y DIRECTOR
-    if (!['ADMIN', 'DIRECTOR'].includes(role)) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
+    // Permitir eliminar a ADMIN, DIRECTOR y COORDINACION
+    if (!['ADMIN', 'DIRECTOR', 'COORDINACION'].includes(role)) {
+      return NextResponse.json({ error: 'No autorizado para eliminar concurrentes' }, { status: 403 });
     }
 
-    // Verificar que no tenga informes asociados (soft delete)
+    const youngIdInt = parseInt(params.id);
+
     if (sql) {
-      const reportsCount = await sql`
-        SELECT COUNT(*) as count FROM reports WHERE young_id = ${parseInt(params.id)}
-      `;
-      if (reportsCount.rows[0]?.count > 0) {
-        return NextResponse.json({ error: 'No se puede eliminar: el joven tiene informes asociados' }, { status: 400 });
+      // 1. Borrar comentarios y auditorías asociadas a los informes del joven
+      const repRows = await sql`SELECT id FROM reports WHERE young_id = ${youngIdInt}`;
+      const repIds = repRows.rows.map(r => r.id);
+      if (repIds.length > 0) {
+        const repIdsArrayStr = `{${repIds.join(',')}}`;
+        await sql`DELETE FROM report_comments WHERE report_id = ANY(${repIdsArrayStr}::int4[])`.catch(() => {});
+        await sql`DELETE FROM audit_logs WHERE entity_type = 'REPORT' AND entity_id = ANY(${repIdsArrayStr}::int4[])`.catch(() => {});
       }
-      await sql`DELETE FROM youngs WHERE id = ${parseInt(params.id)}`;
+
+      // 2. Borrar informes y formularios (borradores) del joven
+      await sql`DELETE FROM reports WHERE young_id = ${youngIdInt}`;
+      await sql`DELETE FROM forms WHERE young_id = ${youngIdInt}`;
+      
+      // 3. Borrar el registro del joven
+      const deleteResult = await sql`DELETE FROM youngs WHERE id = ${youngIdInt} RETURNING id`;
+      if (deleteResult.rows.length === 0) {
+        return NextResponse.json({ error: 'Concurrente no encontrado' }, { status: 404 });
+      }
     } else if (process.env.MONGODB_URI) {
-      const reportsCount = await (await import('@/models/Report')).ReportModel.countDocuments({ youngId: params.id });
-      if (reportsCount > 0) {
-        return NextResponse.json({ error: 'No se puede eliminar: el joven tiene informes asociados' }, { status: 400 });
-      }
+      const { ReportModel } = await import('@/models/Report');
+      const { FormModel } = await import('@/models/Form');
+      await ReportModel.deleteMany({ youngId: params.id });
+      await FormModel.deleteMany({ youngId: params.id });
       await YoungModel.deleteOne({ _id: params.id });
     }
 

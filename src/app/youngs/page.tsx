@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from 'react';
+import { useSession } from 'next-auth/react';
 import ImageUpload from '../_components/ImageUpload';
 import QualityOfLifeChart from '../_components/QualityOfLifeChart';
 import ExcelImportWizardModal from '../_components/ExcelImportWizardModal';
@@ -22,6 +23,10 @@ type Young = {
 };
 
 export default function YoungsPage() {
+  const { data: session } = useSession();
+  const userRole = (session?.user as any)?.role || '';
+  const canManageAssignments = ['ADMIN', 'COORDINACION', 'DIRECTOR'].includes(userRole);
+
   const [items, setItems] = useState<Young[]>([]);
   const [facilitadores, setFacilitadores] = useState<any[]>([]);
   const [talleres, setTalleres] = useState<any[]>([]);
@@ -42,6 +47,13 @@ export default function YoungsPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
+
+  // Estados de Asignación Rápida (Admin / Coordinación)
+  const [quickAssignOpen, setQuickAssignOpen] = useState(false);
+  const [quickAssignYoung, setQuickAssignYoung] = useState<Young | null>(null);
+  const [quickTaller, setQuickTaller] = useState('');
+  const [quickFacilitators, setQuickFacilitators] = useState<string[]>([]);
+  const [isSavingQuickAssign, setIsSavingQuickAssign] = useState(false);
 
   // Estados de navegación
   const [view, setView] = useState<'list' | 'detail' | 'create'>('list');
@@ -303,7 +315,7 @@ export default function YoungsPage() {
     try {
       const params = new URLSearchParams({
         page: String(pageNum),
-        pageSize: '20'
+        pageSize: '100'
       });
       const res = await fetch(`/api/youngs?${params.toString()}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -485,10 +497,91 @@ export default function YoungsPage() {
     );
   };
 
+  const getFacilitatorNames = (assignedIds?: any[]) => {
+    if (!assignedIds || assignedIds.length === 0) return 'Sin asignar';
+    const names = assignedIds
+      .map(id => {
+        const found = facilitadores.find(f => String(f.id || f._id) === String(id));
+        return found ? (found.name || found.email) : null;
+      })
+      .filter(Boolean);
+    return names.length > 0 ? names.join(', ') : 'Sin asignar';
+  };
+
+  const openQuickAssign = (young: Young) => {
+    setQuickAssignYoung(young);
+    setQuickTaller(young.taller || '');
+    setQuickFacilitators(
+      (young.assignedFacilitators || []).map((id: any) => String(id))
+    );
+    setQuickAssignOpen(true);
+  };
+
+  const handleSaveQuickAssign = async () => {
+    if (!quickAssignYoung) return;
+    const youngId = quickAssignYoung.id || quickAssignYoung._id;
+    if (!youngId) return;
+
+    setIsSavingQuickAssign(true);
+    try {
+      const res = await fetch(`/api/youngs/${youngId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...quickAssignYoung,
+          taller: quickTaller,
+          assignedFacilitators: quickFacilitators
+        })
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Error al guardar asignación');
+      }
+
+      // Actualizar localmente la lista de concurrentes
+      setItems(prev => prev.map(item => {
+        if (String(item.id || item._id) === String(youngId)) {
+          return {
+            ...item,
+            taller: quickTaller,
+            assignedFacilitators: quickFacilitators
+          };
+        }
+        return item;
+      }));
+
+      if (selectedYoung && String(selectedYoung.id || selectedYoung._id) === String(youngId)) {
+        setSelectedYoung(prev => prev ? {
+          ...prev,
+          taller: quickTaller,
+          assignedFacilitators: quickFacilitators
+        } : null);
+        setForm(prev => ({
+          ...prev,
+          taller: quickTaller,
+          assignedFacilitators: quickFacilitators
+        }));
+      }
+
+      setQuickAssignOpen(false);
+      alert('✅ Asignación de grupo y facilitador guardada correctamente');
+    } catch (e: any) {
+      console.error('Error guardando asignación:', e);
+      alert(`Error: ${e.message || 'No se pudo guardar la asignación'}`);
+    } finally {
+      setIsSavingQuickAssign(false);
+    }
+  };
+
   const filteredItems = useMemo(() => {
     if (!search) return items;
     const v = search.toLowerCase();
-    return items.filter(y => y.nombreCompleto?.toLowerCase().includes(v) || y.dni?.includes(v));
+    return items.filter(y => 
+      y.nombreCompleto?.toLowerCase().includes(v) || 
+      y.dni?.includes(v) ||
+      y.taller?.toLowerCase().includes(v)
+    );
   }, [items, search]);
 
   const missingPcpData = useMemo(() => {
@@ -605,7 +698,8 @@ export default function YoungsPage() {
           setActiveTab('perfil');
         }
       } else {
-        alert('Error al guardar los datos');
+        const errData = await res.json().catch(() => ({}));
+        alert(errData.error || 'Error al guardar los datos');
       }
     } catch (err) {
       alert('Error de conexión al guardar');
@@ -642,12 +736,19 @@ export default function YoungsPage() {
   };
 
   const deleteYoung = async (id: string) => {
-    if (!confirm('¿ESTÁS SEGURO? Se borrará permanentemente toda la información de este joven.')) return;
-    const res = await fetch(`/api/youngs/${id}`, { method: 'DELETE' });
-    if (res.ok) {
-      loadYoungs();
-      setView('list');
-      alert('Joven eliminado correctamente');
+    if (!confirm('¿ESTÁS SEGURO? Se borrará permanentemente el concurrente junto con sus informes y cuadrículas asociadas.')) return;
+    try {
+      const res = await fetch(`/api/youngs/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        alert('✅ Concurrente y datos asociados eliminados correctamente');
+        loadYoungs();
+        setView('list');
+      } else {
+        const err = await res.json().catch(() => ({ error: 'Error al eliminar' }));
+        alert(`❌ Error al eliminar: ${err.error || 'No se pudo eliminar el concurrente'}`);
+      }
+    } catch (e: any) {
+      alert(`❌ Error de conexión: ${e?.message || e}`);
     }
   };
 
@@ -681,9 +782,9 @@ export default function YoungsPage() {
               <div className="ga-form-grid">
                 <label>DNI / Documento<br/><input className="ga-input" placeholder="Solo números" value={form.dni} onChange={e => setForm({...form, dni: e.target.value})}/></label>
                 <label>Fecha de Nacimiento<br/><input type="date" className="ga-input" value={form.fechaNacimiento || ''} onChange={e => setForm({...form, fechaNacimiento: e.target.value})}/></label>
-                <label>Taller Asignado<br/>
+                <label>Grupo Asignado<br/>
                   <select className="ga-select" value={form.taller} onChange={e => setForm({...form, taller: e.target.value})}>
-                    <option value="">Seleccionar taller...</option>
+                    <option value="">Seleccionar grupo...</option>
                     {talleres.map(t => <option key={t.id || t._id} value={t.nombre}>{t.nombre}</option>)}
                   </select>
                 </label>
@@ -774,6 +875,35 @@ export default function YoungsPage() {
                   <label>Fecha Nacimiento<br/><input type="date" className="ga-input" value={form.fechaNacimiento || ''} onChange={e => setForm({...form, fechaNacimiento: e.target.value})}/></label>
                   <label>Nº Legajo<br/><input className="ga-input" value={form.legajo} onChange={e => setForm({...form, legajo: e.target.value})}/></label>
                   <label>Obra Social<br/><input className="ga-input" value={form.obraSocial} onChange={e => setForm({...form, obraSocial: e.target.value})}/></label>
+                  <label>Grupo / Taller Asignado<br/>
+                    <select 
+                      className="ga-select" 
+                      value={form.taller || ''} 
+                      onChange={e => setForm({...form, taller: e.target.value})}
+                      disabled={!canManageAssignments}
+                      style={{ background: !canManageAssignments ? '#f8fafc' : undefined }}
+                    >
+                      <option value="">Sin asignar</option>
+                      {talleres.map(t => <option key={t.id || t._id} value={t.nombre}>{t.nombre}</option>)}
+                    </select>
+                  </label>
+                  <label>Facilitador Responsable<br/>
+                    <select 
+                      className="ga-select" 
+                      value={form.assignedFacilitators?.[0] ? String(form.assignedFacilitators[0]) : ''} 
+                      onChange={e => {
+                        const val = e.target.value;
+                        setForm({...form, assignedFacilitators: val ? [val] : []});
+                      }}
+                      disabled={!canManageAssignments}
+                      style={{ background: !canManageAssignments ? '#f8fafc' : undefined }}
+                    >
+                      <option value="">Sin asignar</option>
+                      {facilitadores.map(f => (
+                        <option key={f.id || f._id} value={String(f.id || f._id)}>{f.name || f.email} ({f.role || 'FACILITADOR'})</option>
+                      ))}
+                    </select>
+                  </label>
                 </div>
               </div>
             </div>
@@ -1248,7 +1378,7 @@ export default function YoungsPage() {
           <div className="ga-card" style={{ padding: 30 }}>
             <h3>Seguimiento y Responsables</h3>
             <div className="ga-form-grid">
-              <label>Taller Actual<br/>
+              <label>Grupo Actual<br/>
                 <select className="ga-select" value={form.taller} onChange={e => setForm({...form, taller: e.target.value})}>
                   <option value="">Sin asignar</option>
                   {talleres.map(t => <option key={t.id || t._id} value={t.nombre}>{t.nombre}</option>)}
@@ -1567,7 +1697,7 @@ export default function YoungsPage() {
         <input 
           className="ga-input" 
           style={{ width: '100%', maxWidth: 600, fontSize: 16, padding: '12px 20px' }} 
-          placeholder="Buscar por nombre, DNI o taller..." 
+          placeholder="Buscar por nombre, DNI o grupo..." 
           value={search} 
           onChange={e => setSearch(e.target.value)} 
         />
@@ -1578,8 +1708,41 @@ export default function YoungsPage() {
           <div key={y.id || y._id} className="ga-young-card" onClick={() => openDetail(y)}>
             {renderAvatar(y)}
             <div className="name">{y.nombreCompleto}</div>
-            <div className="taller">{y.taller || 'SIN TALLER'}</div>
+            <div className="taller">{y.taller || 'SIN GRUPO'}</div>
             <div className="dni">DNI: {y.dni || '—'}</div>
+            <div style={{ fontSize: 12, color: '#64748b', marginTop: 6, display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'center' }}>
+              <span>👤</span>
+              <span style={{ fontWeight: 500 }}>{getFacilitatorNames(y.assignedFacilitators)}</span>
+            </div>
+
+            {canManageAssignments && (
+              <button
+                type="button"
+                className="ga-btn secondary"
+                style={{
+                  marginTop: 12,
+                  fontSize: 12,
+                  padding: '5px 12px',
+                  borderRadius: 6,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 5,
+                  background: '#f8fafc',
+                  borderColor: '#cbd5e1',
+                  color: '#1e3a8a',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  zIndex: 2
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openQuickAssign(y);
+                }}
+                title="Reasignar grupo o facilitador responsable"
+              >
+                <span>⚙️</span> Asignar
+              </button>
+            )}
           </div>
         ))}
         {filteredItems.length === 0 && (
@@ -1596,6 +1759,106 @@ export default function YoungsPage() {
         <span style={{ fontWeight: 600 }}>{page} / {totalPages}</span>
         <button className="ga-btn" onClick={() => loadYoungs(page + 1)} disabled={page >= totalPages}>Siguiente</button>
       </div>
+
+      {/* Modal de Asignación Rápida de Grupo y Facilitador (Admin / Coordinación) */}
+      {quickAssignOpen && quickAssignYoung && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 1100, padding: 20
+        }} onClick={() => setQuickAssignOpen(false)}>
+          <div style={{
+            background: '#ffffff', borderRadius: 16, padding: 30, maxWidth: 500, width: '100%',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', display: 'flex', flexDirection: 'column', gap: 20
+          }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: 18, color: '#1e3a8a', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span>⚙️</span> Asignar Grupo y Facilitador
+                </h3>
+                <p style={{ margin: '4px 0 0 0', fontSize: 14, color: '#64748b', fontWeight: 600 }}>
+                  {quickAssignYoung.nombreCompleto}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setQuickAssignOpen(false)}
+                style={{ background: 'none', border: 'none', fontSize: 20, color: '#94a3b8', cursor: 'pointer', padding: 4 }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
+                  Grupo / Taller Asignado
+                </label>
+                <select
+                  className="ga-select"
+                  style={{ width: '100%', padding: '10px 12px', fontSize: 14 }}
+                  value={quickTaller}
+                  onChange={e => setQuickTaller(e.target.value)}
+                >
+                  <option value="">-- Sin Grupo Asignado --</option>
+                  {talleres.map(t => (
+                    <option key={t.id || t._id} value={t.nombre}>{t.nombre}</option>
+                  ))}
+                </select>
+                <small style={{ color: '#64748b', fontSize: 12, marginTop: 4, display: 'block' }}>
+                  Al cambiar el taller, se actualiza automáticamente el registro del joven y todas sus cuadrículas mensuales.
+                </small>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
+                  Facilitador Responsable
+                </label>
+                <select
+                  className="ga-select"
+                  style={{ width: '100%', padding: '10px 12px', fontSize: 14 }}
+                  value={quickFacilitators[0] || ''}
+                  onChange={e => {
+                    const val = e.target.value;
+                    setQuickFacilitators(val ? [val] : []);
+                  }}
+                >
+                  <option value="">-- Sin Facilitador Asignado --</option>
+                  {facilitadores.map(f => (
+                    <option key={f.id || f._id} value={String(f.id || f._id)}>
+                      {f.name || f.email} ({f.role || 'FACILITADOR'})
+                    </option>
+                  ))}
+                </select>
+                <small style={{ color: '#64748b', fontSize: 12, marginTop: 4, display: 'block' }}>
+                  El facilitador asignado podrá ver, completar y editar las cuadrículas mensuales e informes de este concurrente.
+                </small>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 10, borderTop: '1px solid #f1f5f9', paddingTop: 16 }}>
+              <button
+                type="button"
+                className="ga-btn secondary"
+                onClick={() => setQuickAssignOpen(false)}
+                disabled={isSavingQuickAssign}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="ga-btn primary"
+                onClick={handleSaveQuickAssign}
+                disabled={isSavingQuickAssign}
+                style={{ padding: '10px 24px', display: 'flex', alignItems: 'center', gap: 6 }}
+              >
+                {isSavingQuickAssign ? 'Guardando...' : '💾 Guardar Asignación'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal de PCP con IA */}
       {showPcpAiModal && (

@@ -1,5 +1,37 @@
 # 🗓️ Workcycle Log
 
+## 2026-09-07 (Saneamiento Universal de Nombres, Estandarización Atrapa Sueños y Sistema de Asignación Rápida de Grupos y Facilitadores)
+- **Objetivo**: Estandarizar concurrentes de Relajación y Calma a su denominación oficial "Atrapa Sueños", auditar facilitadores y planillas existentes, sanear todos los nombres (remoción de puntos, inversión de "Apellido, Nombre" y mayúsculas) y dotar al ADMIN (Natoh) y COORDINACIÓN (Lourdes López) de una herramienta rápida para reasignar taller y facilitador con sincronización en cascada a cuadrículas mensuales.
+- **Actividades realizadas**:
+  - **Auditoría Exhaustiva de Facilitadores y Formularios**:
+    - Juliana Arias (ID 7): Clave de Sol (3 jóvenes, 14 forms) + Deporte (Juan Pablo Herrera, 3 forms).
+    - Ana Reartes (ID 8): Empoderadas (7 jóvenes, 22 forms).
+    - Leonardo Villamayor (ID 9): Artesanos (4 jóvenes, 10 forms) + Manos Verdes (8 jóvenes, 24 forms).
+    - Marina Trejo (ID 10): Buenos Mozos (8 jóvenes, 24 forms) + Deporte y Vida Indep. (Gonzalo Pettinaro, 3 forms).
+    - Analia Almada (ID 11): Buenos Mozos (19 jóvenes, 54 forms) + Centro de Día (Nicolás Decurguez, 3 forms).
+    - Matias Maciel (ID 12): Atrapa Sueños (8 jóvenes, 24 forms).
+    - Martín Romero (ID 6): 0 formularios y 0 jóvenes asignados inicialmente.
+    - Se constató que ningún facilitador subió Excels bajo la etiqueta "Emprendedores" ni "Promotores", por lo que dichos concurrentes deben ser cargados o reasignados si correspondían a otro facilitador.
+  - **Saneamiento en Base de Datos Postgres**:
+    - Purgado el ID duplicado obsoleto 61 (Cristian Leandro Monte con forms de 2022).
+    - Actualizados los 8 jóvenes activos de Matías Maciel a `taller = 'Atrapa Sueños'`.
+    - Normalizados todos los nombres de los 60 concurrentes activos (se eliminaron puntos finales como `Lucas Nahuel Leal.`, se invirtieron comas y apellidos primeros como `Yésica Daniela Díaz`, `Florencia Soledad Almirón`, `Daniela Elizabeth Giuliano`, `Camila Da Silva`, `Osvaldo César Fernández`, etc.).
+    - Sincronizados todos los formularios mensuales `forms` en Postgres (`datosGenerales.nombreCompleto` y `datosGenerales.taller`) para coincidir al 100% con `youngs`.
+  - **Implementación de Reasignación Rápida de Grupos y Facilitadores**:
+    - Modificado `src/app/api/youngs/[id]/route.ts` para que al actualizar `taller` o `assignedFacilitators`, se propague automáticamente el taller, grupo, facilitador y ownership (`created_by`) en las cuadrículas mensuales `forms` y reportes `reports` del concurrente.
+    - Actualizado `src/app/api/forms/route.ts` en PUT para que los facilitadores asignados (`assigned_facilitators`) tengan permiso inmediato de edición sin bloqueos.
+    - Actualizado `src/app/youngs/page.tsx`:
+      - Carga completa de hasta 100 concurrentes por página para búsqueda instantánea en tiempo real (por nombre, DNI o grupo).
+      - Integración de `useSession()` para verificar permisos de gestión (`ADMIN`, `COORDINACION`, `DIRECTOR`).
+      - Visualización del facilitador responsable en cada tarjeta de concurrente.
+      - Botón y Modal de Asignación Rápida (`⚙️ Asignar`) en cada tarjeta para cambiar Grupo y Facilitador en un solo click.
+      - Selectores directos de Grupo y Facilitador expuestos en la pestaña "Ficha Técnica" además de "Seguimiento".
+  - **Compilación y Despliegue**:
+    - `npm run build` ejecutado exitosamente con 0 errores de TypeScript y empaquetado de producción.
+    - Despliegue al VPS (`149.50.128.73:5782`) vía SFTP y SSH, ejecución de migraciones y reinicio exitoso del servicio PM2 `informes-andar` (online).
+  - **Restricción estricta cumplida**: Cero generación de informes trimestrales automáticos.
+- **Estado**: Completado ✅
+
 ## 2026-09-03 (Calibración Fidedigna de Cuadrículas y Motor Dinámico de Informes Trimestrales)
 - **Objetivo**: Corregir cuadrículas de checklists mensuales asignando los talleres y habilidades reales según el grupo de cada joven (especialmente Buenos Mozos / Gastronomía y Catering), eliminar formularios espurios de plantillas anuales y refactorizar el generador de informes para que sea 100% adaptable y anclado en observaciones fidedignas.
 - **Actividades realizadas**:

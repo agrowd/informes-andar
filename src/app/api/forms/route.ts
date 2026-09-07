@@ -26,6 +26,18 @@ export async function POST(req: NextRequest) {
     const periodo = formData?.datosGenerales?.periodo || 'No informado';
     const youngId = formData?.datosGenerales?.youngId || null;
     const createdBy = session?.user ? Number((session.user as any).id) : null;
+
+    // Asegurar metadatos en datosGenerales
+    if (formData?.datosGenerales) {
+      if (!formData.datosGenerales.fechaCreacion) {
+        formData.datosGenerales.fechaCreacion = new Date().toISOString();
+      }
+      if (!formData.datosGenerales.grupo && formData.datosGenerales.taller) {
+        formData.datosGenerales.grupo = formData.datosGenerales.taller;
+      } else if (!formData.datosGenerales.taller && formData.datosGenerales.grupo) {
+        formData.datosGenerales.taller = formData.datosGenerales.grupo;
+      }
+    }
     
     if (USE_POSTGRES && sql) {
       // Si es guardado automático, intentar actualizar borrador existente primero
@@ -125,7 +137,13 @@ export async function PUT(req: NextRequest) {
       const userId = session?.user ? Number((session.user as any).id) : null;
       let query;
       if (role === 'FACILITADOR') {
-        query = sql`UPDATE forms SET data = ${JSON.stringify(data)}::jsonb, periodo = ${data?.datosGenerales?.periodo || 'No informado'}, updated_at = NOW() WHERE id = ${Number(id)} AND created_by = ${userId} RETURNING id`;
+        query = sql`
+          UPDATE forms 
+          SET data = ${JSON.stringify(data)}::jsonb, periodo = ${data?.datosGenerales?.periodo || 'No informado'}, updated_at = NOW() 
+          WHERE id = ${Number(id)} 
+            AND (created_by = ${userId} OR young_id IN (SELECT id FROM youngs WHERE ${userId} = ANY(assigned_facilitators))) 
+          RETURNING id
+        `;
       } else {
         query = sql`UPDATE forms SET data = ${JSON.stringify(data)}::jsonb, periodo = ${data?.datosGenerales?.periodo || 'No informado'}, updated_at = NOW() WHERE id = ${Number(id)} RETURNING id`;
       }
@@ -177,7 +195,7 @@ export async function GET(req: NextRequest) {
       if (role === 'FACILITADOR' && session?.user) {
         const userId = Number((session.user as any).id);
         if (youngIdFilter) {
-          countQuery = sql`SELECT COUNT(*) as total FROM forms WHERE created_by = ${userId} AND young_id = ${youngIdFilter}`;
+          countQuery = sql`SELECT COUNT(*) as total FROM forms WHERE (created_by = ${userId} OR young_id IN (SELECT id FROM youngs WHERE ${userId} = ANY(assigned_facilitators))) AND young_id = ${youngIdFilter}`;
           dataQuery = sql`
             SELECT 
               f.*,
@@ -187,12 +205,12 @@ export async function GET(req: NextRequest) {
             FROM forms f
             LEFT JOIN users u ON f.created_by = u.id
             LEFT JOIN youngs y ON f.young_id = y.id
-            WHERE f.created_by = ${userId} AND f.young_id = ${youngIdFilter}
+            WHERE (f.created_by = ${userId} OR f.young_id IN (SELECT id FROM youngs WHERE ${userId} = ANY(assigned_facilitators))) AND f.young_id = ${youngIdFilter}
             ORDER BY f.updated_at DESC
             LIMIT ${pageSize} OFFSET ${offset}
           `;
         } else {
-          countQuery = sql`SELECT COUNT(*) as total FROM forms WHERE created_by = ${userId}`;
+          countQuery = sql`SELECT COUNT(*) as total FROM forms WHERE (created_by = ${userId} OR young_id IN (SELECT id FROM youngs WHERE ${userId} = ANY(assigned_facilitators)))`;
           dataQuery = sql`
             SELECT 
               f.*,
@@ -202,7 +220,7 @@ export async function GET(req: NextRequest) {
             FROM forms f
             LEFT JOIN users u ON f.created_by = u.id
             LEFT JOIN youngs y ON f.young_id = y.id
-            WHERE f.created_by = ${userId}
+            WHERE (f.created_by = ${userId} OR f.young_id IN (SELECT id FROM youngs WHERE ${userId} = ANY(assigned_facilitators)))
             ORDER BY f.updated_at DESC
             LIMIT ${pageSize} OFFSET ${offset}
           `;
