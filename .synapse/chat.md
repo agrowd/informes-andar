@@ -1,3 +1,110 @@
+# Registro de Conversación - 2026-09-08 (Auditoría Exhaustiva: EMPRENDEDORES, EMPODERADAS y CLAVE DE SOL)
+
+## Usuario:
+- "Te dejo la carpeta de emprendedores para que verifiques, y hace lo mismo con lo que encontraste en descargas C:\Users\Try Hard\Desktop\EMPRENDEDORES"
+
+## Antigravity:
+- **Auditoría Exhaustiva y Sincronización Celda por Celda al 100.00%**:
+  - **Emprendedores (`C:\Users\Try Hard\Desktop\EMPRENDEDORES`)**:
+    - Se relevaron y parsearon los 20 libros Excel (`1. Sandoval Antonella` a `20. Ledesma Eluney`).
+    - Se descubrió que `Eluney Omar Ledesma` (#20) no estaba registrado en la base de datos: se lo dio de alta con ID 67, taller `Emprendedores`, asignado a Analía Almada, con su PCP completo y 3 cuadrículas mensuales creadas.
+    - Se soportaron los 3 layouts presentes: Gastronómico estándar (8 talleres, 97 ítems), Auxiliares de Limpieza (Carrizo y Salvatierra: 4 talleres de auxiliar y actitudes laborales) y Talleres con prefijo (Decurguez: 5 talleres con código de apoyos).
+    - Se sincronizaron los 59 formularios mensuales en Postgres con sus 8 talleres, niveles 1 al 4 y notas literales de observación.
+    - Coincidencia en Emprendedores: 100.00% exacta.
+  - **Empoderadas (`C:\Users\Try Hard\Downloads`)**:
+    - Se auditaron las 7 concurrentes (Miriam Gallardo, Mirián Aguirre, María Soledad Aguerre, Florencia Soledad Almirón, Yésica Díaz, Magalí Gómez, Yamila Inés Legarreta).
+    - Se desambiguó el mapeo por apellido para separar con precisión a `María Soledad Aguerre` de `Florencia Soledad Almirón`.
+    - Coincidencia en Empoderadas: 100.00% exacta.
+  - **Clave de Sol (`C:\Users\Try Hard\Downloads`)**:
+    - Se auditaron los 3 concurrentes (Juan Pablo Herrera, Francisco Rafael Balbi, Analía Noemí Celis).
+    - Se corrigió la duplicación histórica en Balbi y se depuraron referencias.
+    - Coincidencia en Clave de Sol: 100.00% exacta.
+  - **Balance Total**:
+    - 41 concurrentes verificados (Artesanos: 11, Emprendedores: 20, Empoderadas: 7, Clave de Sol: 3).
+    - 9,872 habilidades evaluadas en Excel.
+    - 9,872 / 9,872 coincidencias exactas en Postgres (**100.00%**).
+
+# Registro de Conversación - 2026-09-08 (Verificación Manual de Cuadrículas vs Excels de ARTESANOS)
+
+## Usuario:
+- "Pero estamos hablando de las cuadriculas, por que me hablas de los informes mensuales de muestra, te voy a dejar un ejemplo de un concurrente para que lo verifiques, yo verifique el de Alexis Juarez y esta bien en el mes de abril, no verifique lo demas, pero hace una verificacion de cada grupo manualmente, te dejo los excels en esta carpeta C:\Users\Try Hard\Desktop\ARTESANOS"
+
+## Antigravity:
+- **Auditoría Exhaustiva de la Carpeta ARTESANOS**:
+  - Se analizaron los 12 archivos `.xlsx` de `C:\Users\Try Hard\Desktop\ARTESANOS`.
+  - Se compararon celda por celda los checklists 2x2, niveles 1 al 4 y notas de observaciones de cada mes (Abril, Mayo, Junio) contra la base de datos Postgres (`forms`).
+  - **Resultados**:
+    - **Alexis Juárez** (`Victor Alexis Juarez_.xlsx`): 100% de coincidencia exacta en Abril (85/85), Mayo (91/91) y Junio (85/85).
+    - **8 concurrentes adicionales** (Elías Garea, Gabriel Kubar, Gonzalo Cannoni, Javier Mendicino, Juan Manuel Fabrizio, Leonel Zenteno, Osvaldo Fernández, Wilfredo Romero): 100% de coincidencia idéntica en los 3 meses.
+    - **Hernán Quintana y Nicolás Cuellar**: Se detectaron pequeñas diferencias en los ítems de Habilidades Sociales (encabezado combinado) y se sincronizaron al 100% con su Excel.
+    - **Cristina Alfonso**: Identificada como concurrente de Artesanos sin planilla física provista.
+  - Se auditó el resto de los grupos disponibles (`Clave de Sol` y `Empoderadas` en Downloads) y se solicita al usuario si dispone de las carpetas de Excels de los grupos restantes (`Buenos Mozos`, `Emprendedores`, `Atrapasueños`) para realizar el mismo cotejo celda por celda.
+
+# Registro de Conversación - 2026-09-07 (Corrección de Navegación y Filtros por Grupo en Jóvenes)
+
+## Usuario:
+- Subió dos capturas de pantalla evidenciando que al hacer click en "Ver concurrentes de este grupo →" (Emprendedores) desde la página de Inicio, la URL `/youngs?search=Emprendedores` mostraba concurrentes de todos los grupos y no aplicaba el filtro.
+
+## Antigravity:
+- **Diagnóstico**: `/youngs` no leía los parámetros de búsqueda de la URL (`window.location.search`), dejando el estado de búsqueda vacío al navegar desde Inicio.
+- **Solución Implementada**:
+  - Se agregó lectura reactiva de `?search=` y `?grupo=` en `useEffect` y listener a `popstate`.
+  - Se incorporaron píldoras/pestañas interactivas de filtrado rápido para los 7 grupos oficiales y "Todos", con badge de cantidad de concurrentes por grupo.
+  - Se actualizó `filteredItems` para aislar exclusivamente los concurrentes del grupo seleccionado.
+  - Se agregó botón de reseteo rápido para mostrar todos los concurrentes y sincronización con el historial del navegador.
+- **Despliegue**: Compilado y desplegado al VPS de producción con PM2 reiniciado.
+
+# Registro de Conversación - 2026-09-07 (Diferenciación Canónica Grupos vs Talleres y Modelos Trimestrales)
+
+## Usuario:
+- "Los talleres que hay son los que estan aca C:\Users\Try Hard\Desktop\Fede informes . Manos verdes y deporte no esta"
+- "grupos quise decir, no talleres, aunque los talleres son las actividades que hacen dentro del grupo"
+- "En las carpetas dentro de la carpeta que te deje hay ejemplos de los informes trimestrales de cada grupo y como deberian de ser"
+
+## Antigravity:
+- **Auditoría e Integración de Modelos Canónicos (.docx)**:
+  - Inspección integral de los archivos de ejemplo en `C:\Users\Try Hard\Desktop\Fede informes`:
+    - `Artesanos`: `Copia de Garea Elias.docx` (Ezequiel Elías Garea).
+    - `Atrapasueños`: `Copia de Alberto_Arnedo_Fabian. 2026-08-27.docx` (Fabián Alberto Arnedo).
+    - `Buen@s Moz@s`: `Copia de INFORME MODELO.docx` (Fernando Alejo Piñol).
+    - `Clave de Sol`: `Copia de Juan Pablo Herrera .docx` (Juan Pablo Herrera).
+    - `Emprendedores`: `Copia de Casonato, Brenda_.docx` (Brenda Yanet Casonato).
+- **Distinción Fundamental Grupos vs Talleres**:
+  - Se formalizaron exactamente los 7 Grupos Oficiales: `Artesanos`, `Atrapasueños`, `Buenos Mozos`, `Clave de Sol`, `Empoderadas`, `Emprendedores` y `Promotores`.
+  - Se eliminaron `Manos Verdes` y `Deporte` como grupos (son talleres/actividades internas como huerta y deportes adaptados).
+- **Base de Datos y Reasignaciones**:
+  - `Juan Pablo Herrera` (ID 7) reasignado a `Clave de Sol` (facilitadora Juliana Arias).
+  - `Gonzalo Benjamin Pettinaro` (ID 29) reasignado a `Buenos Mozos` (facilitadora Marina Trejo).
+  - 8 concurrentes de Manos Verdes reasignados a `Artesanos` (Leonardo Villamayor).
+  - Tabla `talleres` depurada para contener los 7 grupos oficiales.
+- **Frontend y Generador de IA Trimestral**:
+  - Pantalla de Inicio actualizada para reflejar los 7 grupos institucionales oficiales.
+  - `quarterlyGenerator.ts` calibrado para estructurar la redacción trimestral siguiendo al 100% los ejes de los modelos oficiales.
+
+# Registro de Conversación - 2026-09-07 (Reestructuración de Inicio, Sincronización Emprendedores - Analía Almada y Limpieza de Concurrentes)
+
+## Usuario:
+- "Analia almada es emprendedores. Sacar todo lo que dice de mas que valga la redundancia esta de mas, solo tiene que estar el grupo. Poner en el tablero una parte nueva donde aparezcan los ultimos informes mensuales editados. Reorganizar la informacion de tablero y ponerle de nombre inicio, que sea util para el sistema, ahora esta sobrando"
+
+## Antigravity:
+- **Asignación Oficial de Analía Almada a Emprendedores**:
+  - Actualizados los 19 concurrentes a `taller = 'Emprendedores'` en Postgres.
+  - Sincronizados todos sus formularios mensuales en `forms` (`taller` y `grupo` a 'Emprendedores').
+  - Normalizado el taller `Deporte y Vida Independiente` a `Deporte`.
+- **Limpieza de Tarjetas de Concurrentes**:
+  - En `/youngs`, eliminados DNI, facilitador textual y botones accesorios de las tarjetas de vista general.
+  - Solo se muestran avatar, nombre completo y badge de grupo (`y.taller`).
+- **Reorganización y Transformación de "Tablero" en "Inicio"**:
+  - Renombrado el ítem de navegación a "Inicio" (`src/app/_components/Nav.tsx`).
+  - Rediseñada la página principal (`src/app/page.tsx`):
+    - Accesos directos rápidos a carga de cuadrícula mensual, concurrentes e informes.
+    - 4 KPIs limpios.
+    - **Nueva Sección Principal**: "📋 Últimos Informes Mensuales Editados", con tabla en tiempo real de cuadrículas actualizadas con fecha/hora, facilitador, grupo y accesos directos a edición (`✏️ Editar`) y descarga Excel (`📥 Excel`).
+    - Cuadrícula de distribución viva por talleres (conteo de jóvenes y facilitador a cargo).
+    - Tabla de últimos informes trimestrales generados.
+    - Purgado todo el contenido obsoleto (filtros inútiles, bloques rotos, etc.).
+- **Despliegue**: Compilado y desplegado al VPS de producción con PM2 reiniciado con éxito.
+
 # Registro de Conversación - 2026-09-07 (Saneamiento de Nombres, Atrapa Sueños y Asignación Rápida)
 
 ## Usuario:

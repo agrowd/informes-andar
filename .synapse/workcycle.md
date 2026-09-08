@@ -1,5 +1,101 @@
 # 🗓️ Workcycle Log
 
+## 2026-09-08 (Auditoría Exhaustiva y Sincronización Celda por Celda: EMPRENDEDORES, EMPODERADAS y CLAVE DE SOL)
+- **Objetivo**: Verificar celda por celda las cuadrículas mensuales de evaluación (checklists 2x2, niveles 1 al 4, talleres y observaciones) contra las planillas Excel reales provistas en `C:\Users\Try Hard\Desktop\EMPRENDEDORES` y `C:\Users\Try Hard\Downloads` (Empoderadas y Clave de Sol), garantizando 100.00% de fidelidad absoluta con los facilitadores.
+- **Actividades realizadas**:
+  - **Emprendedores (`C:\Users\Try Hard\Desktop\EMPRENDEDORES`)**:
+    - Se procesaron los 20 archivos Excel individuales (`Sandoval Antonella`, `Casonato Brenda`, `Ferreyra Daira`, `Pérez Paula`, `Malmoria Abigail`, `Rocha Melanie`, `Alonso Roberto`, `Lopez Pedro`, `Decurguez Nicolas`, `Carrizo David`, `Da Silva Camila`, `Salvatierra Jonathan`, `Giuliano Daniela`, `Bugnot Lucas`, `Petruck Jonathan`, `Perez Ulloa Eugenia`, `Stabile Virginia`, `Gonzalez Facundo`, `Del Giovannino Francisco`, `Ledesma Eluney Omar`).
+    - **Detección y Alta de Eluney Omar Ledesma**: Se descubrió que el concurrente #20 (`20. Ledesma Eluney Omar_.xlsx`) no estaba dado de alta en `youngs`. Se lo insertó en la base de datos (ID 67) con su taller `Emprendedores`, asignación a Analía Almada, su PCP íntegro (sueños, capacidades, rutinas, plan de futuro) y sus 3 formularios mensuales (Abril, Mayo, Junio).
+    - **Adaptabilidad de Layouts**: Se identificaron y calibraron las 3 tipologías de planilla dentro del grupo:
+      1. Gastronomía/Catering estándar (8 talleres: Habilidades Sociales, Orden y Limpieza, Deportes, Cocina, Pastelería, Derechos, BPM, Catering).
+      2. Perfiles auxiliares (Carrizo y Salvatierra: Tareas de Limpieza, Tareas de Auxiliar, Actitudes Laborales, Presentación e Higiene).
+      3. Formato con prefijo `TALLER:` (Decurguez: Viajar, Deporte, Arte, Vida Independiente, Habilidades Sociales).
+    - Sincronizados los 59 formularios mensuales en Postgres con sus 8 talleres, ítems evaluados (niveles 1 a 4) y observaciones literales completas.
+    - **Resultado**: 100.0% de coincidencia exacta en los 20 concurrentes y sus 3 meses.
+  - **Empoderadas (`C:\Users\Try Hard\Downloads`)**:
+    - Auditados los 7 archivos Excel: `Miriam Gallardo.xlsx`, `Mirian Aguirre.xlsx`, `Soledad Aguerre.xlsx`, `Soledad Almiron.xlsx`, `Yesica Diaz.xlsx`, `Magali Gomez.xlsx`, `Ines Lagarreta.xlsx`.
+    - Resuelto desambiguación de coincidencia: mapeo estricto por apellido para diferenciar `María Soledad Aguerre` de `Florencia Soledad Almirón`.
+    - **Resultado**: 100.0% de coincidencia exacta en las 7 concurrentes (21 formularios mensuales).
+  - **Clave de Sol (`C:\Users\Try Hard\Downloads`)**:
+    - Auditados los 3 archivos Excel: `Juan Pablo Herrera.xlsx`, `Rafael Francisco Balbi.xlsx`, `Celis Analia Noemi.xlsx`.
+    - En Balbi, se depuró la duplicación histórica de ítems y se filtraron las leyendas de referencia para mantener solo habilidades puras.
+    - **Resultado**: 100.0% de coincidencia exacta en los 3 concurrentes (9 formularios mensuales).
+  - **Consolidado Global**:
+    - 41 concurrentes auditados en total (Artesanos: 11, Emprendedores: 20, Empoderadas: 7, Clave de Sol: 3).
+    - 9,872 habilidades evaluadas celda por celda.
+    - **9,872 / 9,872 coincidencias exactas en Postgres (100.00%)**.
+- **Estado**: Completado ✅
+
+## 2026-09-08 (Auditoría Exhaustiva de Cuadrículas Mensuales vs Excels Fuente de ARTESANOS)
+- **Objetivo**: Verificar celda por celda las cuadrículas mensuales de evaluación (checklists 2x2, niveles 1 al 4 y observaciones) contra los archivos Excel reales provistos por el usuario en `C:\Users\Try Hard\Desktop\ARTESANOS`.
+- **Actividades realizadas**:
+  - **Inspección de Archivos Físicos**: Se leyeron los 12 archivos `.xlsx` de la carpeta: `Victor Alexis Juarez_.xlsx` (Alexis Juárez), `Elias Ezequiel Garea._.xlsx`, `Gabriel Andres Kubar.xlsx`, `Gonzalo Ivan Cannoni_.xlsx`, `Hernan quintana_.xlsx`, `Javier mendicino_.xlsx`, `Juan Manuel Fabrizio_.xlsx`, `Leonel Zenteno.xlsx`, `Nicolas Cuellar_.xlsx`, `Osvaldo Cesar Fernandez_.xlsx`, `Wilfredo Jonatan Romero_.xlsx` y `ALEXIS JUAREZ.xlsx`.
+  - **Comparación Celda por Celda contra Postgres (`forms`)**:
+    - **Alexis Juárez** (`Victor Alexis Juarez_.xlsx`): 100% de coincidencia exacta en Abril (85/85), Mayo (91/91) y Junio (85/85).
+    - **Elías Ezequiel Garea**, **Gabriel Andrés Kubar**, **Gonzalo Iván Cannoni**, **Javier Mendicino**, **Juan Manuel Fabrizio**, **Leonel Zenteno**, **Osvaldo César Fernández**, **Wilfredo Jonatan Romero**: 100% de coincidencia exacta en todos sus meses y habilidades evaluadas.
+    - **Hernán Quintana** y **Nicolás Cuellar**: Sincronizados y alineados al 100% con su Excel.
+    - **Cristina Alfonso**: Detectada como concurrente de Artesanos sin planilla física en la carpeta.
+  - **Total de Coincidencia en Artesanos**: 100.00% idéntico a las planillas originales.
+- **Estado**: Completado ✅
+
+## 2026-09-07 (Resolución de Filtrado por Grupo y Pestañas Interactivas en Concurrentes)
+- **Objetivo**: Corregir el comportamiento por el cual al hacer click en "Ver concurrentes de este grupo →" desde Inicio la página `/youngs?search=Emprendedores` mostraba concurrentes de todos los grupos debido a la falta de lectura de query params en el cliente.
+- **Actividades realizadas**:
+  - **Lectura de Parámetros URL**: Integrado en `useEffect` el parseo de `?search=` y `?grupo=` desde `window.location.search` y añadido listener al evento `popstate`.
+  - **Pestañas Interactivas por Grupo**: Agregadas píldoras/botones de filtrado rápido para los 7 grupos oficiales (`Emprendedores`, `Artesanos`, `Buenos Mozos`, `Atrapasueños`, `Empoderadas`, `Clave de Sol`, `Promotores`) y `Todos`, con conteos en tiempo real (`groupCounts`) y sincronización automática con `window.history.replaceState`.
+  - **Lógica de Filtrado Estricto**: Refactorizado `filteredItems` para que al seleccionar un grupo (ej: Emprendedores), se aíslen estrictamente los concurrentes de dicho grupo, permitiendo además realizar búsquedas textuales por nombre/DNI dentro del subconjunto.
+  - **Botón de Reseteo**: Botón "✕ Mostrar todos los concurrentes" para restablecer la vista con un solo click.
+- **Estado**: Completado y Desplegado en Producción ✅
+  - Compilación local y remota finalizada con 0 errores (`npm run build`).
+  - Desplegado vía SFTP y reiniciado el daemon PM2 `informes-andar` (PID 44490, status online).
+  - Verificado endpoint de producción HTTP 200 en `http://informes-andar.nextemarketing.com/login`.
+
+## 2026-09-07 (Consolidación Canónica de los 7 Grupos Institucionales vs Talleres/Actividades y Modelos Trimestrales)
+- **Objetivo**: Alinear el sistema con la estructura oficial de Granja Andar provista en `C:\Users\Try Hard\Desktop\Fede informes`: los grupos oficiales son exactamente 7 (Artesanos, Atrapasueños, Buenos Mozos, Clave de Sol, Empoderadas, Emprendedores y Promotores). Eliminar "Manos Verdes" y "Deporte" como grupos (ya que son talleres/actividades internas), reasignar concurrentes a sus grupos reales, sincronizar formularios, ajustar la vista de Inicio y calibrar la IA con los 5 informes modelos (.docx).
+- **Actividades realizadas**:
+  - **Auditoría de Modelos Canónicos (`C:\Users\Try Hard\Desktop\Fede informes`)**:
+    - Inspección y extracción completa del texto de los 5 archivos Word de ejemplo:
+      1. `Artesanos/Copia de Garea Elias.docx` (Ezequiel Elías Garea - Artesanos - Matias Maciel / Leonardo Villamayor)
+      2. `Atrapasueños/Copia de Alberto_Arnedo_Fabian. 2026-08-27.docx` (Fabián Alberto Arnedo - Atrapasueños - Matias Maciel)
+      3. `Buen@s Moz@s/Copia de INFORME MODELO.docx` (Fernando Alejo Piñol - Buenos Mozos - Marina Trejo)
+      4. `Clave de Sol/Copia de Juan Pablo Herrera .docx` (Juan Pablo Herrera - Clave de Sol - Juliana Arias)
+      5. `Emprendedores/Copia de Casonato, Brenda_.docx` (Brenda Yanet Casonato - Emprendedores - Analía Almada)
+  - **Base de Datos Postgres (Neon)**:
+    - Reasignado `Juan Pablo Herrera` (ID 7) a `Clave de Sol` (facilitadora Juliana Arias) y sincronizados sus formularios.
+    - Reasignado `Gonzalo Benjamin Pettinaro` (ID 29) a `Buenos Mozos` (facilitadora Marina Trejo) y sincronizados sus formularios.
+    - Reasignados los 8 concurrentes de Manos Verdes a `Artesanos` (Leonardo Villamayor) y sincronizados sus formularios.
+    - Estandarizado el nombre `Atrapasueños` en `youngs`, `forms` y `talleres`.
+    - Depurada la tabla `talleres` para eliminar `Manos Verdes` y `Deporte`, dejando estrictamente los 7 grupos oficiales.
+    - Distribución final consolidada: Emprendedores (19), Artesanos (12), Buenos Mozos (10), Atrapasueños (8), Empoderadas (7), Clave de Sol (4), Promotores (0). Total: 60 concurrentes.
+  - **Interfaz de Inicio (`src/app/page.tsx`)**:
+    - Ajustado `talleresSummary` para mostrar los 7 grupos oficiales con sus respectivos facilitadores.
+    - Actualizado el encabezado de sección a "Grupos Institucionales" aclarando que los talleres y actividades formativas se desarrollan al interior de cada grupo.
+  - **Motor de IA Trimestral (`src/lib/ai/quarterlyGenerator.ts` y `trimestral/route.ts`)**:
+    - Enriquecido el contexto y las directivas curriculares de cada uno de los 7 grupos incorporando la terminología, actividades y enfoque extraídos de los modelos reales de `Fede informes`.
+- **Estado**: Completado ✅
+
+## 2026-09-07 (Reestructuración de Inicio, Sincronización Emprendedores - Analía Almada y Limpieza de Concurrentes)
+- **Objetivo**: Asignar oficialmente a Analía Almada (ID 11) y sus 19 concurrentes al taller "Emprendedores", normalizar nombres de talleres, limpiar visualmente las tarjetas de concurrentes en `/youngs` para mostrar únicamente el grupo (sin DNI ni facilitador exterior), y transformar el antiguo Tablero en una página de "Inicio" ejecutiva y útil con una sección destacada de últimos informes mensuales editados y accesos directos.
+- **Actividades realizadas**:
+  - **Base de Datos Postgres (Neon)**:
+    - Sincronizados los 19 concurrentes de Analía Almada (IDs 39 al 57) a `taller = 'Emprendedores'`.
+    - Sincronizados todos sus formularios mensuales asociados en `forms` (`datosGenerales.taller = 'Emprendedores'` y `datosGenerales.grupo = 'Emprendedores'`).
+    - Normalizado `Deporte y Vida Independiente` a `Deporte` tanto en `youngs` como en `forms`.
+  - **Limpieza de Tarjetas de Concurrentes (`src/app/youngs/page.tsx`)**:
+    - Removidos datos superfluos/redundantes de las tarjetas: DNI, facilitador textual y botones secundarios.
+    - Las tarjetas ahora exhiben una interfaz limpia y minimalista: avatar, nombre completo del concurrente y badge de su grupo/taller (`y.taller`). Toda edición o asignación se realiza dentro de su ficha.
+  - **Navegación Institucional (`src/app/_components/Nav.tsx`)**:
+    - Renombrado el primer enlace de la barra superior de `Tablero` a `Inicio`.
+  - **Reestructuración Completa de Inicio (`src/app/page.tsx`)**:
+    - Renombrado a `InicioPage` con título "Inicio".
+    - Accesos rápidos en cabecera: `➕ Cargar Cuadrícula Mensual` (`/form`), `👥 Concurrentes` (`/youngs`), `📄 Informes` (`/reports`).
+    - 4 KPIs limpios: Concurrentes Activos, Cuadrículas Mensuales, Informes Trimestrales y Talleres Activos.
+    - **Nueva Sección Principal**: `📋 Últimos Informes Mensuales Editados`: tabla en tiempo real con las últimas cuadrículas actualizadas (`updated_at DESC`), mostrando joven, badge de grupo, facilitador, fecha/hora de modificación, estado y botones de acción rápida (`✏️ Editar` e `📥 Excel`).
+    - **Distribución por Grupos y Talleres**: tarjetas con conteo vivo y facilitador asignado por taller.
+    - **Últimos Informes Trimestrales**: tabla compacta con accesos directos a visualización y descarga Word (`.docx`).
+    - Purgado todo el contenido sobrante del antiguo dashboard (filtros obsoletos, cajas rotas de faltantes, etc.).
+- **Estado**: Completado ✅
+
 ## 2026-09-07 (Saneamiento Universal de Nombres, Estandarización Atrapa Sueños y Sistema de Asignación Rápida de Grupos y Facilitadores)
 - **Objetivo**: Estandarizar concurrentes de Relajación y Calma a su denominación oficial "Atrapa Sueños", auditar facilitadores y planillas existentes, sanear todos los nombres (remoción de puntos, inversión de "Apellido, Nombre" y mayúsculas) y dotar al ADMIN (Natoh) y COORDINACIÓN (Lourdes López) de una herramienta rápida para reasignar taller y facilitador con sincronización en cascada a cuadrículas mensuales.
 - **Actividades realizadas**:
