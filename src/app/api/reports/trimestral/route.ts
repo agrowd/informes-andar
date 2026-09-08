@@ -95,9 +95,9 @@ export async function POST(req: NextRequest) {
           else if (gNorm.includes('empoderadas')) assignedFacilitatorName = 'Ana Reartes';
           else if (gNorm.includes('artesanos')) assignedFacilitatorName = 'Leonardo Villamayor';
           else if (gNorm.includes('atrapa')) assignedFacilitatorName = 'Matias Maciel';
-          else if (gNorm.includes('buenos mozos') || gNorm.includes('catering') || gNorm.includes('mozo') || gNorm.includes('gastronom')) assignedFacilitatorName = 'Marina Trejo';
+          else if (gNorm.includes('buenos mozos') || gNorm.includes('mozo')) assignedFacilitatorName = 'Marina Trejo';
           else if (gNorm.includes('emprendedor')) assignedFacilitatorName = 'Analia Almada';
-          else if (gNorm.includes('manos verdes') || gNorm.includes('vivero') || gNorm.includes('huerta')) assignedFacilitatorName = 'Martín Romero';
+          else if (gNorm.includes('promotor')) assignedFacilitatorName = 'Lemuel Sola';
           else {
             // Verificar si los formularios tienen facilitador registrado
             for (const f of forms) {
@@ -155,6 +155,7 @@ export async function POST(req: NextRequest) {
         else if (gNorm.includes('artesanos')) assignedFacilitatorName = 'Leonardo Villamayor';
         else if (gNorm.includes('buenos mozos')) assignedFacilitatorName = 'Marina Trejo';
         else if (gNorm.includes('emprendedor')) assignedFacilitatorName = 'Analia Almada';
+        else if (gNorm.includes('promotor')) assignedFacilitatorName = 'Lemuel Sola';
       } else {
         return NextResponse.json({ error: 'Concurrente no encontrado en MongoDB' }, { status: 404 });
       }

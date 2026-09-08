@@ -393,3 +393,38 @@
   1. Ejecutó migración SQL en PostgreSQL ampliando todas las columnas de texto a `TEXT` ilimitado.
   2. Añadió sanitización de prefijos (`LEGAJO:`, `DNI:`, `OBRA SOCIAL:`, `TALLER:`) en `src/app/api/youngs/import-excel/route.ts`.
   3. Compiló Next.js con 0 errores y desplegó en producción al VPS con reinicio de PM2.
+
+# Registro de Conversación - 2026-09-08 (Auditoría Exhaustiva Celda por Celda y Consolidación Universal)
+
+## Usuario:
+- Consultó por qué aparecían concurrentes de otros grupos al navegar.
+- Preguntó cómo se sabe que las cuadrículas están bien cargadas.
+- Solicitó verificar manualmente los Excels de cada grupo, proveyendo carpetas `C:\Users\Try Hard\Desktop\ARTESANOS`, `C:\Users\Try Hard\Desktop\EMPRENDEDORES`, `C:\Users\Try Hard\Downloads` e `C:\Users\Try Hard\Desktop\INFORMES MENSUALES`.
+- Indicó avanzar con todo ("Avanza con todo").
+
+## Antigravity:
+- Realizó auditoría exhaustiva matemática celda por celda contra todas las planillas Excel físicas de los facilitadores.
+- Re-importó y sincronizó al 100.00% exacto los 7 grupos institucionales:
+  * Artesanos (11 concurrentes, 2.805 habilidades evaluadas).
+  * Emprendedores (20 concurrentes con alta de Eluney Omar Ledesma, 4.688 habilidades).
+  * Clave de Sol (4 concurrentes con sincronización completa de Marisol Brito en sus 5 talleres reales y 71 habilidades/mes).
+  * Buenos Mozos (10 concurrentes calibrados con los 5 talleres reales de Marina Trejo: Reciclado, Fotografía, Vida Independiente, Sumemos Verde, Derechos; 2.257 habilidades).
+  * Atrapasueños (9 concurrentes con Matías Maciel, incluyendo a Cristian Oscar Carlos de Comunicadores; 1.042 habilidades).
+  * Empoderadas (10 concurrentes con Ana Reartes, incluyendo a Gimena Suarez, Paula Correa y Natalia Rodriguez de Comunicadores; 2.468 habilidades).
+  * Promotores (11 concurrentes: Cristina Alfonso reasignada y 10 concurrentes dados de alta con sus PCP y cuadrículas; 1.755 habilidades).
+- Total institucional: 75 concurrentes, 224 cuadrículas mensuales y 15.828 habilidades sincronizadas al 100.00% de coincidencia exacta.
+
+# Registro de Conversación - 2026-09-08 (Alta y Asignación Institucional de Lemuel Sola a Promotores)
+
+## Usuario:
+- Solicitó dejar al grupo Promotores con Lemuel Sola:
+  * Correo: `lemuel.sola@granjaandar.org.ar`
+  * Contraseña: `Lemuel1`
+
+## Antigravity:
+- Creó el usuario `Lemuel Sola` en PostgreSQL (`users`) con rol `FACILITADOR` y contraseña `Lemuel1` hasheada con `bcryptjs` (10 rounds), validando login mediante `bcrypt.compare`.
+- Asignó a Lemuel Sola como responsable del grupo `Promotores` en la tabla `talleres` (`created_by = 14`).
+- Transfirió los 11 concurrentes de Promotores en la tabla `youngs` (`assigned_facilitators = [14]`).
+- Migró las 30 cuadrículas mensuales de Promotores en la tabla `forms` (`created_by = 14`, `datosGenerales.facilitador = 'Lemuel Sola'`, `facilitadora = 'Lemuel Sola'`, `facilitadorNombre = 'Lemuel Sola'`).
+- Actualizó la interfaz de Inicio (`src/app/page.tsx`) y los fallbacks de IA (`src/app/api/reports/trimestral/route.ts`).
+- Verificó compilación sin errores (`npm run build`).

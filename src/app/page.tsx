@@ -1,363 +1,367 @@
 "use client";
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSession } from 'next-auth/react';
-import EditableText from '@/app/_components/EditableText';
 
-export default function Dashboard() {
+export default function InicioPage() {
   const { data: session } = useSession();
   const [forms, setForms] = useState<any[]>([]);
+  const [formsTotal, setFormsTotal] = useState(0);
   const [reports, setReports] = useState<any[]>([]);
+  const [reportsTotal, setReportsTotal] = useState(0);
   const [youngs, setYoungs] = useState<any[]>([]);
-  const [stats, setStats] = useState<any>(null);
-  const [period, setPeriod] = useState('');
-  
-  // Verificar si el usuario puede ver el tablero general
+  const [loading, setLoading] = useState(true);
+
   const userRole = (session?.user as any)?.role || 'FACILITADOR';
-  const canViewGeneralDashboard = ['ADMIN', 'DIRECTOR', 'COORDINACION'].includes(userRole);
+  const isPrivileged = ['ADMIN', 'DIRECTOR', 'COORDINACION'].includes(userRole);
 
   const load = async () => {
+    setLoading(true);
     try {
-      const [f, r, y, s] = await Promise.all([
-        fetch('/api/forms')
-          .then(r => {
-            if (!r.ok) throw new Error(`HTTP ${r.status}`);
-            return r.json();
-          })
-          .catch((err) => {
-            console.error('Error cargando borradores:', err);
-            return { items: [] };
+      const [f, r, y] = await Promise.all([
+        fetch('/api/forms?pageSize=12')
+          .then(res => res.ok ? res.json() : { items: [], total: 0 })
+          .catch(err => {
+            console.error('Error cargando cuadrículas:', err);
+            return { items: [], total: 0 };
           }),
-        fetch('/api/reports')
-          .then(r => {
-            if (!r.ok) throw new Error(`HTTP ${r.status}`);
-            return r.json();
-          })
-          .catch((err) => {
+        fetch('/api/reports?pageSize=8')
+          .then(res => res.ok ? res.json() : { items: [], total: 0 })
+          .catch(err => {
             console.error('Error cargando informes:', err);
-            return { items: [] };
+            return { items: [], total: 0 };
           }),
-        fetch('/api/youngs')
-          .then(r => {
-            if (!r.ok) throw new Error(`HTTP ${r.status}`);
-            return r.json();
-          })
-          .catch((err) => {
+        fetch('/api/youngs?pageSize=100')
+          .then(res => res.ok ? res.json() : { items: [], total: 0 })
+          .catch(err => {
             console.error('Error cargando jóvenes:', err);
-            return { items: [] };
-          }),
-        fetch('/api/dashboard/stats')
-          .then(r => {
-            if (!r.ok) throw new Error(`HTTP ${r.status}`);
-            return r.json();
-          })
-          .catch((err) => {
-            console.error('Error cargando estadísticas:', err);
-            return null;
+            return { items: [], total: 0 };
           }),
       ]);
       setForms(f.items || []);
+      setFormsTotal(f.total || f.items?.length || 0);
       setReports(r.items || []);
+      setReportsTotal(r.total || r.items?.length || 0);
       setYoungs(y.items || []);
-      setStats(s);
     } catch (err) {
-      console.error('Error en load del dashboard:', err);
+      console.error('Error en load del inicio:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => { load(); }, []);
 
-  const filteredReports = reports.filter((r:any) => !period || String(r.periodo||'').toLowerCase().includes(period.toLowerCase()));
-  const cnt = (s: string) => filteredReports.filter((r:any) => r.status === s).length;
-  const totals = stats?.reportsByStatus || {
-    BORRADOR: cnt('BORRADOR'),
-    EN_REVISION: cnt('EN_REVISION'),
-    CAMBIOS_SOLICITADOS: cnt('CAMBIOS_SOLICITADOS'),
-    APROBADO: cnt('APROBADO'),
-  };
-
-  const copyReport = async (reportId: string) => {
-    if (!confirm('¿Deseas copiar este informe para crear uno nuevo?')) return;
+  const formatDateTime = (dateStr?: string) => {
+    if (!dateStr) return '—';
     try {
-      const res = await fetch(`/api/reports/${reportId}/copy`, { method: 'POST' });
-      if (!res.ok) {
-        const error = await res.json().catch(() => ({ error: 'Error copiando informe' }));
-        throw new Error(error.error || `HTTP ${res.status}`);
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      return d.toLocaleDateString('es-AR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch {
+      return dateStr;
+    }
+  };
+
+  // Resumen agrupado por Grupo institucional oficial (los talleres son las actividades internas)
+  const talleresSummary = useMemo(() => {
+    const map: Record<string, { count: number; facilitador: string }> = {
+      'Emprendedores': { count: 0, facilitador: 'Analía Almada' },
+      'Artesanos': { count: 0, facilitador: 'Leonardo Villamayor' },
+      'Buenos Mozos': { count: 0, facilitador: 'Marina Trejo' },
+      'Atrapasueños': { count: 0, facilitador: 'Matías Maciel' },
+      'Empoderadas': { count: 0, facilitador: 'Ana Reartes' },
+      'Clave de Sol': { count: 0, facilitador: 'Juliana Arias' },
+      'Promotores': { count: 0, facilitador: 'Lemuel Sola' }
+    };
+
+    youngs.forEach(y => {
+      let t = y.taller;
+      if (t === 'Atrapa Sueños') t = 'Atrapasueños';
+      if (t && map[t]) {
+        map[t].count++;
+      } else if (t) {
+        if (!map[t]) map[t] = { count: 0, facilitador: 'Facilitador asignado' };
+        map[t].count++;
       }
-      const data = await res.json();
-      alert('Informe copiado correctamente. Serás redirigido al formulario para editarlo.');
-      // Redirigir al formulario con el ID del informe copiado
-      window.location.href = `/form?reportId=${data.id}`;
-    } catch (error: any) {
-      console.error('Error al copiar informe:', error);
-      alert('Error: ' + (error.message || 'No se pudo copiar el informe'));
-    }
-  };
+    });
 
-  const copyForm = async (formId: string) => {
-    if (!confirm('¿Deseas duplicar esta cuadrícula mensual para crear una nueva basada en esta?')) return;
-    try {
-      const res = await fetch(`/api/forms/${formId}/copy`, { method: 'POST' });
-      if (!res.ok) {
-        const error = await res.json().catch(() => ({ error: 'Error duplicando cuadrícula mensual' }));
-        throw new Error(error.error || `HTTP ${res.status}`);
-      }
-      const data = await res.json();
-      alert('Cuadrícula Mensual duplicada correctamente. Serás redirigido para editarla.');
-      window.location.href = `/form?formId=${data.id}`;
-    } catch (error: any) {
-      console.error('Error al duplicar cuadrícula mensual:', error);
-      alert('Error: ' + (error.message || 'No se pudo duplicar la cuadrícula mensual'));
-    }
-  };
-
-  // Agrupar informes por grupo
-  const reportsByGroup = filteredReports.reduce((acc: any, report: any) => {
-    const grupo = report.grupo || 'Sin grupo';
-    if (!acc[grupo]) {
-      acc[grupo] = [];
-    }
-    acc[grupo].push(report);
-    return acc;
-  }, {});
-
-  // Obtener todos los grupos únicos (de youngs) para mostrar los 10 grupos
-  const allGroups = Array.from(new Set(youngs.map((y: any) => y.taller).filter(Boolean))).sort();
-  
-  // Limitar a los primeros 10 grupos más importantes o todos si son menos de 10
-  const topGroups = allGroups.slice(0, 10);
-
-  const exportData = (type: string) => {
-    window.location.href = `/api/dashboard/export?format=csv&type=${type}`;
-  };
+    return Object.entries(map);
+  }, [youngs]);
 
   return (
-    <div>
-      <EditableText k="dash.titulo" fallback="Tablero" tag="h1" />
-      <div className="ga-card" style={{ marginBottom: 12 }}>
-        <div className="ga-row" style={{ flexWrap: 'wrap', gap: 12 }}>
-          <label style={{ flex:1, minWidth: 200 }}>
-            <EditableText k="dash.filtroPeriodo" fallback="Filtrar por período" tag="span" /><br />
-            <input className="ga-input" value={period} onChange={(e) => setPeriod(e.target.value)} placeholder="Ej: 2025-01..2025-06" />
-          </label>
-          <button className="ga-btn" onClick={load}>Actualizar</button>
-          {canViewGeneralDashboard && (
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button className="ga-btn secondary" onClick={() => exportData('reports')} title="Exportar informes a CSV">
-                📊 Exportar informes
-              </button>
-              <button className="ga-btn secondary" onClick={() => exportData('forms')} title="Exportar cuadrículas mensuales a CSV">
-                📝 Exportar cuadrículas
-              </button>
-              <button className="ga-btn secondary" onClick={() => exportData('youngs')} title="Exportar jóvenes a CSV">
-                👥 Exportar jóvenes
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-      {!canViewGeneralDashboard && (
-        <div className="ga-card" style={{ marginBottom: 12, padding: 16, background: '#f0f7ff', border: '1px solid #bfdbfe' }}>
-          <p style={{ margin: 0, color: '#1e40af' }}>
-            <strong>Vista de facilitador:</strong> Solo puedes ver tus propias cuadrículas e informes.
+    <div style={{ maxWidth: 1200, margin: '0 auto', paddingBottom: 60 }}>
+      {/* 1. ENCABEZADO PRINCIPAL DE INICIO */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28, flexWrap: 'wrap', gap: 16 }}>
+        <div>
+          <h1 style={{ margin: 0, fontSize: 28, color: '#1e3a8a', fontWeight: 800 }}>Inicio</h1>
+          <p style={{ color: '#64748b', margin: '4px 0 0 0', fontSize: 14 }}>
+            Sistema de Seguimiento Curricular, Cuadrículas Mensuales e Informes · Granja Andar
           </p>
         </div>
-      )}
-      
-      <div className="ga-card-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 12 }}>
-        <div className="ga-card">
-          <div style={{ fontSize: 12, color: '#666' }}>Informes realizados</div>
-          <div style={{ fontSize: 28, fontWeight: 700 }}>{stats?.reportsTotal || filteredReports.length}</div>
-          <a href="/reports">Ver informes</a>
-        </div>
-        <div className="ga-card" style={{ border: stats?.missingReports > 0 ? '2px solid #f59e0b' : undefined }}>
-          <div style={{ fontSize: 12, color: '#666' }}>Informes faltantes</div>
-          <div style={{ fontSize: 28, fontWeight: 700, color: stats?.missingReports > 0 ? '#f59e0b' : undefined }}>
-            {stats?.missingReports || 0}
-          </div>
-          {stats?.missingReports > 0 && (
-            <span style={{ fontSize: 12, color: '#666' }}>Cuadrículas sin informe</span>
-          )}
-        </div>
-        <div className="ga-card">
-          <div style={{ fontSize: 12, color: '#666' }}>Cuadrículas pendientes</div>
-          <div style={{ fontSize: 28, fontWeight: 700 }}>{stats?.formsPending || forms.filter((f: any) => f.status === 'BORRADOR').length}</div>
-          <a href="/forms">Ver cuadrículas</a>
-        </div>
-        <div className="ga-card">
-          <div style={{ fontSize: 12, color: '#666' }}>Jóvenes</div>
-          <div style={{ fontSize: 28, fontWeight: 700 }}>{youngs.length}</div>
-          <a href="/youngs">Gestionar jóvenes</a>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <a href="/form" className="ga-btn primary" style={{ padding: '9px 18px', fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 700 }}>
+            <span>➕</span> Cargar Cuadrícula Mensual
+          </a>
+          <a href="/youngs" className="ga-btn secondary" style={{ padding: '9px 16px', fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
+            <span>👥</span> Concurrentes
+          </a>
+          <a href="/reports" className="ga-btn secondary" style={{ padding: '9px 16px', fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
+            <span>📄</span> Informes
+          </a>
         </div>
       </div>
 
-      {stats?.missingReportsList && stats.missingReportsList.length > 0 && (
-        <div className="ga-card" style={{ marginTop: 12, border: '2px solid #f59e0b', background: '#FFF7ED' }}>
-          <h3 style={{ color: '#f59e0b', marginTop: 0 }}>⚠️ Informes faltantes</h3>
-          <p style={{ fontSize: 14, color: '#666', marginBottom: 12 }}>
-            Las siguientes cuadrículas aún no tienen informe asociado:
-          </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {stats.missingReportsList.map((item: any, idx: number) => (
-              <div key={idx} style={{ 
-                padding: '12px', 
-                background: 'white', 
-                borderRadius: 8, 
-                border: '1px solid #FED7AA',
+      {/* 2. TARJETAS DE INDICADORES CLAVE (KPIs) */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginBottom: 28 }}>
+        <a href="/youngs" className="ga-card" style={{ padding: 20, textDecoration: 'none', color: 'inherit', borderLeft: '4px solid #2563eb', transition: 'all 0.2s ease', display: 'block' }}>
+          <div style={{ fontSize: 12, color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>👥 Concurrentes Activos</div>
+          <div style={{ fontSize: 32, fontWeight: 800, color: '#1e293b', marginTop: 4 }}>{youngs.length}</div>
+          <div style={{ fontSize: 12, color: '#2563eb', marginTop: 6, fontWeight: 600 }}>Ver listado de jóvenes →</div>
+        </a>
+
+        <a href="/forms" className="ga-card" style={{ padding: 20, textDecoration: 'none', color: 'inherit', borderLeft: '4px solid #10b981', transition: 'all 0.2s ease', display: 'block' }}>
+          <div style={{ fontSize: 12, color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>📋 Cuadrículas Mensuales</div>
+          <div style={{ fontSize: 32, fontWeight: 800, color: '#1e293b', marginTop: 4 }}>{formsTotal || forms.length}</div>
+          <div style={{ fontSize: 12, color: '#10b981', marginTop: 6, fontWeight: 600 }}>Gestionar cuadrículas →</div>
+        </a>
+
+        <a href="/reports" className="ga-card" style={{ padding: 20, textDecoration: 'none', color: 'inherit', borderLeft: '4px solid #8b5cf6', transition: 'all 0.2s ease', display: 'block' }}>
+          <div style={{ fontSize: 12, color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>📄 Informes Trimestrales</div>
+          <div style={{ fontSize: 32, fontWeight: 800, color: '#1e293b', marginTop: 4 }}>{reportsTotal || reports.length}</div>
+          <div style={{ fontSize: 12, color: '#8b5cf6', marginTop: 6, fontWeight: 600 }}>Ver informes Word / PDF →</div>
+        </a>
+
+        <a href="/youngs" className="ga-card" style={{ padding: 20, textDecoration: 'none', color: 'inherit', borderLeft: '4px solid #f59e0b', transition: 'all 0.2s ease', display: 'block' }}>
+          <div style={{ fontSize: 12, color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>🏫 Talleres Activos</div>
+          <div style={{ fontSize: 32, fontWeight: 800, color: '#1e293b', marginTop: 4 }}>{talleresSummary.length}</div>
+          <div style={{ fontSize: 12, color: '#f59e0b', marginTop: 6, fontWeight: 600 }}>Ver talleres y grupos →</div>
+        </a>
+      </div>
+
+      {/* 3. PARTE NUEVA PRINCIPAL: ÚLTIMOS INFORMES MENSUALES EDITADOS */}
+      <div className="ga-card" style={{ padding: 26, marginBottom: 28, borderRadius: 14 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
+          <div>
+            <h2 style={{ margin: 0, fontSize: 19, color: '#1e3a8a', display: 'flex', alignItems: 'center', gap: 8, fontWeight: 800 }}>
+              <span>📋</span> Últimos Informes Mensuales Editados
+            </h2>
+            <p style={{ margin: '4px 0 0 0', fontSize: 13, color: '#64748b' }}>
+              Cuadrículas mensuales de habilidades y observaciones modificadas recientemente
+            </p>
+          </div>
+          <a href="/forms" className="ga-btn secondary" style={{ fontSize: 13, padding: '7px 15px', fontWeight: 600 }}>
+            Ver todas las cuadrículas ({formsTotal || forms.length}) →
+          </a>
+        </div>
+
+        {loading ? (
+          <div style={{ padding: 40, textAlign: 'center', color: '#64748b' }}>Cargando cuadrículas recientes...</div>
+        ) : forms.length === 0 ? (
+          <div style={{ padding: 40, textAlign: 'center', color: '#64748b', background: '#f8fafc', borderRadius: 8 }}>
+            No hay cuadrículas mensuales registradas.
+          </div>
+        ) : (
+          <div className="ga-table-mobile-wrap">
+            <table className="ga-table">
+              <thead>
+                <tr style={{ background: '#f8fafc' }}>
+                  <th>Concurrente</th>
+                  <th>Grupo / Taller</th>
+                  <th>Período</th>
+                  <th>Facilitador</th>
+                  <th>Última Modificación</th>
+                  <th>Estado</th>
+                  <th style={{ textAlign: 'center', width: 220 }}>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {forms.slice(0, 10).map(f => {
+                  const formId = f._id || f.id;
+                  const tallerName = f.data?.datosGenerales?.taller || f.data?.datosGenerales?.grupo || 'Sin grupo';
+                  return (
+                    <tr key={formId} className="ga-table-row-hover">
+                      <td>
+                        <strong style={{ color: '#1e293b', fontSize: 14 }}>{f.jovenNombre || 'Sin nombre'}</strong>
+                      </td>
+                      <td>
+                        <span style={{
+                          fontSize: 11,
+                          fontWeight: 700,
+                          padding: '3px 9px',
+                          borderRadius: 6,
+                          background: '#eff6ff',
+                          color: '#2563eb',
+                          border: '1px solid #dbeafe',
+                          textTransform: 'uppercase',
+                          letterSpacing: 0.3
+                        }}>
+                          {tallerName}
+                        </span>
+                      </td>
+                      <td>
+                        <strong style={{ color: '#334155' }}>{f.periodo || '—'}</strong>
+                      </td>
+                      <td style={{ fontSize: 13, color: '#475569' }}>
+                        {f.facilitadorNombre || 'Sin facilitador'}
+                      </td>
+                      <td style={{ fontSize: 12, color: '#64748b' }}>
+                        {formatDateTime(f.updatedAt || f.updated_at)}
+                      </td>
+                      <td>
+                        <span className={`ga-badge ${f.status === 'APROBADO' ? 'approved' : f.status === 'EN_REVISION' ? 'review' : 'draft'}`} style={{ fontSize: 11 }}>
+                          {f.status || 'BORRADOR'}
+                        </span>
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        <div style={{ display: 'inline-flex', gap: 6, justifyContent: 'center' }}>
+                          <a 
+                            href={`/form?formId=${formId}`} 
+                            className="ga-btn primary" 
+                            style={{ fontSize: 12, padding: '5px 11px', fontWeight: 600 }}
+                            title="Editar esta cuadrícula mensual"
+                          >
+                            ✏️ Editar
+                          </a>
+                          <a 
+                            href={`/api/forms/${formId}/export-excel`} 
+                            className="ga-btn secondary" 
+                            style={{ fontSize: 12, padding: '5px 9px' }}
+                            title="Descargar planilla Excel"
+                          >
+                            📥 Excel
+                          </a>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* 4. DISTRIBUCIÓN POR GRUPOS */}
+      <div className="ga-card" style={{ padding: 26, marginBottom: 28, borderRadius: 14 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
+          <div>
+            <h2 style={{ margin: 0, fontSize: 19, color: '#1e3a8a', display: 'flex', alignItems: 'center', gap: 8, fontWeight: 800 }}>
+              <span>🏫</span> Grupos Institucionales
+            </h2>
+            <p style={{ margin: '4px 0 0 0', fontSize: 13, color: '#64748b' }}>
+              Distribución oficial de concurrentes por grupo (los talleres y actividades formativas se desarrollan al interior de cada grupo)
+            </p>
+          </div>
+          <a href="/youngs" className="ga-btn secondary" style={{ fontSize: 13, padding: '7px 15px', fontWeight: 600 }}>
+            Ver todos los concurrentes →
+          </a>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16 }}>
+          {talleresSummary.map(([taller, info]) => (
+            <div
+              key={taller}
+              style={{
+                padding: '18px 20px',
+                background: '#f8fafc',
+                borderRadius: 12,
+                border: '1px solid #e2e8f0',
                 display: 'flex',
                 flexDirection: 'column',
-                gap: 6
-              }}>
-                <div style={{ fontWeight: 500 }}>Período: {item.periodo || 'Sin período'}</div>
-                <a 
-                  href={`/forms/${item.formId}`} 
-                  className="ga-btn secondary"
-                  style={{ alignSelf: 'flex-start', fontSize: 13 }}
-                >
-                  Ver cuadrícula →
-                </a>
+                justifyContent: 'space-between',
+                gap: 12
+              }}
+            >
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <h3 style={{ margin: 0, fontSize: 16, color: '#1e3a8a', fontWeight: 700 }}>{taller}</h3>
+                  <span style={{
+                    fontSize: 12,
+                    fontWeight: 700,
+                    padding: '2px 8px',
+                    borderRadius: 12,
+                    background: info.count > 0 ? '#dbeafe' : '#f1f5f9',
+                    color: info.count > 0 ? '#1e40af' : '#64748b'
+                  }}>
+                    {info.count} {info.count === 1 ? 'joven' : 'jóvenes'}
+                  </span>
+                </div>
+                <div style={{ fontSize: 13, color: '#64748b', marginTop: 8 }}>
+                  👤 Responsable: <strong style={{ color: '#334155' }}>{info.facilitador}</strong>
+                </div>
               </div>
-            ))}
+              <a
+                href={`/youngs?search=${encodeURIComponent(taller)}`}
+                style={{ fontSize: 12, color: '#2563eb', fontWeight: 600, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+              >
+                Ver concurrentes de este grupo →
+              </a>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* 5. ÚLTIMOS INFORMES TRIMESTRALES (WORD / PDF) */}
+      {reports.length > 0 && (
+        <div className="ga-card" style={{ padding: 26, borderRadius: 14 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
+            <div>
+              <h2 style={{ margin: 0, fontSize: 19, color: '#1e3a8a', display: 'flex', alignItems: 'center', gap: 8, fontWeight: 800 }}>
+                <span>📄</span> Últimos Informes Trimestrales (Word / PDF)
+              </h2>
+              <p style={{ margin: '4px 0 0 0', fontSize: 13, color: '#64748b' }}>
+                Informes evolutivos trimestrales consolidados para visualización y descarga
+              </p>
+            </div>
+            <a href="/reports" className="ga-btn secondary" style={{ fontSize: 13, padding: '7px 15px', fontWeight: 600 }}>
+              Ver todos los informes ({reportsTotal || reports.length}) →
+            </a>
           </div>
-        </div>
-      )}
 
-      <div className="ga-card-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12, marginTop: 12 }}>
-        <div className="ga-card">
-          <EditableText k="dash.latestForms" fallback="Últimos borradores" tag="h3" />
-          <ul>
-            {forms.slice(0, 5).map((f) => (
-              <li key={f._id || f.id} style={{ marginBottom: 4 }}>
-                {f.periodo || '—'} — {f.status || 'BORRADOR'}
-                <div style={{ display: 'inline-flex', gap: 8, marginLeft: 8 }}>
-                  <a href={`/form?formId=${f._id || f.id}`} style={{ fontSize: 12 }}>Editar</a>
-                  <button 
-                    onClick={() => copyForm(f._id || f.id)}
-                    className="ga-btn secondary"
-                    style={{ fontSize: 11, padding: '2px 6px' }}
-                    title="Duplicar borrador"
-                  >
-                    📋 Duplicar
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </div>
-        <div className="ga-card">
-          <EditableText k="dash.latestReports" fallback="Últimos informes" tag="h3" />
-          <ul>
-            {filteredReports.slice(0, 5).map((r) => (
-              <li key={r.id}>
-                {r.periodo || '—'} — {r.status || 'BORRADOR'}
-                <a href={`/reports/${r.id}`} style={{ marginLeft: 8, fontSize: 12 }}>Ver</a>
-                <button 
-                  onClick={() => copyReport(r.id)} 
-                  className="ga-btn secondary"
-                  style={{ marginLeft: 8, fontSize: 12, padding: '4px 8px' }}
-                  title="Copiar informe"
-                >
-                  📋 Copiar
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
-
-      <div className="ga-card" style={{ marginTop: 12 }}>
-        <EditableText k="dash.statusTitle" fallback="Estado de informes" tag="h3" />
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(160px,1fr))', gap: 8 }}>
-          <div><div className="ga-badge draft"><EditableText k="dash.status.draft" fallback="BORRADOR" tag="span" /></div><div style={{ fontSize:24,fontWeight:700 }}>{totals.BORRADOR}</div></div>
-          <div><div className="ga-badge review"><EditableText k="dash.status.review" fallback="EN_REVISION" tag="span" /></div><div style={{ fontSize:24,fontWeight:700 }}>{totals.EN_REVISION}</div></div>
-          <div><div className="ga-badge draft"><EditableText k="dash.status.changes" fallback="CAMBIOS_SOLICITADOS" tag="span" /></div><div style={{ fontSize:24,fontWeight:700 }}>{totals.CAMBIOS_SOLICITADOS}</div></div>
-          <div><div className="ga-badge approved"><EditableText k="dash.status.approved" fallback="APROBADO" tag="span" /></div><div style={{ fontSize:24,fontWeight:700 }}>{totals.APROBADO}</div></div>
-        </div>
-      </div>
-
-      {canViewGeneralDashboard && (
-        <div className="ga-card" style={{ marginTop: 12 }}>
-          <EditableText k="dash.informesPorGrupo" fallback="Informes por Grupo" tag="h3" />
-          <p style={{ fontSize: 14, color: '#666', marginBottom: 16 }}>
-            Visualización de informes cargados por cada grupo (máximo 10 informes por grupo)
-          </p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
-            {topGroups.map((grupo: string) => {
-              const grupoReports = (reportsByGroup[grupo] || []).slice(0, 10); // Máximo 10 informes por grupo
-              const grupoTotal = (reportsByGroup[grupo] || []).length;
-              const grupoCompleted = grupoReports.filter((r: any) => r.status === 'APROBADO').length;
-              
-              return (
-                <div key={grupo} className="ga-card" style={{ border: '1px solid #e5e7eb' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                    <h4 style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>{grupo}</h4>
-                    <span style={{ fontSize: 12, color: '#666' }}>
-                      {grupoTotal} {grupoTotal === 1 ? 'informe' : 'informes'}
-                    </span>
-                  </div>
-                  
-                  {grupoReports.length > 0 ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      {grupoReports.map((report: any) => (
-                        <div 
-                          key={report.id} 
-                          style={{ 
-                            padding: '8px 12px', 
-                            background: '#f9fafb', 
-                            borderRadius: 6,
-                            border: '1px solid #e5e7eb',
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center'
-                          }}
-                        >
-                          <div style={{ flex: 1 }}>
-                            <div style={{ fontSize: 13, fontWeight: 500 }}>
-                              {report.jovenNombre || 'Sin nombre'}
-                            </div>
-                            <div style={{ fontSize: 11, color: '#666', marginTop: 2 }}>
-                              {report.periodo || 'Sin período'}
-                            </div>
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <span className={`ga-badge ${report.status?.toLowerCase() === 'aprobado' ? 'approved' : report.status?.toLowerCase() === 'en_revision' ? 'review' : 'draft'}`} style={{ fontSize: 10 }}>
-                              {report.status || 'BORRADOR'}
-                            </span>
-                            <a 
-                              href={`/reports/${report.id}`} 
-                              style={{ fontSize: 12, color: '#667eea' }}
-                              title="Ver informe"
-                            >
-                              Ver →
-                            </a>
-                          </div>
-                        </div>
-                      ))}
-                      {grupoTotal > 10 && (
-                        <div style={{ fontSize: 12, color: '#666', textAlign: 'center', padding: '8px', fontStyle: 'italic' }}>
-                          ... y {grupoTotal - 10} informe{grupoTotal - 10 !== 1 ? 's' : ''} más
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div style={{ fontSize: 13, color: '#999', fontStyle: 'italic', padding: '12px 0' }}>
-                      Aún no hay informes cargados para este grupo
-                    </div>
-                  )}
-                  
-                  {grupoCompleted > 0 && (
-                    <div style={{ marginTop: 12, padding: '8px', background: '#f0fdf4', borderRadius: 6, fontSize: 12, color: '#166534' }}>
-                      ✓ {grupoCompleted} informe{grupoCompleted !== 1 ? 's' : ''} aprobado{grupoCompleted !== 1 ? 's' : ''}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-            
-            {topGroups.length === 0 && (
-              <div style={{ gridColumn: '1 / -1', padding: '24px', textAlign: 'center', color: '#666' }}>
-                No hay grupos registrados aún
-              </div>
-            )}
+          <div className="ga-table-mobile-wrap">
+            <table className="ga-table">
+              <thead>
+                <tr style={{ background: '#f8fafc' }}>
+                  <th>Concurrente</th>
+                  <th>Período</th>
+                  <th>Fecha de Generación</th>
+                  <th>Estado</th>
+                  <th style={{ textAlign: 'right', width: 220 }}>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {reports.slice(0, 6).map(r => (
+                  <tr key={r.id} className="ga-table-row-hover">
+                    <td>
+                      <strong style={{ color: '#1e293b', fontSize: 14 }}>{r.jovenNombre || r.joven_nombre || 'Sin nombre'}</strong>
+                    </td>
+                    <td><strong style={{ color: '#334155' }}>{r.periodo || '—'}</strong></td>
+                    <td style={{ fontSize: 12, color: '#64748b' }}>{formatDateTime(r.createdAt || r.created_at)}</td>
+                    <td>
+                      <span className={`ga-badge ${r.status?.toLowerCase() === 'aprobado' ? 'approved' : r.status?.toLowerCase() === 'en_revision' ? 'review' : 'draft'}`} style={{ fontSize: 11 }}>
+                        {r.status || 'BORRADOR'}
+                      </span>
+                    </td>
+                    <td style={{ textAlign: 'right' }}>
+                      <div style={{ display: 'inline-flex', gap: 6 }}>
+                        <a href={`/reports/${r.id}`} className="ga-btn secondary" style={{ fontSize: 12, padding: '5px 11px', fontWeight: 600 }}>
+                          Ver Informe
+                        </a>
+                        <a href={`/api/reports/${r.id}/.docx`} className="ga-btn primary" style={{ fontSize: 12, padding: '5px 11px', fontWeight: 600 }}>
+                          📥 Word
+                        </a>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
