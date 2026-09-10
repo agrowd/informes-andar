@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import UploadManualDocxModal from '@/app/_components/UploadManualDocxModal';
+import { formatDateTime, formatDate } from '@/lib/formatters';
 
 export default function InicioPage() {
   const { data: session } = useSession();
@@ -70,23 +71,6 @@ export default function InicioPage() {
   };
 
   useEffect(() => { load(); }, []);
-
-  const formatDateTime = (dateStr?: string) => {
-    if (!dateStr) return '—';
-    try {
-      const d = new Date(dateStr);
-      if (isNaN(d.getTime())) return dateStr;
-      return d.toLocaleDateString('es-AR', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    } catch {
-      return dateStr;
-    }
-  };
 
   // Resumen agrupado por Grupo institucional oficial (los talleres son las actividades internas)
   const talleresSummary = useMemo(() => {

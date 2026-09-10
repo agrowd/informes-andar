@@ -48,7 +48,12 @@ const FILES_TO_DEPLOY = [
   'src/app/api/reports/[id]/export-excel/route.ts',
   'src/lib/formatters.ts',
   'src/lib/ai/orchestrator.ts',
-  'src/lib/ai/merge.ts'
+  'src/lib/ai/merge.ts',
+  'src/lib/ai/finalReportGenerator.ts',
+  'src/app/api/reports/final/route.ts',
+  'src/app/_components/GenerateFinalReportModal.tsx',
+  'ecosystem.config.cjs',
+  'ecosystem.config.js'
 ];
 
 const REMOTE_BASE_DIR = '/srv/informes-andar';
@@ -133,7 +138,7 @@ function runPostDeployCommands() {
     'node scripts/run-docx-migration.js',
     'npm install --legacy-peer-deps',
     'npm run build',
-    'pm2 restart ecosystem.config.cjs',
+    'pm2 restart ecosystem.config.cjs --update-env',
     'pm2 list'
   ].join(' && ');
 

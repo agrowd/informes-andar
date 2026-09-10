@@ -2,12 +2,15 @@
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import UploadManualDocxModal from '@/app/_components/UploadManualDocxModal';
+import GenerateFinalReportModal from '@/app/_components/GenerateFinalReportModal';
+import { formatDateTime, formatDate } from '@/lib/formatters';
 
 const REPORT_TYPE_LABELS: Record<string, string> = {
   'MENSUAL': '📄 Mensual',
   'TRIMESTRAL': '📋 Trimestral',
   'SEMESTRAL': '📑 Semestral',
   'ANUAL': '📚 Anual',
+  'FINAL': '🏆 Informe Final',
   'INFORME_FINAL': '🏆 Informe Final',
 };
 
@@ -16,7 +19,8 @@ const REPORT_TYPE_COLORS: Record<string, string> = {
   'TRIMESTRAL': '#8B5CF6',
   'SEMESTRAL': '#F59E0B',
   'ANUAL': '#10B981',
-  'INFORME_FINAL': '#EC4899',
+  'FINAL': '#D97706',
+  'INFORME_FINAL': '#D97706',
 };
 
 const MERGE_RULES: Record<string, { sourceType: string; label: string; requiredCount: number }> = {
@@ -38,6 +42,7 @@ export default function ReportsList() {
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [showFinalModal, setShowFinalModal] = useState(false);
   
   // Selección para fusión
   const [selectionMode, setSelectionMode] = useState(false);
@@ -166,14 +171,36 @@ export default function ReportsList() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
         <h1 style={{ margin: 0 }}>Informes generados</h1>
-        <button
-          type="button"
-          className="ga-btn primary"
-          onClick={() => setShowUploadModal(true)}
-          style={{ fontSize: 13, padding: '8px 16px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 6 }}
-        >
-          <span>📤</span> Subir Informe Word (.docx)
-        </button>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            className="ga-btn"
+            onClick={() => setShowFinalModal(true)}
+            style={{
+              fontSize: 13,
+              padding: '8px 16px',
+              fontWeight: 700,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              background: 'linear-gradient(135deg, #d97706 0%, #b45309 100%)',
+              color: '#ffffff',
+              border: 'none',
+              boxShadow: '0 2px 4px rgba(217, 119, 6, 0.25)',
+              cursor: 'pointer'
+            }}
+          >
+            <span>🏆</span> Generar Informe Final Anual
+          </button>
+          <button
+            type="button"
+            className="ga-btn primary"
+            onClick={() => setShowUploadModal(true)}
+            style={{ fontSize: 13, padding: '8px 16px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 6 }}
+          >
+            <span>📤</span> Subir Informe Word (.docx)
+          </button>
+        </div>
       </div>
       <div className="ga-card" style={{ marginBottom: 12 }}>
         <div style={{ display:'flex', gap:8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
@@ -279,6 +306,7 @@ export default function ReportsList() {
               <th style={{ border: '1px solid #ccc', padding: 4 }}>Período</th>
               <th style={{ border: '1px solid #ccc', padding: 4 }}>Tipo</th>
               <th style={{ border: '1px solid #ccc', padding: 4 }}>Estado</th>
+              <th style={{ border: '1px solid #ccc', padding: 4 }}>Fecha</th>
               <th style={{ border: '1px solid #ccc', padding: 4 }}>Acciones</th>
             </tr>
           </thead>
@@ -336,6 +364,9 @@ export default function ReportsList() {
                     {typeof it.openComments==='number' && it.openComments>0 && (
                       <span className="ga-badge review" style={{ marginLeft: 6 }}>{it.openComments} comentarios</span>
                     )}
+                  </td>
+                  <td style={{ border: '1px solid #ccc', padding: 4, fontSize: 12, color: '#64748b', whiteSpace: 'nowrap' }}>
+                    {formatDateTime(it.createdAt)}
                   </td>
                   <td style={{ border: '1px solid #ccc', padding: 4 }}>
                     <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -501,6 +532,16 @@ export default function ReportsList() {
         onClose={() => setShowUploadModal(false)}
         onSuccess={() => {
           setShowUploadModal(false);
+          loadData(page);
+        }}
+      />
+
+      {/* Modal para Generar Informe Final Anual consolidado */}
+      <GenerateFinalReportModal
+        isOpen={showFinalModal}
+        onClose={() => setShowFinalModal(false)}
+        onSuccess={() => {
+          setShowFinalModal(false);
           loadData(page);
         }}
       />

@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState, useMemo } from 'react';
 import ExcelImportWizardModal from '../_components/ExcelImportWizardModal';
+import { formatDate, formatDateTime } from '@/lib/formatters';
 
 const INSTITUTIONAL_GROUPS = [
   { id: 'TODOS', label: '🌐 Todos' },
@@ -85,6 +86,43 @@ export default function FormsList() {
     } finally {
       setIsImporting(false);
       e.target.value = '';
+    }
+  };
+
+  const handleExcelImportForYoung = async (youngId: string, file: File) => {
+    if (!file) return;
+    setIsImporting(true);
+    const formData = new FormData();
+    formData.append('file', file);
+    if (youngId && !youngId.startsWith('noyoung-')) {
+      formData.append('youngId', youngId);
+    }
+
+    try {
+      const res = await fetch('/api/youngs/import-excel', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (res.ok) {
+        const json = await res.json();
+        loadData(1);
+        if (json.importedMonths && json.importedMonths.length > 0) {
+          setImportWizardYoungId(json.youngId || youngId);
+          setImportWizardMonths(json.importedMonths);
+          setImportWizardOpen(true);
+        } else {
+          alert(json.message || 'Cuadrículas mensuales importadas correctamente');
+        }
+      } else {
+        const json = await res.json();
+        alert(json.error || 'Error al importar el archivo Excel');
+      }
+    } catch (err) {
+      console.error('Error importando Excel para concurrente:', err);
+      alert('Error de conexión al importar Excel');
+    } finally {
+      setIsImporting(false);
     }
   };
 
@@ -718,6 +756,39 @@ export default function FormsList() {
                             </button>
                           )}
 
+                          {/* Botón para cargar meses faltantes en Excel para este joven específico */}
+                          <label
+                            style={{
+                              background: '#ffffff',
+                              color: '#475569',
+                              border: '1px solid #cbd5e1',
+                              padding: '5px 10px',
+                              fontSize: '12px',
+                              fontWeight: 600,
+                              borderRadius: '6px',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              cursor: isImporting ? 'wait' : 'pointer',
+                              boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                            }}
+                            title="Subir planilla Excel con meses faltantes (ej: Agosto, Septiembre) para este joven"
+                          >
+                            <span>📥 Subir Meses Excel</span>
+                            <input
+                              type="file"
+                              accept=".xlsx,.xls"
+                              style={{ display: 'none' }}
+                              disabled={isImporting}
+                              onChange={(e) => {
+                                if (e.target.files && e.target.files[0]) {
+                                  handleExcelImportForYoung(group.youngId, e.target.files[0]);
+                                  e.target.value = '';
+                                }
+                              }}
+                            />
+                          </label>
+
                           {selectionMode && group.drafts.some(d => selectedIds.has(d._id || d.id)) && (
                             <span style={{ 
                               fontSize: '12px', 
@@ -812,7 +883,7 @@ export default function FormsList() {
                                       <span className={`ga-badge ${it.status==='APROBADO'?'approved':it.status==='EN_REVISION'?'review':'draft'}`}>{it.status || 'BORRADOR'}</span>
                                     </td>
                                     <td style={{ border: '1px solid #ccc', padding: 4, fontSize: 12, color: 'var(--muted)' }}>
-                                      {it.updatedAt ? new Date(it.updatedAt).toLocaleDateString('es-AR') : it.createdAt ? new Date(it.createdAt).toLocaleDateString('es-AR') : '—'}
+                                      {formatDateTime(it.updatedAt || it.createdAt)}
                                     </td>
                                     <td style={{ border: '1px solid #ccc', padding: 4 }}>
                                       <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center' }} onClick={(e) => e.stopPropagation()}>

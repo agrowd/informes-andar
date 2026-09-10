@@ -1,4 +1,40 @@
-# Registro de Conversación - 2026-09-10 (Filtro por Grupo y Generador Trimestral en Cuadrículas Mensuales)
+# Registro de Conversación - 2026-09-10 (IA en Word Manuales, Meses Faltantes, Informe Final y Timezone)
+
+## Usuario:
+- "que se use ia para que no haya errores en la carga e interpretacion automatica del word manuales. 
+Ademas mejorar la parte de informes trimestrales para poder generar los informes finales, que te explico de que componen(en la imagen adjunta te dejo la explicacion grafica que me dieron, pero te la explico de nuevo y te explico que nos falta asi preparas todo para cuando debamos hacerlo y toda la informacion que tiene que interpretar el mismo):
+Para empezar el informe final tiene la misma estructura que un informe trimestral, se compone de 
+---Trimestral(informe en texto): compuesto de los meses: enero, febrero y marzo
+---Mensuales(cuadriculas y explicacion de cada uno): Abril, Mayo y Junio
+---Trimestral: abril mayo y junio (los que tenemos subidos de cada uno)
+---Mensuales: Agosto y Septiembre
+Daria como resultado el final, que se compone de la sumatoria de todo lo anterior. Tenes que resolver como subir los meses que faltan cuando se cargue un excel, como hacerlo, si darle otra funcion, etc etc. Ademas revisa el horario del servidor que no me da con el horario de argentina"
+- [Adjunta imagen manuscrita de la composición del Informe Final: Trimestral 1 + Mensuales 1 + Trimestral 2 + Mensuales 2 = Final (Todo)]
+
+## Antigravity:
+- **Ejecución y Despliegue Completados en Producción**:
+  1. **Parser de Word Manual con IA (`upload-manual-docx`)**:
+     - Implementada función `parseDocxWithAI` con OpenAI `gpt-4o-mini` (modo JSON) inyectando el catálogo de los 75 concurrentes oficiales de Postgres. Mapea sin errores de tipografía las 12 secciones narrativas oficiales y vincula de forma fidedigna el concurrente, facilitador y período. Cuenta con fallback automático determinístico vía regex.
+  2. **Meses Faltantes en Excel (`import-excel` y `/forms`)**:
+     - `getMonthNumber` reconoce variantes de todos los meses (`AGOSTO`, `SEPTIEMBRE`, etc.).
+     - Lógica `UPSERT` en `forms` que preserva los meses previos (Abril, Mayo, Junio) e incorpora los nuevos sin pisar registros.
+     - Botón `📥 Subir Meses Excel` directo en la cabecera de cada concurrente en `/forms`.
+  3. **Informe Final Anual**:
+     - Misma estructura de 12 secciones que el trimestral (`trimestral_template.docx` compatible con `report_type = 'FINAL'`).
+     - Motor `finalReportGenerator.ts` con IA que consolida longitudinalmente los 4 bloques: Trimestral 1 (Ene-Mar, Word manual) + Mensuales 1 (Abr-Jun, cuadrículas) + Trimestral 2 (Abr-Jun) + Mensuales 2 (Ago-Sep, cuadrículas). Redacción profesional en tiempo presente y tono positivo sin frases de carencia.
+     - Endpoint `POST /api/reports/final` y `GET /api/reports/final?youngId=XX`.
+     - Modal `GenerateFinalReportModal` con checklist en vivo de insumos disponible desde el botón `🏆 Generar Informe Final Anual` en `/reports`.
+  4. **Zona Horaria del Servidor**:
+     - `ecosystem.config.cjs` y `ecosystem.config.js` actualizados con `TZ: 'America/Argentina/Buenos_Aires'`.
+     - PM2 reiniciado en el VPS con `--update-env` y verificado que corre bajo `America/Argentina/Buenos_Aires`.
+     - Formateadores universales `formatDateTime` y `formatDate` en `src/lib/formatters.ts` con locale `es-AR` (formato 24 hs).
+  5. **Despliegue y Validación**:
+     - Compilación local `npm run build` con 0 errores (18/18 páginas generadas).
+     - Despliegue de 49 archivos por SFTP al VPS (`149.50.128.73:5782`), compilación remota y reinicio de PM2.
+     - Verificado endpoint HTTP 200 en `http://149.50.128.73:8000/login` (`informes-andar.nextemarketing.com`).
+
+
+
 
 ## Usuario:
 - "Que aca haya un filtro por grupo asi como admin puedo generar el informe trimestral"

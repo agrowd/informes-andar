@@ -21,6 +21,8 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     
     let repData: any = null;
     let isTrimestral = false;
+    let isFinal = false;
+    let reportType = 'MENSUAL';
     let youngPcp: any = null;
     let editedDocxBase64: string | null = null;
     let editedDocxFilename: string | null = null;
@@ -34,7 +36,9 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       `;
       if (result.rows.length > 0) {
         repData = result.rows[0].data;
-        isTrimestral = result.rows[0].report_type === 'TRIMESTRAL';
+        reportType = result.rows[0].report_type || 'MENSUAL';
+        isTrimestral = reportType === 'TRIMESTRAL';
+        isFinal = reportType === 'FINAL' || reportType === 'INFORME_FINAL';
         youngPcp = result.rows[0].pcp;
         editedDocxBase64 = result.rows[0].edited_docx_base64 || null;
         editedDocxFilename = result.rows[0].edited_docx_filename || null;
@@ -43,7 +47,9 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       const rep = await ReportModel.findById(params.id).lean();
       if (rep) {
         repData = rep.data;
-        isTrimestral = (rep as any).reportType === 'TRIMESTRAL';
+        reportType = (rep as any).reportType || 'MENSUAL';
+        isTrimestral = reportType === 'TRIMESTRAL';
+        isFinal = reportType === 'FINAL' || reportType === 'INFORME_FINAL';
         editedDocxBase64 = (rep as any).editedDocxBase64 || null;
         editedDocxFilename = (rep as any).editedDocxFilename || null;
         
@@ -73,7 +79,8 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     }
 
     
-    let templatePath = path.join(process.cwd(), 'templates', isTrimestral ? 'trimestral_template.docx' : 'report.docx');
+    const usesInstitutionalTemplate = isTrimestral || isFinal;
+    let templatePath = path.join(process.cwd(), 'templates', usesInstitutionalTemplate ? 'trimestral_template.docx' : 'report.docx');
     let buf: Buffer;
     
     try {
@@ -82,7 +89,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
         const zip = new PizZip(content);
         const doc = new Docxtemplater(zip, { paragraphLoop: true, linebreaks: true });
         
-        if (isTrimestral) {
+        if (usesInstitutionalTemplate) {
           const fechaActual = new Date();
           const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
           const fechaInforme = `${fechaActual.getDate()} de ${meses[fechaActual.getMonth()]} del ${fechaActual.getFullYear()}`;
@@ -99,8 +106,8 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
             nombreCompleto: formattedName,
             apellidoNombre: formattedName,
             grupo: repData?.datosGenerales?.grupo || 'Clave de Sol',
-            facilitadores: repData?.datosGenerales?.facilitadores || 'Sin facilitador',
-            metaSueno: repData?.datosGenerales?.metaSueno || 'Estar en la playa...',
+            facilitadores: repData?.datosGenerales?.facilitadores || repData?.datosGenerales?.facilitadorNombre || 'Sin facilitador',
+            metaSueno: repData?.datosGenerales?.metaSueno || 'Desarrollar su proyecto de vida...',
             fechaInforme,
             pcpAnio,
             periodoAnio,
@@ -157,9 +164,11 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     const d = repData?.datosGenerales?.fechaCreacion ? new Date(repData.datosGenerales.fechaCreacion) : new Date();
     const safeDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     
-    const docName = isTrimestral 
-      ? `informe-trimestral-${safeName}-${safeGroup}-${safeDate}.docx` 
-      : `informe-mensual-${safeName}-${safeGroup}-${safeDate}.docx`;
+    const docName = isFinal
+      ? `informe-final-${safeName}-${safeGroup}-${safeDate}.docx`
+      : isTrimestral 
+        ? `informe-trimestral-${safeName}-${safeGroup}-${safeDate}.docx` 
+        : `informe-mensual-${safeName}-${safeGroup}-${safeDate}.docx`;
     
     return new Response(buf, { 
       headers: { 

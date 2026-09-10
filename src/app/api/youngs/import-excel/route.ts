@@ -163,13 +163,40 @@ async function parseSisChartWithVision(base64Image: string): Promise<string> {
 
 
 
-function isCellChecked(cell: ExcelJS.Cell) {
+function getCellText(cell: ExcelJS.Cell | any): string {
+  if (!cell || cell.value === null || cell.value === undefined) return '';
+  if (typeof cell.value === 'object') {
+    if ('richText' in cell.value && Array.isArray(cell.value.richText)) {
+      return cell.value.richText.map((t: any) => t.text).join('');
+    }
+    if ('text' in cell.value) {
+      return String(cell.value.text);
+    }
+    if ('result' in cell.value) {
+      return String(cell.value.result);
+    }
+  }
+  if (cell.value instanceof Date) {
+    return cleanText(cell.value);
+  }
+  return String(cell.value);
+}
+
+function isCellChecked(cell: ExcelJS.Cell | any): boolean {
+  if (!cell) return false;
+  const txt = getCellText(cell).trim().toUpperCase();
+  if (['X', 'SI', '1', 'TRUE', '✓', '✔', 'V'].includes(txt)) return true;
   const fill = cell.fill;
-  if (!fill || fill.type !== 'pattern') return false;
-  const color = fill.fgColor?.argb || fill.fgColor?.theme;
-  if (typeof color === 'string') {
-    const hex = color.toUpperCase();
-    return hex.endsWith('A4C2F4') || hex.endsWith('FF00FF');
+  if (fill && fill.type === 'pattern') {
+    const color = fill.fgColor?.argb || fill.bgColor?.argb || (fill.fgColor as any)?.theme || (fill.bgColor as any)?.theme;
+    if (typeof color === 'string') {
+      const hex = color.toUpperCase();
+      if (hex !== 'FFFFFFFF' && hex !== '00000000' && hex !== 'FFFFFF' && !hex.endsWith('FFFFFF')) {
+        return true;
+      }
+    } else if (typeof (fill.fgColor as any)?.theme === 'number') {
+      return true;
+    }
   }
   return false;
 }
@@ -206,6 +233,7 @@ export async function POST(req: NextRequest) {
 
     const formData = await req.formData();
     const file = formData.get('file') as Blob;
+    const manualYoungId = formData.get('youngId') ? Number(formData.get('youngId')) : null;
     if (!file) {
       return NextResponse.json({ error: 'No se subió ningún archivo' }, { status: 400 });
     }
@@ -415,6 +443,12 @@ export async function POST(req: NextRequest) {
         }
       }
 
+      // Limpiar prefijos residuales si vinieron en el texto de la celda
+      if (pcpLegajo) pcpLegajo = pcpLegajo.replace(/^legajo:\s*/i, '').trim();
+      if (pcpObraSocial) pcpObraSocial = pcpObraSocial.replace(/^obra\s*social:\s*/i, '').trim();
+      if (pcpDni) pcpDni = pcpDni.replace(/^dni:\s*/i, '').trim();
+      if (mainTaller) mainTaller = mainTaller.replace(/^taller(\s*de)?:\s*/i, '').trim();
+
       // Buscar nombre de manera flexible en el PCP (filas 1 a 6, columnas 1 a 4)
       for (let r = 1; r <= 6; r++) {
         for (let c = 1; c <= 4; c++) {
@@ -543,27 +577,39 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Si no se extrajo el nombre pero se proporcionó manualYoungId, buscarlo en la BD
+    if (!nombreCompleto && manualYoungId) {
+      if (USE_POSTGRES && sql) {
+        const yRes = await sql`SELECT nombre_completo, taller FROM youngs WHERE id = ${manualYoungId}`;
+        if (yRes.rows.length > 0) {
+          nombreCompleto = yRes.rows[0].nombre_completo;
+          if (!mainTaller) mainTaller = yRes.rows[0].taller;
+        }
+      }
+    }
+
     if (!nombreCompleto) {
       return NextResponse.json({ error: 'No se pudo extraer el nombre del joven de la solapa PCP ni de las solapas mensuales (ej: Celda A3 o A2)' }, { status: 400 });
     }
 
-    // Helper para traducir nombres de meses a números
+    // Helper robusto para traducir nombres de meses a números YYYY-MM
     const getMonthNumber = (name: string): string => {
+      const n = name.trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
       const months: Record<string, string> = {
-        'ENERO': '01', 'ENE': '01',
+        'ENERO': '01', 'ENE': '01', 'JAN': '01',
         'FEBRERO': '02', 'FEB': '02',
         'MARZO': '03', 'MAR': '03',
         'ABRIL': '04', 'ABR': '04',
         'MAYO': '05', 'MAY': '05',
         'JUNIO': '06', 'JUN': '06',
         'JULIO': '07', 'JUL': '07',
-        'AGOSTO': '08', 'AGO': '08',
+        'AGOSTO': '08', 'AGO': '08', 'AGOS': '08',
         'SEPTIEMBRE': '09', 'SEP': '09', 'SETIEMBRE': '09', 'SET': '09',
         'OCTUBRE': '10', 'OCT': '10',
         'NOVIEMBRE': '11', 'NOV': '11',
         'DICIEMBRE': '12', 'DIC': '12'
       };
-      const n = name.trim().toUpperCase();
+      
       for (const [key, val] of Object.entries(months)) {
         if (n.startsWith(key) || n.includes(key)) return val;
       }
@@ -582,11 +628,15 @@ export async function POST(req: NextRequest) {
         sheetNameUpper.startsWith('SHEET') || 
         sheetNameUpper === 'TEMPLATE' ||
         sheetNameUpper === 'PLANTILLA' ||
-        sheetNameUpper.startsWith('HOJA')
+        sheetNameUpper.startsWith('HOJA') ||
+        sheetNameUpper.includes('INFORME')
       ) continue;
 
       const monthNum = getMonthNumber(sheet.name);
-      const parsedPeriod = monthNum ? `${anioPcp || new Date().getFullYear()}-${monthNum}` : sheet.name.trim().toUpperCase();
+      // Extraer año si está en el nombre de la solapa (ej: "AGOSTO 2026")
+      const sheetYearMatch = sheet.name.match(/\b(202\d)\b/);
+      const effectiveYear = sheetYearMatch ? sheetYearMatch[1] : (anioPcp || new Date().getFullYear().toString());
+      const parsedPeriod = monthNum ? `${effectiveYear}-${monthNum}` : sheet.name.trim().toUpperCase();
 
       const report: any = {
         periodo: parsedPeriod,
@@ -601,16 +651,15 @@ export async function POST(req: NextRequest) {
       let taller = '';
       for (let r = 1; r <= 6; r++) {
         for (let c = 1; c <= 8; c++) {
-          const val = sheet.getCell(r, c).value;
-          if (val && typeof val === 'string') {
-            const cleanVal = val.trim();
+          const cleanVal = getCellText(sheet.getCell(r, c)).trim();
+          if (cleanVal) {
             if (/facilitador/i.test(cleanVal)) {
               facilitadorNombre = cleanVal
                 .replace(/facilitador\/a:\s*/i, '')
                 .replace(/facilitador:\s*/i, '')
                 .replace(/facilitadora:\s*/i, '')
                 .trim();
-            } else if (/taller:/i.test(cleanVal)) {
+            } else if (/taller:/i.test(cleanVal) && !cleanVal.toUpperCase().includes('TALLER: DEPORTE') && !cleanVal.toUpperCase().includes('TALLER: VIAJAR') && !cleanVal.toUpperCase().includes('TALLER: HABILIDADES') && !cleanVal.toUpperCase().includes('TALLER: MUSICOTERAPIA') && !cleanVal.toUpperCase().includes('TALLER: MANOS VERDES')) {
               taller = cleanVal.replace(/taller:\s*/i, '').trim();
             }
           }
@@ -623,39 +672,75 @@ export async function POST(req: NextRequest) {
       }
 
       let currentTaller: any = null;
-      let obsStartRow = 62;
+      let obsStartRow = 0;
 
-      for (let r = 5; r <= 120; r++) {
-        const cellA = sheet.getCell(r, 1);
-        const valA = cellA.value;
+      for (let r = 5; r <= sheet.rowCount; r++) {
+        // 1. Taller Heading (buscar en columnas 1..4)
+        let tallerFoundInRow = '';
+        for (let c = 1; c <= 4; c++) {
+          const txt = getCellText(sheet.getCell(r, c)).trim();
+          if (txt.toUpperCase().includes('TALLER:')) {
+            tallerFoundInRow = txt.replace(/TALLER:\s*/i, '').trim();
+            break;
+          }
+        }
 
-        // Taller Heading
-        if (valA && String(valA).toUpperCase().includes('TALLER:')) {
-          const tallerName = String(valA).replace(/TALLER:\s*/i, '').trim();
-          currentTaller = { nombre: tallerName, items: [] };
+        if (tallerFoundInRow) {
+          currentTaller = { nombre: tallerFoundInRow, items: [] };
           report.talleres.push(currentTaller);
           continue;
         }
 
-        // Observaciones Heading
-        if (valA && String(valA).toLowerCase().includes('observaciones:')) {
+        // 2. Observaciones Heading
+        let isObsRow = false;
+        for (let c = 1; c <= 4; c++) {
+          const txt = getCellText(sheet.getCell(r, c)).trim().toLowerCase();
+          if (txt.startsWith('observaciones:') || txt === 'observaciones') {
+            isObsRow = true;
+            break;
+          }
+        }
+
+        if (isObsRow) {
           obsStartRow = r + 1;
           break;
         }
 
-        // Parse items in this row (A, E, I, M, Q, U, Y, AC...)
+        // 3. Parse items in this row (A, E, I, M, Q, U, Y, AC -> c = 1, 5, 9, 13, 17, 21, 25, 29)
         for (let c = 1; c <= 32; c += 4) {
-          const itemCell = sheet.getCell(r, c);
-          const itemName = itemCell.value;
-          if (itemName && typeof itemName === 'string' && itemName.trim().length > 2 && !itemName.toUpperCase().includes('REFERENCIAS') && !itemName.toUpperCase().includes('ENSEÑADO')) {
+          const itemName = getCellText(sheet.getCell(r, c)).trim();
+          if (
+            itemName.length > 2 &&
+            !itemName.toUpperCase().includes('REFERENCIAS') &&
+            !itemName.toUpperCase().includes('ENSEÑADO') &&
+            !itemName.toUpperCase().includes('LO REALIZA') &&
+            !itemName.toUpperCase().includes('PUEDE ENSEÑAR') &&
+            !itemName.toUpperCase().includes('TALLER:') &&
+            !itemName.toUpperCase().includes('OBSERVACIONES')
+          ) {
             let nivel = 0;
-            if (isCellChecked(sheet.getCell(r + 2, c + 1))) nivel++;
-            if (isCellChecked(sheet.getCell(r + 3, c + 1))) nivel++;
-            if (isCellChecked(sheet.getCell(r + 2, c + 3))) nivel++;
-            if (isCellChecked(sheet.getCell(r + 3, c + 3))) nivel++;
+            const check1 = isCellChecked(sheet.getCell(r + 2, c)) || isCellChecked(sheet.getCell(r + 2, c + 1));
+            const check2 = isCellChecked(sheet.getCell(r + 3, c)) || isCellChecked(sheet.getCell(r + 3, c + 1));
+            const check3 = isCellChecked(sheet.getCell(r + 2, c + 2)) || isCellChecked(sheet.getCell(r + 2, c + 3));
+            const check4 = isCellChecked(sheet.getCell(r + 3, c + 2)) || isCellChecked(sheet.getCell(r + 3, c + 3));
+
+            if (check1) nivel++;
+            if (check2) nivel++;
+            if (check3) nivel++;
+            if (check4) nivel++;
+
+            if (nivel === 0) {
+              for (let ro = r + 1; ro <= r + 4; ro++) {
+                for (let co = c; co <= c + 3; co++) {
+                  if (isCellChecked(sheet.getCell(ro, co))) {
+                    nivel++;
+                  }
+                }
+              }
+            }
 
             const item = {
-              nombre: itemName.trim(),
+              nombre: itemName,
               nivel: nivel
             };
 
@@ -666,11 +751,20 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // Observaciones
+      // 4. Observaciones (extraer todas las filas de texto de observaciones sin duplicar)
       let obsText = '';
-      for (let r = obsStartRow; r <= 150; r++) {
-        const val = sheet.getCell(r, 1).value;
-        if (val) obsText += String(val) + '\n';
+      if (obsStartRow > 0) {
+        for (let r = obsStartRow; r <= Math.min(sheet.rowCount, obsStartRow + 100); r++) {
+          const seenInRow = new Set<string>();
+          for (let c = 1; c <= 32; c++) {
+            const txt = getCellText(sheet.getCell(r, c)).trim();
+            if (txt && !seenInRow.has(txt)) {
+              seenInRow.add(txt);
+              obsText += txt + '\n';
+              break;
+            }
+          }
+        }
       }
       report.observaciones = obsText.trim();
 

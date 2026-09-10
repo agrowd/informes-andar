@@ -1,5 +1,47 @@
 # 🗓️ Workcycle Log
 
+## 2026-09-10 (Parser de Word con IA, Soporte de Meses Faltantes en Excel, Generador de Informe Final Anual y Corrección de Zona Horaria)
+- **Objetivo**: Atender integralmente la solicitud del usuario:
+  1. Uso de IA (OpenAI `gpt-4o-mini` con formato JSON) en la carga e interpretación automática de Word manuales (`/api/reports/upload-manual-docx`), eliminando cualquier falla tipográfica o de títulos y asociando el concurrente exacto de los 75 oficiales.
+  2. Resolución de carga de meses faltantes en planillas Excel (ej: Agosto, Septiembre) mediante soporte de meses adicionales (`AGOSTO`, `SEPTIEMBRE`, `SETIEMBRE`, etc.) sin sobrescribir ni borrar los existentes de Abril/Mayo/Junio, con botón directo de carga por concurrente en `/forms`.
+  3. Arquitectura y flujo para la generación del **Informe Final Anual**:
+     - Estructura idéntica al informe trimestral (las 12 secciones institucionales en la plantilla oficial .docx `trimestral_template.docx` con `report_type = 'FINAL'`).
+     - Consolidación longitudinal con IA de los 4 bloques: Trimestral 1 (Ene-Mar, Word manual) + Mensuales 1 (Abr-Jun, cuadrículas) + Trimestral 2 (Abr-Jun) + Mensuales 2 (Ago-Sep, cuadrículas).
+     - Creación de endpoint dedicado `POST /api/reports/final`, generador `finalReportGenerator.ts`, modal interactivo `GenerateFinalReportModal` con checklist visual de insumos y botón `🏆 Generar Informe Final Anual` en `/reports`.
+  4. Corrección de la zona horaria del servidor configurando `TZ: 'America/Argentina/Buenos_Aires'` en PM2 y unificando los formateadores de fecha/hora con `es-AR` (24 hs) y timezone forzado.
+- **Acciones Realizadas**:
+  1. **Zona Horaria y Formateo**:
+     - `ecosystem.config.cjs` y `ecosystem.config.js`: agregada variable `TZ: 'America/Argentina/Buenos_Aires'`.
+     - `src/lib/formatters.ts`: implementadas `formatDateTime` y `formatDate` con `timeZone: 'America/Argentina/Buenos_Aires'` y locale `es-AR`.
+     - Actualizadas vistas `/`, `/forms`, `/reports`, `/reports/[id]` y `/audit` con los nuevos formateadores.
+  2. **Parser con IA para Word Manuales (`POST /api/reports/upload-manual-docx`)**:
+     - Integrada función `parseDocxWithAI` utilizando `gpt-4o-mini` con `response_format: { type: 'json_object' }`.
+     - Inyecta el catálogo completo de los 75 concurrentes de Postgres y facilitadores.
+     - Extrae con precisión las 12 secciones narrativas institucionales oficiales.
+     - Mantiene fallback determinístico con expresiones regulares si no hay API key o hay error de red.
+  3. **Meses Faltantes en Importador Excel (`POST /api/youngs/import-excel`)**:
+     - `getMonthNumber`: Reconoce variantes de todos los meses (`AGOSTO`, `SEPTIEMBRE`, `SETIEMBRE`, etc.).
+     - Soporta `youngId` en el payload de `formData` para asociar planillas directamente al concurrente.
+     - Preserva meses existentes en `forms` mediante `UPSERT` por concurrente y mes.
+     - Agregado botón `📥 Subir Meses Excel` en la cabecera de cada concurrente en `/forms`.
+  4. **Informe Final Anual**:
+     - Creado `src/lib/ai/finalReportGenerator.ts`: Generador con IA (`gpt-4o`/`gpt-4o-mini`) que sintetiza los 4 momentos del año en las 12 secciones institucionales en tiempo presente y tono positivo.
+     - Creado endpoint `src/app/api/reports/final/route.ts`:
+       * `GET`: Chequea en tiempo real la disponibilidad de los 4 insumos para el concurrente seleccionado.
+       * `POST`: Consolida los 4 bloques, genera la narrativa con IA y almacena en `reports` con `report_type = 'FINAL'`.
+     - Actualizado `src/app/api/reports/[id]/.docx/route.ts`: Soporta descarga de informes tipo `FINAL` utilizando la plantilla institucional oficial `trimestral_template.docx`.
+     - Creado modal `src/app/_components/GenerateFinalReportModal.tsx` e integrado en `src/app/reports/page.tsx` con botón `🏆 Generar Informe Final Anual` y badge ámbar para informes finales.
+  5. **Verificación y Despliegue en Producción**:
+     - Compilación local `npm run build`: Exitosa con 0 errores (18/18 páginas generadas).
+     - Despliegue vía SFTP de 49 archivos a `/srv/informes-andar` en el VPS (`149.50.128.73:5782`).
+     - Compilación remota `npm run build` en el VPS: Exitosa con 0 errores.
+     - Reiniciado PM2 con `--update-env` (PID 117920, status online).
+     - Verificada variable `TZ: America/Argentina/Buenos_Aires` activa en PM2.
+     - Verificado endpoint de producción HTTP 200 en `http://149.50.128.73:8000/login`.
+- **Estado**: Completado y Desplegado en Producción ✅
+
+
+
 ## 2026-09-10 (Filtrado Dinámico por Grupo Institucional y Generador Rápido Trimestral en Cuadrículas Mensuales)
 - **Objetivo**: A petición del usuario ("Que aca haya un filtro por grupo asi como admin puedo generar el informe trimestral"), implementar en la vista de Cuadrículas Mensuales (`/forms`) un sistema de filtrado interactivo por los 7 grupos institucionales para facilitar a administradores y coordinadores la búsqueda de concurrentes y la generación de sus informes trimestrales.
 - **Acciones Realizadas**:

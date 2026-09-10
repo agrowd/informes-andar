@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.7.9] - 2026-09-10
+### Added
+- **Parser con IA para Informes Word Manuales (`POST /api/reports/upload-manual-docx`)**:
+  - Extracción inteligente guiada por `gpt-4o-mini` (con fallback regex) que reconoce sin errores de tipografía las 12 secciones narrativas institucionales oficiales.
+  - Inyección en el prompt del catálogo oficial de los 75 concurrentes de Postgres y facilitadores para vinculación fidedigna de entidad.
+- **Soporte de Meses Faltantes en Importador Excel (`POST /api/youngs/import-excel`)**:
+  - Detección flexible de meses complementarios (`AGOSTO`, `SEPTIEMBRE`, etc.).
+  - `UPSERT` en `forms` que preserva los meses previos existentes (`2026-04`, `2026-05`, `2026-06`) e inserta los nuevos sin borrar información.
+  - Botón directo `📥 Subir Meses Excel` en la cabecera de cada concurrente en `/forms`.
+- **Generador de Informe Final Anual y Modal de Diagnóstico**:
+  - Motor con IA (`finalReportGenerator.ts`) que consolida los 4 momentos del año (Trimestral 1 Ene-Mar, Cuadrículas 1 Abr-Jun, Trimestral 2 Abr-Jun, Cuadrículas 2 Ago-Sep) en las 12 secciones institucionales en tiempo presente y tono positivo.
+  - Endpoint `POST /api/reports/final` y `GET /api/reports/final?youngId=XX` con checklist visual de insumos disponibles.
+  - Componente modal interactivo `GenerateFinalReportModal` accesible desde el botón `🏆 Generar Informe Final Anual` en `/reports`.
+  - Descarga de Word oficial en `.docx` para informes de tipo `FINAL` utilizando la plantilla institucional `trimestral_template.docx`.
+
+### Fixed
+- **Zona Horaria y Formateo Unificado (`America/Argentina/Buenos_Aires`)**:
+  - Configuración de `TZ: 'America/Argentina/Buenos_Aires'` en `ecosystem.config.cjs` y reinicio de PM2 con `--update-env`.
+  - Unificación de formateadores de fecha y hora en `src/lib/formatters.ts` con locale `es-AR` (formato 24 hs), eliminando el desfase de 3 horas en la visualización.
+
 ## [1.7.8] - 2026-09-03
 ### Fixed
 - **Saneamiento Fidedigno de Cuadrículas y Corrección de Grupos**:

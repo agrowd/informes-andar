@@ -3,6 +3,7 @@ import { connectToDB, sql } from '@/lib/db';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import mammoth from 'mammoth';
+import OpenAI from 'openai';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -16,8 +17,149 @@ function normalize(str: string): string {
     .trim();
 }
 
-// Función para parsear texto de Word extraído e intentar separar las 12 secciones oficiales
-function parseDocxSections(text: string): Record<string, string> {
+const SECTION_KEYS = [
+  'metaAlcanzada',
+  'participacion',
+  'integracionRelaciones',
+  'actividadesRelacionadas',
+  'vidaIndependiente',
+  'habilidadesViajar',
+  'desarrolloPersonal',
+  'metasDeportivas',
+  'metasSociales',
+  'dimensionesCalidadVida',
+  'actividadesComplementarias',
+  'mejoraCalidadVida'
+];
+
+/**
+ * Parser con IA (OpenAI gpt-4o-mini con modo JSON)
+ * Lee el texto completo extraído del Word, cruza contra el catálogo oficial de concurrentes
+ * y facilitadores de Granja Andar, e interpreta las 12 secciones institucionales sin errores.
+ */
+async function parseDocxWithAI(
+  extractedText: string,
+  filename: string,
+  youngsList: { id: number; nombre_completo: string; taller: string }[],
+  facilitatorsList: { id: number; name: string }[]
+): Promise<{
+  matchedYoungId: number | null;
+  youngNombre: string;
+  facilitadorNombre: string;
+  periodo: string;
+  secciones: Record<string, string>;
+} | null> {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) return null;
+
+  try {
+    const client = new OpenAI({ apiKey });
+
+    // Catálogo condensado de concurrentes para análisis
+    const youngsCatalog = youngsList
+      .map(y => `[ID ${y.id}] ${y.nombre_completo} (Grupo: ${y.taller || 'Sin taller'})`)
+      .join('\n');
+
+    const facilitatorsCatalog = facilitatorsList
+      .map(f => `[ID ${f.id}] ${f.name}`)
+      .join(', ');
+
+    const systemPrompt = `Eres un auditor técnico y analista institucional de la Asociación Civil Granja Andar.
+Tu tarea es interpretar con 100% de precisión y rigor el texto extraído de un archivo Word (.docx) redactado manualmente por un facilitador o profesional, estructurando la información en un objeto JSON.
+
+LISTADO OFICIAL DE CONCURRENTES ACTIVOS (75):
+${youngsCatalog}
+
+LISTADO DE FACILITADORES INSTITUCIONALES:
+${facilitatorsCatalog}
+
+LAS 12 SECCIONES INSTITUCIONALES OFICIALES:
+1. metaAlcanzada: Avance hacia metas personales, sueños o proyecto de vida del concurrente.
+2. participacion: Asistencia, constancia, motivación y apoyos brindados en las actividades del taller.
+3. integracionRelaciones: Relaciones sociales, vínculos con pares y facilitadores, convivencia y comunicación.
+4. actividadesRelacionadas: Actividades específicas, talleres, recetas, productos o técnicas trabajadas.
+5. vidaIndependiente: Autonomía funcional, rutinas de cuidado e higiene personal, BPM, orden de pertenencias y espacios.
+6. habilidadesViajar: Desplazamientos, movilidad en comunidad, actividades al aire libre, salidas o viajes.
+7. desarrolloPersonal: Concentración, destrezas cognitivas y motrices, aprendizaje y tolerancia a la corrección.
+8. metasDeportivas: Actividad física adaptada, ejercicios de movimiento, elongación y deportes.
+9. metasSociales: Festejos de cumpleaños, celebraciones y eventos compartidos en grupo.
+10. dimensionesCalidadVida: Bienestar emocional, autodeterminación, escucha activa y contención afectiva.
+11. actividadesComplementarias: Propuestas recreativas, artísticas, huerta, música u otras complementarias.
+12. mejoraCalidadVida: Conclusión integradora sobre la evolución favorable, bienestar anímico y metas hacia el futuro.
+
+REGLAS CRÍTICAS:
+- Identifica el 'youngId' numérico exacto del concurrente al que pertenece el informe a partir del nombre en el documento.
+- Identifica el nombre del 'facilitadorNombre'.
+- Identifica el 'periodo' temporal (ej: "2026-01 – 2026-03" para 1er Trimestre, o "2026-04 – 2026-06").
+- Clasifica TODO el texto narrativo en las 12 secciones institucionales sin resumir ni omitir frases del facilitador.
+- Si una sección no tiene contenido en el documento, coloca una cadena vacía "".
+- Responde estrictamente con un JSON válido.`;
+
+    const userPrompt = `Nombre del archivo: ${filename}
+TEXTO EXTRAÍDO DEL DOCUMENTO:
+"""
+${extractedText.substring(0, 30000)}
+"""
+
+Estructura de respuesta requerida:
+{
+  "youngId": number | null,
+  "youngNombre": string,
+  "facilitadorNombre": string,
+  "periodo": string,
+  "secciones": {
+    "metaAlcanzada": string,
+    "participacion": string,
+    "integracionRelaciones": string,
+    "actividadesRelacionadas": string,
+    "vidaIndependiente": string,
+    "habilidadesViajar": string,
+    "desarrolloPersonal": string,
+    "metasDeportivas": string,
+    "metasSociales": string,
+    "dimensionesCalidadVida": string,
+    "actividadesComplementarias": string,
+    "mejoraCalidadVida": string
+  }
+}`;
+
+    const response = await client.chat.completions.create({
+      model: 'gpt-4o-mini',
+      temperature: 0,
+      response_format: { type: 'json_object' },
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+      ]
+    });
+
+    const content = response.choices?.[0]?.message?.content;
+    if (!content) return null;
+
+    const parsed = JSON.parse(content);
+    const cleanSecciones: Record<string, string> = {};
+    const srcSecciones = parsed.secciones || parsed;
+
+    for (const key of SECTION_KEYS) {
+      const val = srcSecciones[key];
+      cleanSecciones[key] = typeof val === 'string' ? val.trim() : '';
+    }
+
+    return {
+      matchedYoungId: typeof parsed.youngId === 'number' ? parsed.youngId : (Number(parsed.youngId) || null),
+      youngNombre: parsed.youngNombre || '',
+      facilitadorNombre: parsed.facilitadorNombre || '',
+      periodo: parsed.periodo || '',
+      secciones: cleanSecciones
+    };
+  } catch (err) {
+    console.error('Error en parseDocxWithAI, recurriendo a fallback:', err);
+    return null;
+  }
+}
+
+// Función fallback determinística para separar secciones por regex
+function parseDocxSectionsDeterministic(text: string): Record<string, string> {
   const sections: Record<string, string> = {};
   const lines = text.split('\n').map(l => l.trim());
 
@@ -79,7 +221,6 @@ function parseDocxSections(text: string): Record<string, string> {
     sections[currentKey] = currentParagraphs.join('\n\n');
   }
 
-  // Si no se detectaron secciones específicas, guardar el texto completo en resumen o desarrollo
   if (Object.keys(sections).length === 0 && text.trim().length > 0) {
     sections['desarrolloPersonal'] = text.trim();
   }
@@ -87,17 +228,15 @@ function parseDocxSections(text: string): Record<string, string> {
   return sections;
 }
 
-// Extrae el período de un texto (ej: 2026-04 – 2026-06, Abril a Junio 2026, etc.)
-function detectPeriod(text: string, filename: string): string {
+// Extrae el período de un texto de manera determinística (ej: 2026-01 – 2026-03, Enero a Marzo 2026, etc.)
+function detectPeriodDeterministic(text: string, filename: string): string {
   const combined = `${filename} ${text.substring(0, 2000)}`;
 
-  // Formato YYYY-MM – YYYY-MM
   const matchIsoRange = combined.match(/\b(202\d-[0-1]\d)\s*[-–—]\s*(202\d-[0-1]\d)\b/);
   if (matchIsoRange) {
     return `${matchIsoRange[1]} – ${matchIsoRange[2]}`;
   }
 
-  // Formato meses en español (Abril - Junio 2026)
   const monthsMap: Record<string, string> = {
     'enero': '01', 'febrero': '02', 'marzo': '03', 'abril': '04',
     'mayo': '05', 'junio': '06', 'julio': '07', 'agosto': '08',
@@ -121,7 +260,7 @@ function detectPeriod(text: string, filename: string): string {
     return `${year}-${minM} – ${year}-${maxM}`;
   }
 
-  return `${year}-04 – ${year}-06`; // Default institucional estándar
+  return `${year}-01 – ${year}-03`;
 }
 
 export async function POST(req: NextRequest) {
@@ -133,7 +272,6 @@ export async function POST(req: NextRequest) {
     }
 
     const sessionUserId = session.user ? Number((session.user as any).id) : null;
-    const sessionUserRole = (session.user as any)?.role || 'FACILITADOR';
 
     const formData = await req.formData();
     const file = formData.get('file') as File;
@@ -168,34 +306,48 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'El archivo Word no contiene texto legible' }, { status: 400 });
     }
 
-    const headerText = extractedText.substring(0, 3000);
-    const normHeaderText = normalize(headerText);
-
-    // 1. Identificar o confirmar concurrente en PostgreSQL
-    let matchedYoung: any = null;
-    if (manualYoungId && sql) {
-      const yRes = await sql`SELECT id, nombre_completo, taller, assigned_facilitators, pcp FROM youngs WHERE id = ${manualYoungId}`;
-      if (yRes.rows.length > 0) matchedYoung = yRes.rows[0];
+    // Obtener catálogo de concurrentes y facilitadores desde Postgres
+    let allYoungs: any[] = [];
+    let allFacilitators: any[] = [];
+    if (sql) {
+      const yRes = await sql`SELECT id, nombre_completo, taller, assigned_facilitators, pcp FROM youngs ORDER BY id ASC`;
+      allYoungs = yRes.rows;
+      const uRes = await sql`SELECT id, name, email FROM users WHERE role = 'FACILITADOR' OR role = 'COORDINACION'`;
+      allFacilitators = uRes.rows;
     }
 
-    if (!matchedYoung && sql) {
-      const allYoungs = await sql`SELECT id, nombre_completo, taller, assigned_facilitators, pcp FROM youngs ORDER BY id ASC`;
-      
-      // Buscar coincidencia exacta o por palabras del nombre
+    // 1. Ejecutar análisis con IA (OpenAI gpt-4o-mini)
+    let aiResult: any = null;
+    try {
+      aiResult = await parseDocxWithAI(extractedText, file.name, allYoungs, allFacilitators);
+    } catch (aiErr) {
+      console.error('Fallo en parseDocxWithAI:', aiErr);
+    }
+
+    // 2. Resolver Concurrente
+    let matchedYoung: any = null;
+    if (manualYoungId) {
+      matchedYoung = allYoungs.find(y => y.id === manualYoungId) || null;
+    } else if (aiResult && aiResult.matchedYoungId) {
+      matchedYoung = allYoungs.find(y => y.id === aiResult.matchedYoungId) || null;
+    }
+
+    // Fallback de coincidencia de concurrente si la IA no dio match
+    if (!matchedYoung) {
+      const normHeaderText = normalize(extractedText.substring(0, 3000));
       let bestScore = 0;
       let candidate: any = null;
 
-      for (const y of allYoungs.rows) {
+      for (const y of allYoungs) {
         const yNorm = normalize(y.nombre_completo);
         const tokens = yNorm.split(/\s+/).filter(t => t.length > 2);
-        
+
         if (normHeaderText.includes(yNorm)) {
           candidate = y;
           bestScore = 100;
           break;
         }
 
-        // Conteo de tokens coincidentes (ej: "Juan", "Carlos", "Suarez")
         const matchingTokens = tokens.filter(tok => normHeaderText.includes(tok));
         if (tokens.length > 0 && matchingTokens.length === tokens.length) {
           candidate = y;
@@ -207,9 +359,7 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      if (candidate) {
-        matchedYoung = candidate;
-      }
+      if (candidate) matchedYoung = candidate;
     }
 
     if (!matchedYoung) {
@@ -219,28 +369,24 @@ export async function POST(req: NextRequest) {
       }, { status: 422 });
     }
 
-    // 2. Identificar Facilitador
-    let facilitadorNombre = manualFacilitador || '';
+    // 3. Resolver Facilitador
+    let facilitadorNombre = manualFacilitador || aiResult?.facilitadorNombre || '';
     let facilitatorUserId: number | null = null;
 
-    if (!facilitadorNombre && sql) {
-      const usersRes = await sql`SELECT id, name FROM users WHERE role = 'FACILITADOR'`;
-      for (const u of usersRes.rows) {
-        if (u.name && normHeaderText.includes(normalize(u.name))) {
-          facilitadorNombre = u.name;
-          facilitatorUserId = u.id;
-          break;
-        }
+    if (facilitadorNombre) {
+      const matchedUser = allFacilitators.find(u => u.name && normalize(u.name).includes(normalize(facilitadorNombre)));
+      if (matchedUser) {
+        facilitatorUserId = matchedUser.id;
+        facilitadorNombre = matchedUser.name;
       }
+    }
 
-      // Si no se encontró por nombre en el texto, buscar el facilitador asignado al joven
-      if (!facilitadorNombre && matchedYoung.assigned_facilitators && matchedYoung.assigned_facilitators.length > 0) {
-        const facId = matchedYoung.assigned_facilitators[0];
-        const assignedFac = usersRes.rows.find((u: any) => u.id === facId);
-        if (assignedFac) {
-          facilitadorNombre = assignedFac.name;
-          facilitatorUserId = assignedFac.id;
-        }
+    if (!facilitadorNombre && matchedYoung.assigned_facilitators && matchedYoung.assigned_facilitators.length > 0) {
+      const facId = matchedYoung.assigned_facilitators[0];
+      const assignedFac = allFacilitators.find(u => u.id === facId);
+      if (assignedFac) {
+        facilitadorNombre = assignedFac.name;
+        facilitatorUserId = assignedFac.id;
       }
     }
 
@@ -252,13 +398,18 @@ export async function POST(req: NextRequest) {
       facilitatorUserId = sessionUserId;
     }
 
-    // 3. Identificar Período
-    const periodo = manualPeriodo || detectPeriod(extractedText, file.name);
+    // 4. Resolver Período
+    const periodo = manualPeriodo || aiResult?.periodo || detectPeriodDeterministic(extractedText, file.name);
 
-    // 4. Parsear Secciones
-    const secciones = parseDocxSections(extractedText);
+    // 5. Resolver Secciones (IA o fallback determinístico)
+    let secciones = aiResult?.secciones || {};
+    const filledSectionsCount = Object.values(secciones).filter(v => typeof v === 'string' && v.trim().length > 0).length;
 
-    // 5. Construir objeto de datos del informe
+    if (filledSectionsCount === 0) {
+      secciones = parseDocxSectionsDeterministic(extractedText);
+    }
+
+    // 6. Construir objeto de datos del informe
     const datosGenerales = {
       nombreCompleto: matchedYoung.nombre_completo,
       grupo: matchedYoung.taller || 'Sin grupo',
@@ -269,7 +420,8 @@ export async function POST(req: NextRequest) {
       periodo: periodo,
       origen: 'DOCX_MANUAL',
       archivoOriginal: file.name,
-      fechaSubida: new Date().toISOString()
+      fechaSubida: new Date().toISOString(),
+      metodoInterpretacion: filledSectionsCount > 0 ? 'IA_GPT4O_MINI' : 'DETERMINISTICO'
     };
 
     const reportData = {
@@ -280,7 +432,7 @@ export async function POST(req: NextRequest) {
       reportType: 'TRIMESTRAL'
     };
 
-    // 6. Guardar en Postgres
+    // 7. Guardar en Postgres
     if (sql) {
       const insertResult = await sql`
         INSERT INTO reports (
@@ -324,7 +476,13 @@ export async function POST(req: NextRequest) {
             ${newReport.id},
             'IMPORT_MANUAL_DOCX',
             ${sessionUserId},
-            ${JSON.stringify({ filename: file.name, youngId: matchedYoung.id, periodo, facilitadorNombre })}::jsonb,
+            ${JSON.stringify({ 
+              filename: file.name, 
+              youngId: matchedYoung.id, 
+              periodo, 
+              facilitadorNombre,
+              metodo: datosGenerales.metodoInterpretacion 
+            })}::jsonb,
             NOW()
           )
         `;
@@ -335,7 +493,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({
         ok: true,
         reportId: newReport.id,
-        message: 'Informe trimestral cargado e interpretado exitosamente desde Word (.docx)',
+        message: 'Informe trimestral interpretado con IA y cargado exitosamente desde Word (.docx)',
         report: {
           id: String(newReport.id),
           youngId: String(matchedYoung.id),
@@ -344,8 +502,9 @@ export async function POST(req: NextRequest) {
           facilitadorNombre,
           periodo,
           reportType: 'TRIMESTRAL',
-          seccionesCount: Object.keys(secciones).length,
-          filename: file.name
+          seccionesCount: Object.values(secciones).filter((v: any) => typeof v === 'string' && v.trim().length > 0).length,
+          filename: file.name,
+          interpretacion: datosGenerales.metodoInterpretacion
         }
       }, { status: 201 });
     }

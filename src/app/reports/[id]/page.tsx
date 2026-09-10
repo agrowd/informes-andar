@@ -2,12 +2,15 @@
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import EditableText from '../../_components/EditableText';
+import { formatApellidoNombre, formatDateTime, formatDate } from '@/lib/formatters';
 
 const REPORT_TYPE_LABELS: Record<string, string> = {
   'MENSUAL': '📄 Mensual',
   'TRIMESTRAL': '📋 Trimestral',
   'SEMESTRAL': '📑 Semestral',
   'ANUAL': '📚 Anual',
+  'FINAL': '🏆 Informe Final',
+  'INFORME_FINAL': '🏆 Informe Final',
 };
 
 const REPORT_TYPE_COLORS: Record<string, string> = {
@@ -15,6 +18,8 @@ const REPORT_TYPE_COLORS: Record<string, string> = {
   'TRIMESTRAL': '#8B5CF6',
   'SEMESTRAL': '#F59E0B',
   'ANUAL': '#10B981',
+  'FINAL': '#D97706',
+  'INFORME_FINAL': '#D97706',
 };
 
 export default function ReportReview({ params }: { params: { id: string } }) {
@@ -392,7 +397,7 @@ export default function ReportReview({ params }: { params: { id: string } }) {
           <div>
             <strong style={{ color: '#047857', fontSize: '14px' }}>Versión de Word Personalizada Activa</strong>
             <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#065F46' }}>
-              Se está sirviendo y guardando una versión editada del Word: <strong>{data.editedDocxFilename}</strong> {data.editedAt && `(subida el ${new Date(data.editedAt).toLocaleString('es-AR')})`}.
+              Se está sirviendo y guardando una versión editada del Word: <strong>{data.editedDocxFilename}</strong> {data.editedAt && `(subida el ${formatDateTime(data.editedAt)})`}.
             </p>
           </div>
         </div>
@@ -423,7 +428,7 @@ export default function ReportReview({ params }: { params: { id: string } }) {
               <tbody>
                 {auditHistory.map((a) => (
                   <tr key={a._id || a.id}>
-                    <td>{new Date(a.createdAt || a.created_at).toLocaleString('es-AR')}</td>
+                    <td>{formatDateTime(a.createdAt || a.created_at)}</td>
                     <td><span className="ga-badge">{a.action}</span></td>
                     <td>
                       <small style={{ color: 'var(--muted)' }}>
@@ -530,7 +535,7 @@ export default function ReportReview({ params }: { params: { id: string } }) {
               gap: '10px 20px',
               boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.01)'
             }}>
-              <div><strong>Nombre:</strong> {data.jovenNombre || rep.datosGenerales?.nombreCompleto}</div>
+              <div><strong>Apellido y Nombre:</strong> {formatApellidoNombre(data.jovenNombre || rep.datosGenerales?.nombreCompleto || '')}</div>
               <div><strong>Taller/Grupo:</strong> {data.grupo || rep.datosGenerales?.grupo}</div>
               <div><strong>Facilitadores:</strong> {rep.datosGenerales?.facilitadores}</div>
               <div><strong>Meta Anual / Sueño:</strong> {rep.datosGenerales?.metaSueno}</div>
