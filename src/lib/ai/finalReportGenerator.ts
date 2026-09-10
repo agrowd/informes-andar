@@ -29,7 +29,26 @@ export async function generateFinalReportNarrative(options: FinalReportGenerator
       messages: [
         {
           role: 'system',
-          content: 'Eres un profesional de máxima jerarquía técnica en la Asociación Civil Granja Andar, especializado en la elaboración de Informes Evolutivos Finales Anuales bajo el modelo de Planificación Centrada en la Persona (PCP) y Calidad de Vida. Tu objetivo es redactar un documento anual integrador y longitudinal que resuma la evolución integral del concurrente a lo largo de todo el ciclo institucional (integrando el 1er Trimestre Ene-Mar, Cuadrículas Abr-Jun, 2do Trimestre Abr-Jun y Cuadrículas Ago-Sep). DIRECTIVAS ESTRICTAS: 1) Redacción fluida, cálida, positiva y profesional, redactada en tiempo PRESENTE. 2) Cero listas o viñetas. 3) PROHIBIDO usar frases de carencia o falta de datos ("no se registraron", "sin datos"). Siempre redactar en positivo indicando continuidad y avance activo. 4) Responde estrictamente con un JSON con las 12 secciones institucionales oficiales.'
+          content: `Eres un profesional de máxima jerarquía técnica en la Asociación Civil Granja Andar, especializado en la elaboración de Informes Evolutivos Finales Anuales bajo el modelo de Planificación Centrada en la Persona (PCP) y Calidad de Vida. Tu objetivo es redactar un documento anual integrador y longitudinal que resuma la evolución integral del concurrente a lo largo de todo el ciclo institucional (integrando el 1er Trimestre Ene-Mar, Cuadrículas Abr-Jun, 2do Trimestre Abr-Jun y Cuadrículas Ago-Sep).
+
+DIRECTIVAS ESTRICTAS DE ESTILO INSTITUCIONAL:
+1) PROHIBICIÓN TERMINANTE DE TÉRMINOS PEDAGÓGICOS O EDUCATIVO-TERAPÉUTICOS:
+   Granja Andar es un Centro de Día y espacio de formación sociolaboral y ocupacional, NO un Centro Educativo Terapéutico (CET) ni una escuela.
+   QUEDA TERMINANTEMENTE PROHIBIDO usar palabras como: "pedagogía", "pedagógico", "pedagógica", "pedagógicos", "pedagógicas", "psicopedagógico", "educativo terapéutico", "CET", "malla curricular", "contenidos pedagógicos", "alumno", "alumna", "estudiante", "docente", "profesor", "maestro".
+   Utiliza exclusivamente: "concurrente", "joven", "persona", "facilitador/a", "equipo facilitador", "apoyos formativos/sociolaborales", "propuestas ocupacionales", "talleres", "Centro de Día".
+2) VARIABILIDAD AL REFERIRSE AL CONCURRENTE (PROHIBIDO REPETIR EL NOMBRE COMPLETO EN CADA PUNTO):
+   No comiences cada una de las 12 secciones repitiendo el nombre completo del joven. Alterna de manera fluida y humana:
+   - Sujeto tácito ("Sostiene...", "Demuestra...", "Participa...", "Afianza...").
+   - Primer nombre de pila únicamente de forma esporádica.
+   - Términos como "el concurrente", "la joven", "el joven", "él", "ella".
+   - Inicios contextuales centrados en el área o dinámica ("En el espacio formativo...", "En cuanto a sus rutinas...", "Durante los talleres...").
+   El nombre completo solo debe figurar al inicio de la primera sección o en la conclusión general.
+3) TIEMPO PRESENTE ESTRICTO:
+   Toda tu redacción debe estar expresada estrictamente en tiempo PRESENTE (ej: "asiste", "participa", "colabora", "consolida").
+4) TONO 100% POSITIVO:
+   Queda TERMINANTEMENTE PROHIBIDO usar frases de carencia o falta de datos ("no se registraron", "sin datos"). Siempre redactar en positivo indicando continuidad y avance activo.
+5) FORMATO JSON:
+   Responde estrictamente con un JSON con las 12 secciones institucionales oficiales.`
         },
         {
           role: 'user',
@@ -43,25 +62,63 @@ export async function generateFinalReportNarrative(options: FinalReportGenerator
 
     const cleanJson = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
     const parsed = JSON.parse(cleanJson);
-    return cleanPositiveNarrative(parsed);
+    return cleanPositiveNarrative(parsed, options.jovenNombre);
   } catch (error) {
     console.error('Error llamando a OpenAI para narrativa de informe final:', error);
-    return cleanPositiveNarrative(generateDeterministicFinalFallback(options));
+    return cleanPositiveNarrative(generateDeterministicFinalFallback(options), options.jovenNombre);
   }
 }
 
-function cleanPositiveNarrative(obj: any): Record<string, string> {
+function cleanPositiveNarrative(obj: any, jovenNombre?: string): Record<string, string> {
   if (!obj || typeof obj !== 'object') return {};
   const result: Record<string, string> = {};
+
+  const nameTrimmed = (jovenNombre || '').trim();
+  const fullNamePattern = nameTrimmed.length > 2
+    ? new RegExp(`^\\s*${nameTrimmed.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[,\\s]+`, 'i')
+    : null;
+
+  let sectionIndex = 0;
   for (const [k, v] of Object.entries(obj)) {
+    sectionIndex++;
     if (typeof v === 'string') {
       let cleaned = v;
+      // 1. Frases negativas / falta de datos
       cleaned = cleaned.replace(/aunque no se registran? [^,.]+[,.]?/gi, '');
       cleaned = cleaned.replace(/a pesar de no contar con registros? [^,.]+[,.]?/gi, '');
       cleaned = cleaned.replace(/no se registran? datos específicos [^,.]+[,.]?/gi, 'se continúa trabajando activamente en esta área.');
       cleaned = cleaned.replace(/no se registran? salidas específicas[,.]?/gi, 'se continúa disfrutando de las actividades al aire libre dentro del predio institucional,');
       cleaned = cleaned.replace(/no se registran? [^,.]+ durante el ciclo[,.]?/gi, 'se continúa trabajando y avanzando con el acompañamiento de los facilitadores.');
       cleaned = cleaned.replace(/sin novedades particulares registradas [^,.]+[,.]?/gi, 'con un proceso de desarrollo continuo.');
+
+      // 2. Erradicación estricta de términos pedagógicos / CET
+      cleaned = cleaned.replace(/apoyos? pedag[oó]gicos?/gi, 'apoyos formativos');
+      cleaned = cleaned.replace(/orientaciones y apoyos pedag[oó]gicos?/gi, 'orientaciones y apoyos formativos');
+      cleaned = cleaned.replace(/estrategias? pedag[oó]gicas?/gi, 'estrategias formativas');
+      cleaned = cleaned.replace(/propuestas? pedag[oó]gicas?/gi, 'propuestas formativas');
+      cleaned = cleaned.replace(/[aá]rea pedag[oó]gica/gi, 'área formativa');
+      cleaned = cleaned.replace(/pedag[oó]gic[oa]s?/gi, 'formativo');
+      cleaned = cleaned.replace(/pedagog[ií]a/gi, 'formación ocupacional');
+      cleaned = cleaned.replace(/psicopedag[oó]gic[oa]s?/gi, 'formativo');
+      cleaned = cleaned.replace(/psicopedagog[ií]a/gi, 'formación sociolaboral');
+      cleaned = cleaned.replace(/centro educativo terap[eé]utico/gi, 'Centro de Día');
+      cleaned = cleaned.replace(/educativo[as]? terap[eé]utico[as]?/gi, 'sociolaboral');
+      cleaned = cleaned.replace(/contenidos curriculares/gi, 'propuestas de taller');
+      cleaned = cleaned.replace(/malla curricular/gi, 'plan de talleres');
+      cleaned = cleaned.replace(/\balumnos\b/gi, 'concurrentes');
+      cleaned = cleaned.replace(/\balumno\b/gi, 'concurrente');
+      cleaned = cleaned.replace(/\balumnas\b/gi, 'concurrentes');
+      cleaned = cleaned.replace(/\balumna\b/gi, 'concurrente');
+      cleaned = cleaned.replace(/\bdocentes\b/gi, 'facilitadores');
+      cleaned = cleaned.replace(/\bdocente\b/gi, 'facilitador/a');
+
+      // 3. Variación de sujeto: evitar que cada punto comience repitiendo el nombre completo
+      if (fullNamePattern && sectionIndex > 1 && fullNamePattern.test(cleaned)) {
+        cleaned = cleaned.replace(fullNamePattern, '');
+        cleaned = cleaned.trim();
+        cleaned = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+      }
+
       cleaned = cleaned.replace(/\s+/g, ' ').trim();
       cleaned = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
       result[k] = cleaned;
@@ -191,14 +248,16 @@ ${m2Text}
 2. **FIDELIDAD ABSOLUTA**: Utiliza las situaciones, anécdotas, recetas, productos y observaciones registradas en los 4 insumos.
 3. **TIEMPO PRESENTE Y TONO POSITIVO**: Toda la redacción debe estar en tiempo presente, transmitiendo calidez, respeto y dignidad en el marco de la Planificación Centrada en la Persona.
 4. **ESTILO NARRATIVO**: Redacta párrafos estructurados de 4 a 6 líneas por sección, sin viñetas.
+5. **VARIABILIDAD AL NOMBRAR A LA PERSONA (PROHIBIDO REPETIR EL NOMBRE COMPLETO EN CADA PUNTO)**: No comiences cada sección con el nombre completo de ${jovenNombre}. Alterna de forma natural: sujeto tácito ("Sostiene...", "Participa...", "Demuestra..."), primer nombre de pila de forma ocasional, o términos como "el concurrente", "la joven", "el joven".
+6. **PROHIBIDO USAR TÉRMINOS PEDAGÓGICOS O EDUCATIVO-TERAPÉUTICOS**: Granja Andar es un Centro de Día y espacio de inclusión sociolaboral/ocupacional. PROHIBIDO usar "pedagogía", "pedagógico/a", "CET", "alumno/a", "docente", "profesor". Usa "apoyos formativos/sociolaborales", "talleres", "concurrente", "facilitador/a".
 
 ## FORMATO DE SALIDA (JSON ESTRICTO)
 Responde con un objeto JSON con las siguientes 12 claves oficiales:
 {
-  "metaAlcanzada": "Síntesis anual de cómo ${jovenNombre} ha alcanzado y consolidado sus metas y sueños (${pcpSuenos}), vinculándolas con sus roles y aprendizajes en ${grupoNombre}.",
-  "participacion": "Balance de su asistencia, compromiso, regularidad y adaptación a lo largo de todo el ciclo en ${grupoNombre}, reconociendo los apoyos brindados por el equipo facilitador.",
+  "metaAlcanzada": "Síntesis anual de cómo la persona ha alcanzado y consolidado sus metas y sueños (${pcpSuenos}), vinculándolas con sus roles y aprendizajes en ${grupoNombre}.",
+  "participacion": "Balance de su asistencia, compromiso, regularidad y adaptación a lo largo de todo el ciclo en ${grupoNombre}, reconociendo los apoyos formativos brindados por el equipo facilitador.",
   "integracionRelaciones": "Evolución de sus vínculos afectivos, comunicación y convivencia con pares y facilitadores a lo largo de las distintas etapas del año.",
-  "actividadesRelacionadas": "Consolidación de las destrezas, técnicas, recetas o proyectos específicos que ${jovenNombre} desarrolló en sus talleres institucionales.",
+  "actividadesRelacionadas": "Consolidación de las destrezas, técnicas, recetas o proyectos específicos desarrollados en los talleres formativos institucionales.",
   "vidaIndependiente": "Avances acumulados en autonomía funcional, rutinas de cuidado e higiene personal, orden, cuidado de espacios y aplicación de Buenas Prácticas.",
   "habilidadesViajar": "Desplazamientos, salidas comunitarias, logística, paseos o actividades exteriores realizadas a lo largo del año según su nivel de autonomía.",
   "desarrolloPersonal": "Crecimiento personal, capacidad de concentración, motricidad, resolución de desafíos y receptividad ante sugerencias para superarse.",
@@ -231,16 +290,16 @@ function generateDeterministicFinalFallback(options: FinalReportGeneratorOptions
 
   return {
     metaAlcanzada: combineSection('metaAlcanzada', `A lo largo de todo el ciclo anual, ${jovenNombre} demuestra una evolución constante hacia sus metas y sueños personales: "${pcpSuenos}". Su participación en ${grupoNombre} consolida habilidades prácticas y de convivencia que fortalecen su proyecto de vida.`),
-    participacion: combineSection('participacion', `${jovenNombre} sostiene una asistencia regular y una actitud comprometida en las actividades de ${grupoNombre}, respondiendo con entusiasmo a las orientaciones y apoyos pedagógicos brindados por el equipo institucional.`),
+    participacion: combineSection('participacion', `Sostiene una asistencia regular y una actitud comprometida en las actividades de ${grupoNombre}, respondiendo con entusiasmo a las orientaciones y apoyos formativos brindados por el equipo institucional.`),
     integracionRelaciones: combineSection('integracionRelaciones', `Durante todo el período, afianza lazos de compañerismo, respeto y afecto mutuo tanto con sus pares como con los facilitadores, integrándose armoniosamente en las dinámicas de convivencia grupal.`),
     actividadesRelacionadas: combineSection('actividadesRelacionadas', `En sus talleres formativos consolida técnicas, destrezas prácticas y competencias sociolaborales, mostrando constancia y dedicación en cada propuesta desarrollada en la institución.`),
-    vidaIndependiente: combineSection('vidaIndependiente', `En el ámbito de la vida independiente, ${jovenNombre} fortalece hábitos de autonomía personal, orden de pertenencias y cuidado de los espacios comunes, asumiendo responsabilidades con madurez.`),
+    vidaIndependiente: combineSection('vidaIndependiente', `En el ámbito de la autonomía y vida independiente, consolida hábitos de orden de pertenencias y cuidado de los espacios comunes, asumiendo responsabilidades con madurez.`),
     habilidadesViajar: combineSection('habilidadesViajar', `Se desenvuelve con seguridad y confianza en desplazamientos dentro de la institución y en actividades al aire libre, respetando normas de convivencia y disfrutando del entorno comunitario.`),
     desarrolloPersonal: combineSection('desarrolloPersonal', `Evidencia una notable capacidad de aprendizaje, concentración y superación ante nuevos desafíos, incorporando favorablemente las sugerencias del equipo técnico.`),
     metasDeportivas: combineSection('metasDeportivas', `Participa con agrado en propuestas de actividad física adaptada, elongación y rutinas saludables, favoreciendo su bienestar corporal y el compañerismo lúdico.`),
     metasSociales: combineSection('metasSociales', `Forma parte activa de celebraciones institucionales, cumpleaños temáticos y eventos compartidos, expresando alegría y sentido de pertenencia en su grupo.`),
     dimensionesCalidadVida: combineSection('dimensionesCalidadVida', `Se fortalecen integralmente las dimensiones de bienestar emocional, autodeterminación e inclusión social mediante espacios de escucha, diálogo y contención afectiva.`),
     actividadesComplementarias: combineSection('actividadesComplementarias', `Disfruta de propuestas artísticas, recreativas y de estímulo creativo compartidas con el grupo, que enriquecen su jornada cotidiana.`),
-    mejoraCalidadVida: combineSection('mejoraCalidadVida', `El balance anual refleja una evolución sumamente favorable en el bienestar anímico, la autonomía y la calidad de vida de ${jovenNombre}, consolidando las bases para continuar avanzando en el próximo período.`)
+    mejoraCalidadVida: combineSection('mejoraCalidadVida', `El balance anual refleja una evolución sumamente favorable en el bienestar anímico, la autonomía y la calidad de vida, consolidando las bases para continuar avanzando en el próximo período con el acompañamiento de Granja Andar.`)
   };
 }

@@ -1,5 +1,30 @@
 # 🗓️ Workcycle Log
 
+## 2026-09-10 (Variabilidad de Referencia al Concurrente y Erradicación Total de Términos Pedagógicos/CET)
+- **Objetivo**: A requerimiento expreso del usuario ("Que cuando se generen los informes trimestrales y el final cuando habla del concurrente no diga siempre lo mismo ej el nombre, ya que hay una tendencia a repetir en cada punto el nombre completo del joven. Ademas no mencionar pedagogia ni nada relacionado a este termino porque no somos un centro educativo terapeutico"):
+  1. Erradicar por completo la mención de "pedagogía", "pedagógico/a", "contenidos pedagógicos", "malla curricular", "alumno/a", "docente", etc., aclarando en la base y prompts que Granja Andar es un Centro de Día enfocado en la inclusión sociolaboral, autonomía y calidad de vida (no un Centro Educativo Terapéutico ni escuela).
+  2. Eliminar la monotonía de repetir el nombre completo del joven al inicio de cada una de las 12 secciones narrativas en informes trimestrales y finales, alternando naturalmente con sujeto tácito, primer nombre de pila, pronombres o sustantivos respetuosos ("el joven", "la concurrente").
+- **Acciones Realizadas**:
+  1. **Motor de Informes Trimestrales (`src/lib/ai/quarterlyGenerator.ts`)**:
+     - Actualizado el `system prompt` con directiva estricta anti-pedagogía y variabilidad de referencia.
+     - En `buildQuarterlyPrompt`, se purgaron las inyecciones de `${jovenNombre}` en la descripción de cada clave JSON del output, sustituyendo "apoyos pedagógicos" por "apoyos formativos, emocionales y prácticos".
+     - En `cleanPositiveNarrative`, se incorporó un sanitizador regex para erradicar cualquier residuo de terminología pedagógica/CET y se implementó un mecanismo para remover el nombre completo al inicio de las secciones 2 a 12, dejando la oración con sujeto tácito natural.
+     - En `generateDeterministicFallback`, se eliminó el nombre completo al inicio de las secciones 2 a 12, variando con sujeto tácito y construcciones contextuales de taller.
+  2. **Motor de Informes Finales (`src/lib/ai/finalReportGenerator.ts`)**:
+     - Actualizado el `system prompt` con directivas estrictas equivalentes.
+     - En `buildFinalReportPrompt`, se removió `${jovenNombre}` de las descripciones de las claves JSON 2 a 12.
+     - En `cleanPositiveNarrative`, se integró el sanitizador regex y variador de sujeto.
+     - En `generateDeterministicFinalFallback`, se reemplazó "apoyos pedagógicos" por "apoyos formativos" y se eliminó la repetición del nombre completo al inicio de los párrafos.
+  3. **Sistema PCP y Prompts Globales**:
+     - En `src/app/api/youngs/generate-pcp/route.ts`: Reemplazado "psicopedagogo" por "profesional de inclusión sociolaboral y desarrollo personal especializado en Planificación Centrada en la Persona (PCP)".
+     - En `src/lib/prompts/system_prompt.md`: Agregadas las cláusulas de prohibición de términos pedagógicos/CET y variabilidad de referencia.
+  4. **Compilación, Despliegue y Validación**:
+     - `npm run build` validado localmente con 0 errores (18/18 páginas generadas).
+     - Desplegados archivos vía SFTP y compilado en el VPS de producción (`149.50.128.73:5782`).
+     - Reiniciado daemon PM2 con éxito (PID 119840, status online).
+     - Verificado endpoint de producción HTTP 200 en `http://149.50.128.73:8000/login`.
+- **Estado**: Completado y Desplegado en Producción ✅
+
 ## 2026-09-10 (Parser de Word con IA, Soporte de Meses Faltantes en Excel, Generador de Informe Final Anual y Corrección de Zona Horaria)
 - **Objetivo**: Atender integralmente la solicitud del usuario:
   1. Uso de IA (OpenAI `gpt-4o-mini` con formato JSON) en la carga e interpretación automática de Word manuales (`/api/reports/upload-manual-docx`), eliminando cualquier falla tipográfica o de títulos y asociando el concurrente exacto de los 75 oficiales.

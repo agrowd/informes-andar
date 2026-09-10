@@ -238,6 +238,8 @@ Fusiona los siguientes informes evolutivos individuales de **${options.jovenNomb
 3. Destaca los AVANCES más significativos y las ÁREAS que continúan en proceso de desarrollo activo con apoyo del equipo.
 4. Mantén un tono profesional, institucional, positivo y cálido, propio de la Planificación Centrada en la Persona.
 5. Queda estrictamente PROHIBIDO escribir frases negativas como "No se registraron observaciones" o "Aunque no se registran datos". En su lugar, redacta siempre en positivo señalando que se continúa trabajando y avanzando activamente en dicha área con el acompañamiento del equipo institucional.
+6. PROHIBICIÓN TERMINANTE DE TÉRMINOS PEDAGÓGICOS O EDUCATIVO-TERAPÉUTICOS: Granja Andar es un Centro de Día / Asociación Civil, no un Centro Educativo Terapéutico (CET) ni una escuela. PROHIBIDO usar palabras como "pedagogía", "pedagógico/a", "malla curricular", "alumno/a", "docente", "profesor". Utilizar siempre: "concurrente", "joven", "facilitador/a", "apoyos formativos/sociolaborales", "Centro de Día".
+7. VARIABILIDAD AL REFERIRSE AL CONCURRENTE: Queda prohibido comenzar cada sección repitiendo el nombre completo de la persona. Alterna con sujeto tácito, primer nombre de pila ocasional o términos como "el concurrente", "la joven", "el joven".
 
 ## DATOS DE ENTRADA (por sección y período)
 

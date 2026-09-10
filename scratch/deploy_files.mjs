@@ -52,6 +52,7 @@ const FILES_TO_DEPLOY = [
   'src/lib/ai/finalReportGenerator.ts',
   'src/app/api/reports/final/route.ts',
   'src/app/_components/GenerateFinalReportModal.tsx',
+  'src/lib/prompts/system_prompt.md',
   'ecosystem.config.cjs',
   'ecosystem.config.js'
 ];

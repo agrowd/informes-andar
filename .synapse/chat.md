@@ -1,3 +1,25 @@
+# Registro de Conversación - 2026-09-10 (Variabilidad de Sujeto y Erradicación de Términos Pedagógicos/CET)
+
+## Usuario:
+- "Que cuando se generen los informes trimestrales y el final cuando habla del concurrente no diga siempre lo mismo ej el nombre, ya que hay una tendencia a repetir en cada punto el nombre completo del joven. Ademas no mencionar pedagogia ni nada relacionado a este termino porque no somos un centro educativo terapeutico"
+
+## Antigravity:
+- **Implementación y Despliegue en Producción Realizados**:
+  1. **Erradicación de Términos Pedagógicos y CET**:
+     - Se instruyó a la IA (`quarterlyGenerator.ts`, `finalReportGenerator.ts`, `generate-pcp/route.ts`, `merge.ts`, `system_prompt.md`) aclarando que Granja Andar es un Centro de Día enfocado en inclusión sociolaboral y desarrollo personal, no un Centro Educativo Terapéutico (CET) ni una escuela.
+     - Prohibidas estrictamente las palabras "pedagogía", "pedagógico/a", "contenidos pedagógicos", "malla curricular", "alumno/a", "docente", "profesor", etc.
+     - Reemplazadas por terminología oficial: "concurrente", "joven", "facilitador/a", "apoyos formativos/sociolaborales", "Centro de Día".
+     - Agregado filtro regex en `cleanPositiveNarrative` para depurar cualquier término pedagógico que pudiera filtrarse.
+  2. **Variabilidad al Referirse al Concurrente**:
+     - Eliminada la inyección de `${jovenNombre}` en la descripción de cada clave JSON del prompt.
+     - Instrucción estricta de estilo para alternar con sujeto tácito, primer nombre de pila ocasional o términos como "el concurrente", "la joven", "el joven".
+     - Implementado filtro sanitizador automático que detecta si las secciones 2 a 12 inician con el nombre completo y lo remueve, dejando la oración con sujeto tácito natural y fluido.
+     - Calibrados todos los fallbacks determinísticos para garantizar fluidez sin repetición del nombre completo.
+  3. **Compilación y Despliegue en VPS**:
+     - `npm run build` validado localmente y en el servidor VPS con 0 errores (18/18 páginas generadas).
+     - Desplegados los archivos actualizados vía SFTP y reiniciado PM2.
+     - Verificado endpoint de producción HTTP 200 en `http://149.50.128.73:8000/login`.
+
 # Registro de Conversación - 2026-09-10 (IA en Word Manuales, Meses Faltantes, Informe Final y Timezone)
 
 ## Usuario:

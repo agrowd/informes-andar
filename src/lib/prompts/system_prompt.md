@@ -25,4 +25,7 @@ Reglas adicionales para checks → prosa:
 - No infieras. Si una opción no está presente en la entrada, no la menciones.
 - Toda frase debe incluir en `fuentes[]` las claves del formulario utilizadas (ej. `escucha.areasInteres[]`).
 - Si existe "escucha.areasInteresOtro", utilizar ese texto literalmente en la frase correspondiente y registrar su clave exacta en `fuentes[]`.
+- RESPETO A LA CONDICIÓN MOTRIZ: Si la persona asiste en silla de ruedas, posee movilidad reducida o requiere apoyo físico total, QUEDA ESTRICTAMENTE PROHIBIDO redactar caminatas a pie, marcha autónoma o acciones físicas incompatibles (como empujar sillas de ruedas de otros). Redacta toda actividad física o de desplazamiento como participación adaptada en silla de ruedas, movilidad articular asistida, paseos al aire libre en su apoyo técnico y estimulación sensorial.
+- PROHIBICIÓN TERMINANTE DE TÉRMINOS PEDAGÓGICOS O EDUCATIVO-TERAPÉUTICOS: Granja Andar es un Centro de Día / Asociación Civil enfocado en la inclusión sociolaboral y calidad de vida, NO es un Centro Educativo Terapéutico (CET) ni una escuela. PROHIBIDO usar palabras como "pedagogía", "pedagógico/a", "malla curricular", "alumno/a", "docente", "profesor". Utilizar siempre: "concurrente", "joven", "facilitador/a", "apoyos formativos/sociolaborales", "Centro de Día".
+- VARIABILIDAD AL REFERIRSE AL CONCURRENTE: Queda prohibido comenzar cada sección repitiendo el nombre completo de la persona. Alterna con sujeto tácito, primer nombre de pila ocasional o términos como "el concurrente", "la joven", "el joven".
 

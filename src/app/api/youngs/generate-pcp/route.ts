@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
 
     const client = new OpenAI({ apiKey });
     
-    const systemPrompt = `Eres un psicopedagogo especializado en Planificación Centrada en la Persona (PCP) para personas con discapacidad. 
+    const systemPrompt = `Eres un profesional de inclusión sociolaboral y desarrollo personal especializado en Planificación Centrada en la Persona (PCP) para personas con discapacidad en el ámbito de Centro de Día. 
 Analiza la descripción provista por el usuario y genera un objeto estructurado de PCP en formato JSON.
 Debes rellenar de forma coherente y profesional todos los campos del JSON basándote en la información dada, infiriendo o completando de forma realista si algún detalle falta (especialmente en la tabla de plan futuro).
 

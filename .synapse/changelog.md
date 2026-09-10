@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.8.0] - 2026-09-10
+### Added
+- **Variabilidad de Referencia en Informes Trimestrales y Finales**:
+  - Directivas estrictas de redacción y eliminación del nombre completo en las descripciones de claves JSON del prompt.
+  - Alternancia automática y natural mediante sujeto tácito, primer nombre de pila ocasional o términos respetuosos ("el concurrente", "la joven", "el joven").
+  - Sanitizador post-IA que previene la repetición del nombre completo al inicio de las secciones 2 a 12.
+
+### Fixed
+- **Erradicación Total de Términos Pedagógicos y Escolares/CET**:
+  - Granja Andar es un Centro de Día enfocado en la inclusión sociolaboral y calidad de vida (no un Centro Educativo Terapéutico).
+  - Prohibición estricta de palabras como "pedagogía", "pedagógico/a", "malla curricular", "alumno/a", "docente", etc. en todos los prompts del sistema (`quarterlyGenerator.ts`, `finalReportGenerator.ts`, `generate-pcp`, `merge.ts`, `system_prompt.md`).
+  - Sustitución sistemática por "apoyos formativos/sociolaborales", "propuestas de taller", "concurrente", "facilitador/a" y "Centro de Día".
+  - Filtro regex de sanitización para depurar cualquier término pedagógico que pudiera filtrarse accidentalmente.
+
 ## [1.7.9] - 2026-09-10
 ### Added
 - **Parser con IA para Informes Word Manuales (`POST /api/reports/upload-manual-docx`)**:
