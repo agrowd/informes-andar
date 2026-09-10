@@ -39,7 +39,16 @@ const FILES_TO_DEPLOY = [
   'src/app/reports/[id]/page.tsx',
   'scripts/add-docx-edit-columns.sql',
   'scripts/run-docx-migration.js',
-  'src/app/api/reports/route.ts'
+  'src/app/api/reports/route.ts',
+  'src/app/api/reports/[id]/route.ts',
+  'src/app/api/reports/upload-manual-docx/route.ts',
+  'src/app/api/reports/merge/route.ts',
+  'src/app/_components/UploadManualDocxModal.tsx',
+  'src/app/reports/page.tsx',
+  'src/app/api/reports/[id]/export-excel/route.ts',
+  'src/lib/formatters.ts',
+  'src/lib/ai/orchestrator.ts',
+  'src/lib/ai/merge.ts'
 ];
 
 const REMOTE_BASE_DIR = '/srv/informes-andar';

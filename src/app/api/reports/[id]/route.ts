@@ -114,7 +114,12 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         const pdfBuffer = await htmlToPdfBuffer(newHtml);
         const reportsDir = path.join(process.cwd(), 'public', 'pdf-reports');
         await fs.promises.mkdir(reportsDir, { recursive: true });
-        const filename = `informe-${Date.now()}.pdf`;
+        
+        const safeName = (updatedData.datosGenerales?.nombreCompleto || 'concurrente').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_').trim();
+        const safeGroup = (updatedData.datosGenerales?.grupo || updatedData.datosGenerales?.taller || 'grupo').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_').trim();
+        const d = new Date();
+        const safeDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        const filename = `informe-${params.id}-${safeName}-${safeGroup}-${safeDate}.pdf`;
         const filePath = path.join(reportsDir, filename);
         await fs.promises.writeFile(filePath, pdfBuffer);
         newPdfUrl = `/pdf-reports/${filename}`;
@@ -177,9 +182,9 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     const session = await getServerSession(authOptions as any) as any;
     const role = (session?.user as any)?.role || 'FACILITADOR';
     
-    // Solo ADMIN puede eliminar informes
-    if (role !== 'ADMIN') {
-      return NextResponse.json({ error: 'Solo ADMIN puede eliminar informes' }, { status: 403 });
+    // Solo ADMIN, COORDINACION y DIRECTOR pueden eliminar informes
+    if (!['ADMIN', 'COORDINACION', 'DIRECTOR'].includes(role)) {
+      return NextResponse.json({ error: 'Solo administradores y coordinadores pueden eliminar informes' }, { status: 403 });
     }
 
     // Verificar que el informe existe

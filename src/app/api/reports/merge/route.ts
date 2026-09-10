@@ -14,6 +14,7 @@ const VALID_MERGE_RULES: Record<string, { sourceType: string; requiredCount: num
   'TRIMESTRAL': { sourceType: 'MENSUAL', requiredCount: 3 },
   'SEMESTRAL': { sourceType: 'TRIMESTRAL', requiredCount: 2 },
   'ANUAL': { sourceType: 'SEMESTRAL', requiredCount: 2 },
+  'INFORME_FINAL': { sourceType: 'TRIMESTRAL', requiredCount: 2 },
 };
 
 export async function POST(req: NextRequest) {
@@ -27,7 +28,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { sourceReportIds, targetType } = body as {
       sourceReportIds: number[];
-      targetType: 'TRIMESTRAL' | 'SEMESTRAL' | 'ANUAL';
+      targetType: 'TRIMESTRAL' | 'SEMESTRAL' | 'ANUAL' | 'INFORME_FINAL';
     };
 
     // Validar parámetros
@@ -88,10 +89,12 @@ export async function POST(req: NextRequest) {
 
     // Obtener datos del joven para el merge
     let jovenNombre = 'Sin nombre';
+    let jovenTaller = 'Clave de Sol';
     if (youngId) {
-      const youngResult = await sql`SELECT nombre_completo FROM youngs WHERE id = ${youngId}`;
+      const youngResult = await sql`SELECT nombre_completo, taller FROM youngs WHERE id = ${youngId}`;
       if (youngResult.rows.length > 0) {
         jovenNombre = youngResult.rows[0].nombre_completo;
+        jovenTaller = youngResult.rows[0].taller || 'Clave de Sol';
       }
     }
 
@@ -120,11 +123,26 @@ export async function POST(req: NextRequest) {
       temperature: Number(process.env.LLM_TEMPERATURE ?? 0)
     });
 
+    const fechaActual = new Date();
+    const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+    if (mergeResult.report) {
+      mergeResult.report.datosGenerales = mergeResult.report.datosGenerales || {};
+      mergeResult.report.datosGenerales.nombreCompleto = jovenNombre;
+      mergeResult.report.datosGenerales.grupo = jovenTaller;
+      mergeResult.report.datosGenerales.taller = jovenTaller;
+      mergeResult.report.datosGenerales.fechaCreacion = fechaActual.toISOString();
+      mergeResult.report.datosGenerales.fechaInforme = `${fechaActual.getDate()} de ${meses[fechaActual.getMonth()]} del ${fechaActual.getFullYear()}`;
+    }
+
     // Generar PDF
     const pdfBuffer = await htmlToPdfBuffer(mergeResult.html);
     const reportsDir = path.join(process.cwd(), 'public', 'pdf-reports');
     await fs.promises.mkdir(reportsDir, { recursive: true });
-    const filename = `informe-${targetType.toLowerCase()}-${Date.now()}.pdf`;
+    
+    const safeName = jovenNombre.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_').trim();
+    const safeGroup = jovenTaller.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_').trim();
+    const safeDate = `${fechaActual.getFullYear()}-${String(fechaActual.getMonth() + 1).padStart(2, '0')}-${String(fechaActual.getDate()).padStart(2, '0')}`;
+    const filename = `informe-${targetType.toLowerCase()}-${safeName}-${safeGroup}-${safeDate}-${Date.now()}.pdf`;
     const filePath = path.join(reportsDir, filename);
     await fs.promises.writeFile(filePath, pdfBuffer);
     const pdfUrl = `/pdf-reports/${filename}`;

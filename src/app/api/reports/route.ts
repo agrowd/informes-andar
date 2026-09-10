@@ -20,6 +20,7 @@ function mapReportRow(r: any) {
     youngId: r.young_id ? String(r.young_id) : null,
     grupo: r.grupo || 'Sin grupo',
     jovenNombre: r.joven_nombre || 'Sin nombre',
+    facilitadorNombre: r.facilitador_nombre || r.data?.datosGenerales?.facilitadorNombre || r.data?.datosGenerales?.facilitador || 'Sin facilitador',
     openComments: Array.isArray(r.comments) ? r.comments.filter((c: any) => c.status !== 'RESOLVED').length : 0
   };
 }
@@ -49,9 +50,11 @@ export async function GET(req: NextRequest) {
             SELECT 
               r.id, r.periodo, r.status, r.pdf_url, r.created_at, r.comments,
               r.young_id, r.version, r.report_type, r.source_report_ids,
-              y.taller as grupo, y.nombre_completo as joven_nombre
+              y.taller as grupo, y.nombre_completo as joven_nombre,
+              COALESCE(u.name, r.data->'datosGenerales'->>'facilitadorNombre', r.data->'datosGenerales'->>'facilitador', 'Sin facilitador') as facilitador_nombre
             FROM reports r
             LEFT JOIN youngs y ON r.young_id = y.id
+            LEFT JOIN users u ON r.generated_by = u.id
             WHERE r.periodo = ${periodoFilter} AND r.young_id = ${parseInt(youngIdFilter)} AND r.generated_by = ${userId}
             ORDER BY r.created_at DESC
             LIMIT 1
@@ -61,9 +64,11 @@ export async function GET(req: NextRequest) {
             SELECT 
               r.id, r.periodo, r.status, r.pdf_url, r.created_at, r.comments,
               r.young_id, r.version, r.report_type, r.source_report_ids,
-              y.taller as grupo, y.nombre_completo as joven_nombre
+              y.taller as grupo, y.nombre_completo as joven_nombre,
+              COALESCE(u.name, r.data->'datosGenerales'->>'facilitadorNombre', r.data->'datosGenerales'->>'facilitador', 'Sin facilitador') as facilitador_nombre
             FROM reports r
             LEFT JOIN youngs y ON r.young_id = y.id
+            LEFT JOIN users u ON r.generated_by = u.id
             WHERE r.periodo = ${periodoFilter} AND r.young_id = ${parseInt(youngIdFilter)}
             ORDER BY r.created_at DESC
             LIMIT 1
@@ -85,43 +90,55 @@ export async function GET(req: NextRequest) {
       
       if (role === 'FACILITADOR' && userId) {
         if (reportTypeFilter && periodoFilter) {
-          countResult = await sql`SELECT COUNT(*) as total FROM reports WHERE report_type = ${reportTypeFilter} AND periodo = ${periodoFilter} AND generated_by = ${userId}`;
+          countResult = await sql`SELECT COUNT(*) as total FROM reports WHERE report_type = ${reportTypeFilter} AND periodo = ${periodoFilter} AND (generated_by = ${userId} OR young_id IN (SELECT id FROM youngs WHERE ${userId} = ANY(assigned_facilitators)))`;
           dataResult = await sql`
             SELECT r.id, r.periodo, r.status, r.pdf_url, r.created_at, r.comments,
                    r.young_id, r.version, r.report_type, r.source_report_ids,
-                   y.taller as grupo, y.nombre_completo as joven_nombre
-            FROM reports r LEFT JOIN youngs y ON r.young_id = y.id
-            WHERE r.report_type = ${reportTypeFilter} AND r.periodo = ${periodoFilter} AND r.generated_by = ${userId}
+                   y.taller as grupo, y.nombre_completo as joven_nombre,
+                   COALESCE(u.name, r.data->'datosGenerales'->>'facilitadorNombre', r.data->'datosGenerales'->>'facilitador', 'Sin facilitador') as facilitador_nombre
+            FROM reports r 
+            LEFT JOIN youngs y ON r.young_id = y.id
+            LEFT JOIN users u ON r.generated_by = u.id
+            WHERE r.report_type = ${reportTypeFilter} AND r.periodo = ${periodoFilter} AND (r.generated_by = ${userId} OR r.young_id IN (SELECT id FROM youngs WHERE ${userId} = ANY(assigned_facilitators)))
             ORDER BY r.created_at DESC LIMIT ${pageSize} OFFSET ${offset}
           `;
         } else if (reportTypeFilter) {
-          countResult = await sql`SELECT COUNT(*) as total FROM reports WHERE report_type = ${reportTypeFilter} AND generated_by = ${userId}`;
+          countResult = await sql`SELECT COUNT(*) as total FROM reports WHERE report_type = ${reportTypeFilter} AND (generated_by = ${userId} OR young_id IN (SELECT id FROM youngs WHERE ${userId} = ANY(assigned_facilitators)))`;
           dataResult = await sql`
             SELECT r.id, r.periodo, r.status, r.pdf_url, r.created_at, r.comments,
                    r.young_id, r.version, r.report_type, r.source_report_ids,
-                   y.taller as grupo, y.nombre_completo as joven_nombre
-            FROM reports r LEFT JOIN youngs y ON r.young_id = y.id
-            WHERE r.report_type = ${reportTypeFilter} AND r.generated_by = ${userId}
+                   y.taller as grupo, y.nombre_completo as joven_nombre,
+                   COALESCE(u.name, r.data->'datosGenerales'->>'facilitadorNombre', r.data->'datosGenerales'->>'facilitador', 'Sin facilitador') as facilitador_nombre
+            FROM reports r 
+            LEFT JOIN youngs y ON r.young_id = y.id
+            LEFT JOIN users u ON r.generated_by = u.id
+            WHERE r.report_type = ${reportTypeFilter} AND (r.generated_by = ${userId} OR r.young_id IN (SELECT id FROM youngs WHERE ${userId} = ANY(assigned_facilitators)))
             ORDER BY r.created_at DESC LIMIT ${pageSize} OFFSET ${offset}
           `;
         } else if (periodoFilter) {
-          countResult = await sql`SELECT COUNT(*) as total FROM reports WHERE periodo = ${periodoFilter} AND generated_by = ${userId}`;
+          countResult = await sql`SELECT COUNT(*) as total FROM reports WHERE periodo = ${periodoFilter} AND (generated_by = ${userId} OR young_id IN (SELECT id FROM youngs WHERE ${userId} = ANY(assigned_facilitators)))`;
           dataResult = await sql`
             SELECT r.id, r.periodo, r.status, r.pdf_url, r.created_at, r.comments,
                    r.young_id, r.version, r.report_type, r.source_report_ids,
-                   y.taller as grupo, y.nombre_completo as joven_nombre
-            FROM reports r LEFT JOIN youngs y ON r.young_id = y.id
-            WHERE r.periodo = ${periodoFilter} AND r.generated_by = ${userId}
+                   y.taller as grupo, y.nombre_completo as joven_nombre,
+                   COALESCE(u.name, r.data->'datosGenerales'->>'facilitadorNombre', r.data->'datosGenerales'->>'facilitador', 'Sin facilitador') as facilitador_nombre
+            FROM reports r 
+            LEFT JOIN youngs y ON r.young_id = y.id
+            LEFT JOIN users u ON r.generated_by = u.id
+            WHERE r.periodo = ${periodoFilter} AND (r.generated_by = ${userId} OR r.young_id IN (SELECT id FROM youngs WHERE ${userId} = ANY(assigned_facilitators)))
             ORDER BY r.created_at DESC LIMIT ${pageSize} OFFSET ${offset}
           `;
         } else {
-          countResult = await sql`SELECT COUNT(*) as total FROM reports WHERE generated_by = ${userId}`;
+          countResult = await sql`SELECT COUNT(*) as total FROM reports WHERE (generated_by = ${userId} OR young_id IN (SELECT id FROM youngs WHERE ${userId} = ANY(assigned_facilitators)))`;
           dataResult = await sql`
             SELECT r.id, r.periodo, r.status, r.pdf_url, r.created_at, r.comments,
                    r.young_id, r.version, r.report_type, r.source_report_ids,
-                   y.taller as grupo, y.nombre_completo as joven_nombre
-            FROM reports r LEFT JOIN youngs y ON r.young_id = y.id
-            WHERE r.generated_by = ${userId}
+                   y.taller as grupo, y.nombre_completo as joven_nombre,
+                   COALESCE(u.name, r.data->'datosGenerales'->>'facilitadorNombre', r.data->'datosGenerales'->>'facilitador', 'Sin facilitador') as facilitador_nombre
+            FROM reports r 
+            LEFT JOIN youngs y ON r.young_id = y.id
+            LEFT JOIN users u ON r.generated_by = u.id
+            WHERE (r.generated_by = ${userId} OR r.young_id IN (SELECT id FROM youngs WHERE ${userId} = ANY(assigned_facilitators)))
             ORDER BY r.created_at DESC LIMIT ${pageSize} OFFSET ${offset}
           `;
         }
@@ -131,8 +148,11 @@ export async function GET(req: NextRequest) {
           dataResult = await sql`
             SELECT r.id, r.periodo, r.status, r.pdf_url, r.created_at, r.comments,
                    r.young_id, r.version, r.report_type, r.source_report_ids,
-                   y.taller as grupo, y.nombre_completo as joven_nombre
-            FROM reports r LEFT JOIN youngs y ON r.young_id = y.id
+                   y.taller as grupo, y.nombre_completo as joven_nombre,
+                   COALESCE(u.name, r.data->'datosGenerales'->>'facilitadorNombre', r.data->'datosGenerales'->>'facilitador', 'Sin facilitador') as facilitador_nombre
+            FROM reports r 
+            LEFT JOIN youngs y ON r.young_id = y.id
+            LEFT JOIN users u ON r.generated_by = u.id
             WHERE r.report_type = ${reportTypeFilter} AND r.periodo = ${periodoFilter}
             ORDER BY r.created_at DESC LIMIT ${pageSize} OFFSET ${offset}
           `;
@@ -141,8 +161,11 @@ export async function GET(req: NextRequest) {
           dataResult = await sql`
             SELECT r.id, r.periodo, r.status, r.pdf_url, r.created_at, r.comments,
                    r.young_id, r.version, r.report_type, r.source_report_ids,
-                   y.taller as grupo, y.nombre_completo as joven_nombre
-            FROM reports r LEFT JOIN youngs y ON r.young_id = y.id
+                   y.taller as grupo, y.nombre_completo as joven_nombre,
+                   COALESCE(u.name, r.data->'datosGenerales'->>'facilitadorNombre', r.data->'datosGenerales'->>'facilitador', 'Sin facilitador') as facilitador_nombre
+            FROM reports r 
+            LEFT JOIN youngs y ON r.young_id = y.id
+            LEFT JOIN users u ON r.generated_by = u.id
             WHERE r.report_type = ${reportTypeFilter}
             ORDER BY r.created_at DESC LIMIT ${pageSize} OFFSET ${offset}
           `;
@@ -151,8 +174,11 @@ export async function GET(req: NextRequest) {
           dataResult = await sql`
             SELECT r.id, r.periodo, r.status, r.pdf_url, r.created_at, r.comments,
                    r.young_id, r.version, r.report_type, r.source_report_ids,
-                   y.taller as grupo, y.nombre_completo as joven_nombre
-            FROM reports r LEFT JOIN youngs y ON r.young_id = y.id
+                   y.taller as grupo, y.nombre_completo as joven_nombre,
+                   COALESCE(u.name, r.data->'datosGenerales'->>'facilitadorNombre', r.data->'datosGenerales'->>'facilitador', 'Sin facilitador') as facilitador_nombre
+            FROM reports r 
+            LEFT JOIN youngs y ON r.young_id = y.id
+            LEFT JOIN users u ON r.generated_by = u.id
             WHERE r.periodo = ${periodoFilter}
             ORDER BY r.created_at DESC LIMIT ${pageSize} OFFSET ${offset}
           `;
@@ -161,8 +187,11 @@ export async function GET(req: NextRequest) {
           dataResult = await sql`
             SELECT r.id, r.periodo, r.status, r.pdf_url, r.created_at, r.comments,
                    r.young_id, r.version, r.report_type, r.source_report_ids,
-                   y.taller as grupo, y.nombre_completo as joven_nombre
-            FROM reports r LEFT JOIN youngs y ON r.young_id = y.id
+                   y.taller as grupo, y.nombre_completo as joven_nombre,
+                   COALESCE(u.name, r.data->'datosGenerales'->>'facilitadorNombre', r.data->'datosGenerales'->>'facilitador', 'Sin facilitador') as facilitador_nombre
+            FROM reports r 
+            LEFT JOIN youngs y ON r.young_id = y.id
+            LEFT JOIN users u ON r.generated_by = u.id
             ORDER BY r.created_at DESC LIMIT ${pageSize} OFFSET ${offset}
           `;
         }
@@ -209,6 +238,7 @@ export async function GET(req: NextRequest) {
           youngId: r.youngId ? String(r.youngId) : null,
           grupo,
           jovenNombre,
+          facilitadorNombre: (r as any).data?.datosGenerales?.facilitadorNombre || (r as any).data?.datosGenerales?.facilitador || 'Sin facilitador',
           openComments: Array.isArray(r.comments) ? r.comments.filter((c: any) => c.status !== 'RESOLVED').length : 0
         };
       });

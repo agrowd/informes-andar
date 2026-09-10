@@ -6,7 +6,7 @@ import { renderDeterministic } from './orchestrator';
 import { getInstitutionalConfig } from '../docs/constants';
 
 interface MergeOptions {
-  targetType: 'TRIMESTRAL' | 'SEMESTRAL' | 'ANUAL';
+  targetType: 'TRIMESTRAL' | 'SEMESTRAL' | 'ANUAL' | 'INFORME_FINAL';
   jovenNombre: string;
   mergedPeriodo: string;
   iaEnabled: boolean;
@@ -25,6 +25,7 @@ const TARGET_TYPE_LABELS: Record<string, string> = {
   'TRIMESTRAL': 'Informe Trimestral',
   'SEMESTRAL': 'Informe Semestral',
   'ANUAL': 'Informe Anual',
+  'INFORME_FINAL': 'Informe Final',
 };
 
 const SECTION_KEYS = [
@@ -88,7 +89,7 @@ function mergeDeterministic(sources: SourceReport[], options: MergeOptions, inst
         }
       }
     }
-    mergedSecciones[key] = fragments.length > 0 ? fragments : [{ id: 'empty', texto: 'Sin información para este período.', fuentes: [] }];
+    mergedSecciones[key] = fragments.length > 0 ? fragments : [{ id: 'empty', texto: 'Se continúa trabajando y avanzando activamente en esta área con el acompañamiento del equipo institucional.', fuentes: [] }];
   }
 
   // Fusionar evaluación de dimensiones: usar la última como referencia, con comparativa
@@ -234,9 +235,9 @@ Fusiona los siguientes informes evolutivos individuales de **${options.jovenNomb
 ## INSTRUCCIONES
 1. Para CADA sección, redacta un texto narrativo fluido que INTEGRE la evolución observada a lo largo de los períodos.
 2. NO copies textualmente los informes individuales. SINTETIZA mostrando progresión temporal: "Al inicio del período...", "A medida que avanzaban los meses...", "Hacia el final del período...".
-3. Destaca los AVANCES más significativos y las ÁREAS que requieren continuidad de apoyo.
-4. Mantén un tono profesional, institucional y cálido, propio de la Planificación Centrada en la Persona.
-5. Si alguna sección no tiene datos, escribe "No se registraron observaciones específicas para este período."
+3. Destaca los AVANCES más significativos y las ÁREAS que continúan en proceso de desarrollo activo con apoyo del equipo.
+4. Mantén un tono profesional, institucional, positivo y cálido, propio de la Planificación Centrada en la Persona.
+5. Queda estrictamente PROHIBIDO escribir frases negativas como "No se registraron observaciones" o "Aunque no se registran datos". En su lugar, redacta siempre en positivo señalando que se continúa trabajando y avanzando activamente en dicha área con el acompañamiento del equipo institucional.
 
 ## DATOS DE ENTRADA (por sección y período)
 

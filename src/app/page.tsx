@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from 'react';
 import { useSession } from 'next-auth/react';
+import UploadManualDocxModal from '@/app/_components/UploadManualDocxModal';
 
 export default function InicioPage() {
   const { data: session } = useSession();
@@ -10,9 +11,28 @@ export default function InicioPage() {
   const [reportsTotal, setReportsTotal] = useState(0);
   const [youngs, setYoungs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showUploadModal, setShowUploadModal] = useState(false);
 
   const userRole = (session?.user as any)?.role || 'FACILITADOR';
   const isPrivileged = ['ADMIN', 'DIRECTOR', 'COORDINACION'].includes(userRole);
+
+  const handleDeleteReport = async (reportId: string, jovenNombre: string) => {
+    if (!confirm(`¿Estás seguro de que deseas ELIMINAR el informe de "${jovenNombre || 'este concurrente'}"? Esta acción no se puede deshacer.`)) {
+      return;
+    }
+    try {
+      const res = await fetch(`/api/reports/${reportId}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Error al eliminar' }));
+        alert(`Error: ${err.error || 'No se pudo eliminar el informe'}`);
+        return;
+      }
+      alert('Informe eliminado correctamente');
+      load();
+    } catch (err: any) {
+      alert('Error: ' + (err?.message || 'No se pudo eliminar el informe'));
+    }
+  };
 
   const load = async () => {
     setLoading(true);
@@ -319,9 +339,19 @@ export default function InicioPage() {
                 Informes evolutivos trimestrales consolidados para visualización y descarga
               </p>
             </div>
-            <a href="/reports" className="ga-btn secondary" style={{ fontSize: 13, padding: '7px 15px', fontWeight: 600 }}>
-              Ver todos los informes ({reportsTotal || reports.length}) →
-            </a>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+              <button
+                type="button"
+                className="ga-btn primary"
+                onClick={() => setShowUploadModal(true)}
+                style={{ fontSize: 13, padding: '7px 15px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 6 }}
+              >
+                <span>📤</span> Subir Informe Word (.docx)
+              </button>
+              <a href="/reports" className="ga-btn secondary" style={{ fontSize: 13, padding: '7px 15px', fontWeight: 600 }}>
+                Ver todos los informes ({reportsTotal || reports.length}) →
+              </a>
+            </div>
           </div>
 
           <div className="ga-table-mobile-wrap">
@@ -329,10 +359,12 @@ export default function InicioPage() {
               <thead>
                 <tr style={{ background: '#f8fafc' }}>
                   <th>Concurrente</th>
+                  <th>Grupo</th>
+                  <th>Facilitador</th>
                   <th>Período</th>
                   <th>Fecha de Generación</th>
                   <th>Estado</th>
-                  <th style={{ textAlign: 'right', width: 220 }}>Acciones</th>
+                  <th style={{ textAlign: 'right', width: isPrivileged ? 260 : 200 }}>Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -340,6 +372,16 @@ export default function InicioPage() {
                   <tr key={r.id} className="ga-table-row-hover">
                     <td>
                       <strong style={{ color: '#1e293b', fontSize: 14 }}>{r.jovenNombre || r.joven_nombre || 'Sin nombre'}</strong>
+                    </td>
+                    <td>
+                      <span className="ga-badge" style={{ fontSize: 11, fontWeight: 700, background: '#f1f5f9', color: '#1e3a8a' }}>
+                        {r.grupo || 'Sin grupo'}
+                      </span>
+                    </td>
+                    <td>
+                      <span style={{ fontSize: 13, color: '#334155', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        <span>👤</span> {r.facilitadorNombre || r.facilitador_nombre || 'Sin facilitador'}
+                      </span>
                     </td>
                     <td><strong style={{ color: '#334155' }}>{r.periodo || '—'}</strong></td>
                     <td style={{ fontSize: 12, color: '#64748b' }}>{formatDateTime(r.createdAt || r.created_at)}</td>
@@ -349,13 +391,32 @@ export default function InicioPage() {
                       </span>
                     </td>
                     <td style={{ textAlign: 'right' }}>
-                      <div style={{ display: 'inline-flex', gap: 6 }}>
+                      <div style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
                         <a href={`/reports/${r.id}`} className="ga-btn secondary" style={{ fontSize: 12, padding: '5px 11px', fontWeight: 600 }}>
                           Ver Informe
                         </a>
                         <a href={`/api/reports/${r.id}/.docx`} className="ga-btn primary" style={{ fontSize: 12, padding: '5px 11px', fontWeight: 600 }}>
                           📥 Word
                         </a>
+                        {isPrivileged && (
+                          <button
+                            type="button"
+                            className="ga-btn"
+                            title="Eliminar informe"
+                            onClick={() => handleDeleteReport(r.id, r.jovenNombre || r.joven_nombre)}
+                            style={{
+                              background: '#fee2e2',
+                              borderColor: '#fca5a5',
+                              color: '#991b1b',
+                              fontSize: 12,
+                              padding: '5px 9px',
+                              fontWeight: 700,
+                              cursor: 'pointer'
+                            }}
+                          >
+                            🗑️
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -365,6 +426,16 @@ export default function InicioPage() {
           </div>
         </div>
       )}
+
+      {/* Modal para subir informe DOCX manual */}
+      <UploadManualDocxModal
+        isOpen={showUploadModal}
+        onClose={() => setShowUploadModal(false)}
+        onSuccess={() => {
+          setShowUploadModal(false);
+          load();
+        }}
+      />
     </div>
   );
 }

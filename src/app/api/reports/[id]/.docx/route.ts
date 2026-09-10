@@ -6,6 +6,7 @@ import path from 'node:path';
 import PizZip from 'pizzip';
 import Docxtemplater from 'docxtemplater';
 import { reportToDocxBuffer } from '@/lib/pdf/render';
+import { formatApellidoNombre } from '@/lib/formatters';
 
 export const dynamic = 'force-dynamic';
 
@@ -91,8 +92,12 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
           const periodoAnio = yearMatch ? yearMatch[1] : new Date().getFullYear().toString();
           const pcpAnio = youngPcp?.anio || new Date().getFullYear().toString();
 
+          const rawName = repData?.datosGenerales?.nombreCompleto || '';
+          const formattedName = formatApellidoNombre(rawName);
+
           doc.setData({
-            nombreCompleto: repData?.datosGenerales?.nombreCompleto || '',
+            nombreCompleto: formattedName,
+            apellidoNombre: formattedName,
             grupo: repData?.datosGenerales?.grupo || 'Clave de Sol',
             facilitadores: repData?.datosGenerales?.facilitadores || 'Sin facilitador',
             metaSueno: repData?.datosGenerales?.metaSueno || 'Estar en la playa...',
@@ -147,7 +152,14 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       buf = await reportToDocxBuffer(repData);
     }
     
-    const docName = isTrimestral ? `informe-trimestral-${params.id}.docx` : `informe-${params.id}.docx`;
+    const safeName = (repData?.datosGenerales?.nombreCompleto || 'concurrente').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_').trim();
+    const safeGroup = (repData?.datosGenerales?.grupo || repData?.datosGenerales?.taller || 'grupo').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_').trim();
+    const d = repData?.datosGenerales?.fechaCreacion ? new Date(repData.datosGenerales.fechaCreacion) : new Date();
+    const safeDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    
+    const docName = isTrimestral 
+      ? `informe-trimestral-${safeName}-${safeGroup}-${safeDate}.docx` 
+      : `informe-mensual-${safeName}-${safeGroup}-${safeDate}.docx`;
     
     return new Response(buf, { 
       headers: { 

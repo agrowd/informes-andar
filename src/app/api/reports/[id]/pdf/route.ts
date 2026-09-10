@@ -42,7 +42,11 @@ export async function POST(_: Request, { params }: { params: { id: string } }) {
     const reportsDir = path.join(process.cwd(), 'public', 'pdf-reports');
     await fs.promises.mkdir(reportsDir, { recursive: true });
     
-    const filename = `informe-${params.id}.pdf`;
+    const safeName = (repData?.datosGenerales?.nombreCompleto || 'concurrente').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_').trim();
+    const safeGroup = (repData?.datosGenerales?.grupo || repData?.datosGenerales?.taller || 'grupo').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_').trim();
+    const d = new Date();
+    const safeDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const filename = `informe-${params.id}-${safeName}-${safeGroup}-${safeDate}.pdf`;
     const filePath = path.join(reportsDir, filename);
     await fs.promises.writeFile(filePath, pdfBuffer);
     

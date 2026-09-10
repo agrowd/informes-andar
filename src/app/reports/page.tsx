@@ -1,12 +1,14 @@
 "use client";
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
+import UploadManualDocxModal from '@/app/_components/UploadManualDocxModal';
 
 const REPORT_TYPE_LABELS: Record<string, string> = {
   'MENSUAL': '📄 Mensual',
   'TRIMESTRAL': '📋 Trimestral',
   'SEMESTRAL': '📑 Semestral',
   'ANUAL': '📚 Anual',
+  'INFORME_FINAL': '🏆 Informe Final',
 };
 
 const REPORT_TYPE_COLORS: Record<string, string> = {
@@ -14,12 +16,14 @@ const REPORT_TYPE_COLORS: Record<string, string> = {
   'TRIMESTRAL': '#8B5CF6',
   'SEMESTRAL': '#F59E0B',
   'ANUAL': '#10B981',
+  'INFORME_FINAL': '#EC4899',
 };
 
 const MERGE_RULES: Record<string, { sourceType: string; label: string; requiredCount: number }> = {
   'TRIMESTRAL': { sourceType: 'MENSUAL', label: 'Trimestral (3 mensuales)', requiredCount: 3 },
   'SEMESTRAL': { sourceType: 'TRIMESTRAL', label: 'Semestral (2 trimestrales)', requiredCount: 2 },
   'ANUAL': { sourceType: 'SEMESTRAL', label: 'Anual (2 semestrales)', requiredCount: 2 },
+  'INFORME_FINAL': { sourceType: 'TRIMESTRAL', label: 'Informe Final (2 trimestrales)', requiredCount: 2 },
 };
 
 export default function ReportsList() {
@@ -33,6 +37,7 @@ export default function ReportsList() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
+  const [showUploadModal, setShowUploadModal] = useState(false);
   
   // Selección para fusión
   const [selectionMode, setSelectionMode] = useState(false);
@@ -44,6 +49,7 @@ export default function ReportsList() {
   
   const userRole = (session?.user as any)?.role || 'FACILITADOR';
   const isAdmin = userRole === 'ADMIN';
+  const isPrivileged = ['ADMIN', 'COORDINACION', 'DIRECTOR'].includes(userRole);
 
   const loadData = async (pageNum: number = page) => {
     setLoading(true);
@@ -158,7 +164,17 @@ export default function ReportsList() {
 
   return (
     <div>
-      <h1>Informes generados</h1>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
+        <h1 style={{ margin: 0 }}>Informes generados</h1>
+        <button
+          type="button"
+          className="ga-btn primary"
+          onClick={() => setShowUploadModal(true)}
+          style={{ fontSize: 13, padding: '8px 16px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 6 }}
+        >
+          <span>📤</span> Subir Informe Word (.docx)
+        </button>
+      </div>
       <div className="ga-card" style={{ marginBottom: 12 }}>
         <div style={{ display:'flex', gap:8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
           <label style={{ flex:1, minWidth: 200 }}>
@@ -257,7 +273,9 @@ export default function ReportsList() {
           <thead>
             <tr>
               {selectionMode && <th style={{ border: '1px solid #ccc', padding: 4, width: 40 }}></th>}
-              <th style={{ border: '1px solid #ccc', padding: 4 }}>Joven</th>
+              <th style={{ border: '1px solid #ccc', padding: 4 }}>Concurrente</th>
+              <th style={{ border: '1px solid #ccc', padding: 4 }}>Grupo</th>
+              <th style={{ border: '1px solid #ccc', padding: 4 }}>Facilitador</th>
               <th style={{ border: '1px solid #ccc', padding: 4 }}>Período</th>
               <th style={{ border: '1px solid #ccc', padding: 4 }}>Tipo</th>
               <th style={{ border: '1px solid #ccc', padding: 4 }}>Estado</th>
@@ -285,7 +303,17 @@ export default function ReportsList() {
                     </td>
                   )}
                   <td style={{ border: '1px solid #ccc', padding: 4 }}>
-                    {it.jovenNombre || 'Sin nombre'}
+                    <strong style={{ color: '#1e293b' }}>{it.jovenNombre || 'Sin nombre'}</strong>
+                  </td>
+                  <td style={{ border: '1px solid #ccc', padding: 4 }}>
+                    <span className="ga-badge" style={{ fontSize: 11, background: '#f1f5f9', color: '#1e3a8a', fontWeight: 700 }}>
+                      {it.grupo || 'Sin grupo'}
+                    </span>
+                  </td>
+                  <td style={{ border: '1px solid #ccc', padding: 4 }}>
+                    <span style={{ fontSize: 12, color: '#334155', fontWeight: 600 }}>
+                      👤 {it.facilitadorNombre || 'Sin facilitador'}
+                    </span>
                   </td>
                   <td style={{ border: '1px solid #ccc', padding: 4 }}>{it.periodo}</td>
                   <td style={{ border: '1px solid #ccc', padding: 4 }}>
@@ -329,12 +357,12 @@ export default function ReportsList() {
                         ✏️ Editar
                       </button>
                       <a style={{ fontSize: 12, padding: '4px 8px' }} href={`/api/reports/${it.id}/.docx`}>DOCX</a>
-                      {isAdmin && (
+                      {isPrivileged && (
                         <button 
                           className="ga-btn" 
                           style={{ background: '#FEE2E2', borderColor: '#FCA5A5', color: '#991B1B', fontSize: 12, padding: '4px 8px', whiteSpace: 'nowrap' }}
                           onClick={async () => {
-                            if (!confirm('¿Estás seguro de que deseas ELIMINAR este informe? Esta acción no se puede deshacer.')) return;
+                            if (!confirm(`¿Estás seguro de que deseas ELIMINAR el informe de "${it.jovenNombre || 'este concurrente'}"? Esta acción no se puede deshacer.`)) return;
                             try {
                               const r = await fetch(`/api/reports/${it.id}`, { method: 'DELETE' });
                               if (r.ok) {
@@ -348,7 +376,7 @@ export default function ReportsList() {
                               alert(`Error: ${err.message || 'Error al eliminar informe'}`);
                             }
                           }}
-                          title="Eliminar informe (solo ADMIN)"
+                          title="Eliminar informe"
                         >
                           🗑️
                         </button>
@@ -466,6 +494,16 @@ export default function ReportsList() {
           </div>
         </div>
       )}
+
+      {/* Modal para subir informe Word manual */}
+      <UploadManualDocxModal
+        isOpen={showUploadModal}
+        onClose={() => setShowUploadModal(false)}
+        onSuccess={() => {
+          setShowUploadModal(false);
+          loadData(page);
+        }}
+      />
     </div>
   );
 }

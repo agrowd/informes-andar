@@ -1,5 +1,36 @@
 # 🗓️ Workcycle Log
 
+## 2026-09-10 (Visualización de Facilitador/Grupo en Trimestrales, Eliminación por Admin/Coordinación y Carga/Interpretación de DOCX Manuales para Informe Final)
+- **Objetivo**: A requerimiento del usuario ("Que aca diga quien lo hizo ese informe trimestral, que facilitador y grupo, ademas como admin y coordinador se pueda eliminar o no. Ademas de esto necesito que de alguna manera se pueda cargar un docx que hayan hecho a mano los facilitadores, que lo detecte el sistema, que lo interprete, lo guarde asi se pueden fusionar trimestrales para generar un informe final..."):
+  1. Mostrar en la tabla de informes trimestrales qué facilitador lo elaboró y a qué grupo pertenece el concurrente.
+  2. Habilitar la eliminación de informes para los roles `ADMIN` y `COORDINACION`.
+  3. Crear un flujo inteligente de carga e interpretación de archivos Word (`.docx`) manuales hechos por facilitadores, parseando 12 secciones narrativas, concurrente, grupo y período, guardándolos como tipo `TRIMESTRAL`.
+  4. Preparar la arquitectura de fusión (`INFORME_FINAL` a partir de informes trimestrales) para cuando el usuario provea el modelo final.
+- **Acciones Realizadas**:
+  1. **Backend `GET /api/reports`**:
+     - Agregado `LEFT JOIN users u ON r.generated_by = u.id` y `COALESCE(u.name, r.data->'datosGenerales'->>'facilitadorNombre', r.data->'datosGenerales'->>'facilitador', 'Sin facilitador') AS facilitador_nombre`.
+     - Inyectados `facilitadorNombre` y `grupo` en `mapReportRow`.
+  2. **Permisos de Borrado `DELETE /api/reports/[id]`**:
+     - Actualizada la condición de seguridad para autorizar tanto a `ADMIN` como a `COORDINACION` y `DIRECTOR`.
+  3. **Nuevo Endpoint `POST /api/reports/upload-manual-docx`**:
+     - Integra `mammoth` para extracción de texto de Word.
+     - Detección automática por similitud fonética y tokens del concurrente contra la tabla `youngs`.
+     - Detección automática del facilitador y período temporal (`YYYY-MM`).
+     - Segmentación regex de las 12 secciones narrativas institucionales oficiales.
+     - Inserción en `reports` con `report_type = 'TRIMESTRAL'`, `status = 'BORRADOR'`, `data`, `original_data` y `edited_docx_base64`.
+  4. **Motor de Fusión (`merge.ts` y `/api/reports/merge`)**:
+     - Habilitada la regla para `INFORME_FINAL` requiriendo fuentes tipo `TRIMESTRAL`.
+  5. **Componente Modal `UploadManualDocxModal.tsx`**:
+     - Modal con Drag & Drop, selección opcional de concurrente y período, parsing con feedback visual detallado y accesos directos al informe recién creado.
+  6. **UI Actualizada (`src/app/page.tsx` y `src/app/reports/page.tsx`)**:
+     - Agregadas columnas `Grupo` (badge) y `Facilitador` (con icono) en las tablas de informes.
+     - Agregado botón de eliminación `🗑️` para roles `ADMIN` y `COORDINACION` con diálogo de confirmación.
+     - Agregado botón principal `📤 Subir Informe Word (.docx)`.
+  7. **Compilación y Despliegue**:
+     - `npm run build` verificado localmente con 0 errores.
+     - Sincronizado y compilado en el VPS de producción (`149.50.128.73:5782`) con reinicio exitoso de PM2.
+- **Estado**: Completado con éxito ✅
+
 ## 2026-09-10 (Eliminación de Usuario de Prueba Martín Romero y Despliegue en VPS de Producción)
 - **Objetivo**: A petición del usuario ("Eliminar al usuario martin romero ya que era de prueba, y promotores estaba con el usuario de lemuel"), eliminar definitivamente al usuario Martín Romero (ID 6) de la base de datos Neon Postgres y sincronizar/desplegar en el VPS de producción (`informes-andar.nextemarketing.com`) para que la tarjeta del grupo Promotores refleje a Lemuel Sola como Responsable oficial.
 - **Acciones Realizadas**:

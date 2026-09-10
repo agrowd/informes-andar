@@ -23,10 +23,12 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     let youngId: string = '';
     let young: any = null;
 
+    let reportCreatedAt: any = null;
+
     // 1. Obtener datos del reporte
     if (USE_POSTGRES && sql) {
       const result = await sql`
-        SELECT r.data, r.report_type, r.source_report_ids, r.young_id, y.nombre_completo, y.dni, y.taller, y.fecha_nacimiento, y.legajo, y.obra_social, y.pcp
+        SELECT r.data, r.report_type, r.source_report_ids, r.young_id, r.created_at, y.nombre_completo, y.dni, y.taller, y.fecha_nacimiento, y.legajo, y.obra_social, y.pcp
         FROM reports r
         LEFT JOIN youngs y ON r.young_id = y.id
         WHERE r.id = ${parseInt(reportId)}
@@ -36,6 +38,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
         reportData = row.data;
         reportType = row.report_type || 'MENSUAL';
         sourceFormIds = row.source_report_ids || [];
+        reportCreatedAt = row.created_at;
         youngId = String(row.young_id);
         young = {
           nombre_completo: row.nombre_completo,
@@ -54,6 +57,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
         reportData = rep.data;
         reportType = (rep as any).reportType || 'MENSUAL';
         sourceFormIds = (rep as any).sourceFormIds || (rep as any).sourceReportIds || [];
+        reportCreatedAt = (rep as any).createdAt;
         youngId = rep.youngId?.toString() || '';
 
         try {
@@ -79,6 +83,13 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     if (!reportData) {
       return NextResponse.json({ error: 'Reporte no encontrado' }, { status: 404 });
     }
+
+    // Fecha de creación formateada
+    const rawFecha = reportCreatedAt || reportData.datosGenerales?.fechaCreacion || reportData.datosGenerales?.fechaInforme || new Date();
+    const dCreacion = new Date(rawFecha);
+    const fechaCreacionStr = !isNaN(dCreacion.getTime()) 
+      ? `${String(dCreacion.getDate()).padStart(2, '0')}/${String(dCreacion.getMonth() + 1).padStart(2, '0')}/${dCreacion.getFullYear()}`
+      : new Date().toLocaleDateString('es-AR');
 
     // 2. Obtener los formularios origen para consolidar los datos de habilidades
     let forms: any[] = [];
@@ -145,20 +156,23 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     // Rellenar solapa PCP
     const pcpSheet = workbook.getWorksheet('PCP');
     if (pcpSheet && young) {
-      writePcpSheet(pcpSheet, young);
+      writePcpSheet(pcpSheet, young, fechaCreacionStr);
     }
 
     // 4. Escribir Datos Generales en la cabecera del período mensual/trimestral
     const nombreCompleto = young?.nombre_completo || reportData.datosGenerales?.nombreCompleto || '';
+    const grupoNombre = young?.taller || reportData.datosGenerales?.grupo || reportData.datosGenerales?.taller || 'Clave de Sol';
     const facilitadorNombre = reportData.datosGenerales?.facilitadores || reportData.datosGenerales?.facilitadorNombre || '';
     
-    sheet.getCell('A3').value = `Nombre y Apellido: ${nombreCompleto}`;
+    // Escribir en la cabecera con Nombre y Apellido, Grupo y Fecha de Creación
+    sheet.getCell('A2').value = `NOMBRE Y APELLIDO: ${nombreCompleto}`;
+    sheet.getCell('A3').value = `FECHA DE CREACIÓN: ${fechaCreacionStr}    |    GRUPO ASIGNADO: ${grupoNombre}`;
     
     const facCell = sheet.getCell('D4');
     if (facCell.value && String(facCell.value).toLowerCase().includes('facilitador/a:')) {
-      facCell.value = `Facilitador/a: ${facilitadorNombre}`;
+      facCell.value = `FACILITADOR/A: ${facilitadorNombre}`;
     } else {
-      sheet.getCell('C4').value = `Facilitador/a: ${facilitadorNombre}`;
+      sheet.getCell('A4').value = `FACILITADOR/A: ${facilitadorNombre}    |    GRUPO ASIGNADO: ${grupoNombre}`;
     }
 
     // 5. Limpiar checkboxes de la plantilla
@@ -232,13 +246,17 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
     // 7. Colorear las habilidades consolidadas en el Excel
     for (const [tallerName, itemsMap] of Object.entries(consolidatedSkills)) {
+      const tUpper = cleanText(tallerName).toUpperCase();
       // Buscar la fila de inicio del taller
       let tallerRow = -1;
       for (let r = 5; r <= 120; r++) {
-        const val = sheet.getCell(r, 1).value;
-        if (val && String(val).toUpperCase().includes('TALLER:') && String(val).toUpperCase().includes(tallerName)) {
-          tallerRow = r;
-          break;
+        const val = cleanText(sheet.getCell(r, 1).value).toUpperCase();
+        if (val.includes('TALLER:')) {
+          const cleanT = val.replace(/TALLER:\s*/i, '').trim();
+          if (tUpper.includes(cleanT) || cleanT.includes(tUpper) || tUpper === cleanT) {
+            tallerRow = r;
+            break;
+          }
         }
       }
 
@@ -246,16 +264,24 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
       // Escanear el bloque de habilidades de ese taller
       for (let r = tallerRow + 1; r <= tallerRow + 30 && r <= 120; r++) {
-        const valA = sheet.getCell(r, 1).value;
-        if (valA && String(valA).toUpperCase().includes('TALLER:')) break;
-        if (valA && String(valA).toLowerCase().includes('observaciones:')) break;
+        const valA = cleanText(sheet.getCell(r, 1).value).toUpperCase();
+        if (valA.includes('TALLER:') && r > tallerRow + 1) break;
+        if (valA.includes('OBSERVACIONES:')) break;
 
         for (const c of cols) {
           const cell = sheet.getCell(r, c);
-          const val = cell.value;
-          if (val && typeof val === 'string') {
+          const val = cleanText(cell.value);
+          if (val) {
             const iNameNormalized = val.trim().toLowerCase();
-            const nivel = itemsMap[iNameNormalized] || 0;
+            // Buscar coincidencia exacta o parcial en itemsMap
+            let nivel = itemsMap[iNameNormalized] || 0;
+            if (nivel === 0) {
+              for (const [k, v] of Object.entries(itemsMap)) {
+                if (k.includes(iNameNormalized) || iNameNormalized.includes(k)) {
+                  nivel = Math.max(nivel, v);
+                }
+              }
+            }
 
             if (nivel >= 1) paintLeftCell(r + 2, c + 1);
             if (nivel >= 2) paintLeftCell(r + 3, c + 1);
@@ -269,8 +295,8 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     // 8. Escribir Observaciones
     let obsRow = -1;
     for (let r = 30; r <= 130; r++) {
-      const val = sheet.getCell(r, 1).value;
-      if (val && String(val).toLowerCase().includes('observaciones:')) {
+      const val = cleanText(sheet.getCell(r, 1).value).toLowerCase();
+      if (val.includes('observaciones:')) {
         obsRow = r;
         break;
       }
@@ -293,10 +319,14 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
     const buffer = await workbook.xlsx.writeBuffer();
 
+    const safeNombre = nombreCompleto.replace(/\s+/g, '_');
+    const safeGrupo = grupoNombre.replace(/\s+/g, '_');
+    const safeFecha = fechaCreacionStr.replace(/\//g, '-');
+
     return new Response(buffer, {
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'Content-Disposition': `attachment; filename="informe-${reportType.toLowerCase()}-${nombreCompleto.replace(/\s+/g, '_')}-${targetPeriod}.xlsx"`
+        'Content-Disposition': `attachment; filename="informe-${reportType.toLowerCase()}-${safeNombre}-${safeGrupo}-${safeFecha}.xlsx"`
       }
     });
 
@@ -306,17 +336,21 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   }
 }
 
-function writePcpSheet(pcpSheet: ExcelJS.Worksheet, young: any) {
+function writePcpSheet(pcpSheet: ExcelJS.Worksheet, young: any, fechaCreacionStr?: string) {
   if (!pcpSheet) return;
 
   const pcp = young.pcp || {};
   
-  // 1. Nombre y Año
+  // 1. Nombre, Grupo y Año
   const nombreCompleto = young.nombre_completo || young.nombreCompleto || '';
-  pcpSheet.getCell('A3').value = `Nombre y Apellido: ${nombreCompleto}`;
-  
+  const taller = young.taller || young.grupo || 'Clave de Sol';
   const anio = pcp.anio || new Date().getFullYear();
-  pcpSheet.getCell('A2').value = `PCP ${anio}`;
+
+  pcpSheet.getCell('A2').value = `PCP ${anio} - GRUPO: ${taller}`;
+  pcpSheet.getCell('A3').value = `NOMBRE Y APELLIDO: ${nombreCompleto}`;
+  if (fechaCreacionStr) {
+    pcpSheet.getCell('E3').value = `FECHA DE CREACIÓN: ${fechaCreacionStr}`;
+  }
 
   // 2. Metadatos (DNI, Legajo, Obra Social, Fecha de Nacimiento, Taller)
   const legajo = young.legajo || '';
@@ -329,7 +363,6 @@ function writePcpSheet(pcpSheet: ExcelJS.Worksheet, young: any) {
       fechaNacimientoStr = d.toLocaleDateString('es-AR');
     }
   }
-  const taller = young.taller || '';
 
   // Escanear filas 1 a 20 para escribir al lado de los labels
   for (let r = 1; r <= 20; r++) {
@@ -450,3 +483,18 @@ function writePcpSheet(pcpSheet: ExcelJS.Worksheet, young: any) {
     }
   }
 }
+
+function cleanText(v: any): string {
+  if (v === null || v === undefined) return '';
+  if (typeof v === 'string') return v.trim();
+  if (typeof v === 'object') {
+    if ('richText' in v && Array.isArray(v.richText)) {
+      return v.richText.map((t: any) => t.text).join('').trim();
+    }
+    if ('text' in v) return String(v.text).trim();
+    if ('result' in v) return String(v.result).trim();
+  }
+  if (v instanceof Date) return v.toLocaleDateString('es-AR');
+  return String(v).trim();
+}
+

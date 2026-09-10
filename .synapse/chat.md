@@ -1,3 +1,39 @@
+# Registro de Conversación - 2026-09-10 (Visualización Facilitador/Grupo, Eliminación Admin/Coordinación y Carga DOCX Manuales)
+
+## Usuario:
+- "Que aca diga quien lo hizo ese informe trimestral, que facilitador y grupo, ademas como admin y coordinador se pueda eliminar o no. Ademas de esto necesito que de alguna manera se pueda cargar un docx que hayan hecho a mano los facilitadores, que lo detecte el sistema, que lo interprete, lo guarde asi se pueden fusionar trimestrales para generar un informe final, que va a ser un modelo que aun no tengo pero te voy a dejar cuando termines de armar la estructura"
+
+## Antigravity:
+- **Implementación Completa de Requerimientos**:
+  1. **Visualización de Facilitador y Grupo**:
+     - Modificado `GET /api/reports` para incluir `LEFT JOIN users u ON r.generated_by = u.id` y `COALESCE(u.name, r.data->'datosGenerales'->>'facilitadorNombre', 'Sin facilitador')`.
+     - Inyectadas columnas `Grupo` (badge destacado) y `Facilitador` (con icono y nombre) tanto en la tabla de Inicio ("Últimos Informes Trimestrales") como en la vista `/reports`.
+  2. **Permisos de Eliminación**:
+     - Actualizado `DELETE /api/reports/[id]` para permitir la eliminación no solo a `ADMIN` sino también a `COORDINACION` y `DIRECTOR`.
+     - Botón de borrado `🗑️` visible y funcional en frontend para roles autorizados, con cuadro de confirmación modal preventivo.
+  3. **Carga e Interpretación de DOCX Manuales**:
+     - Creado endpoint inteligente `POST /api/reports/upload-manual-docx` que extrae el texto con `mammoth`, detecta automáticamente al concurrente contra la tabla `youngs` en Postgres, extrae el período y segmenta con expresiones regulares las 12 secciones narrativas institucionales.
+     - Guarda el archivo en la tabla `reports` con `report_type = 'TRIMESTRAL'`, `status = 'BORRADOR'`, `original_data` y el binario Word en `edited_docx_base64`.
+     - Diseñado el componente `UploadManualDocxModal` accesible con el botón "📤 Subir Informe Word (.docx)" en Inicio y en `/reports`.
+  4. **Preparación para Fusión de Informe Final**:
+     - Actualizado `merge.ts` y `/api/reports/merge` registrando la regla para `INFORME_FINAL` a partir de 2 o más informes `TRIMESTRAL`, listos para generar el informe final consolidado una vez que se defina la plantilla institucional.
+  5. **Compilación y Despliegue en VPS**:
+     - Compilación `npm run build` validada con 0 errores TypeScript.
+     - Despliegue sincronizado por SFTP al VPS de producción con reinicio en PM2.
+
+# Registro de Conversación - 2026-09-10 (Eliminación de Usuario Martín Romero y Gestión de Lemuel Sola)
+
+## Usuario:
+- "Promotores dejalo con Lemuel Sola, usuario correo es lemuel.sola@granjaandar.org.ar contraseña Lemuel1"
+- "Eliminar al usuario martin romero ya que era de prueba, y promotores estaba con el usuario de lemuel"
+
+## Antigravity:
+- **Eliminación y Reasignación Institucional**:
+  - Se dio de alta a Lemuel Sola en Postgres con rol `FACILITADOR` y credenciales verificadas.
+  - Se le asignó el grupo `Promotores`, sus 11 concurrentes y se actualizaron las 30 cuadrículas mensuales con su autoría y firma.
+  - Se auditó al usuario Martín Romero (ID 6), confirmando 0 concurrentes, 0 formularios y 0 dependencias.
+  - Se ejecutó `DELETE FROM users WHERE id = 6` en la base de datos de producción.
+
 # Registro de Conversación - 2026-09-08 (Consolidación Total Institucional)
 
 ## Usuario:
