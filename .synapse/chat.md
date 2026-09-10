@@ -1,3 +1,21 @@
+# Registro de Conversación - 2026-09-10 (Filtro por Grupo y Generador Trimestral en Cuadrículas Mensuales)
+
+## Usuario:
+- "Que aca haya un filtro por grupo asi como admin puedo generar el informe trimestral"
+- [Adjunta captura de pantalla de `informes-andar.nextemarketing.com/forms`]
+
+## Antigravity:
+- **Implementación Completa**:
+  1. **Enriquecimiento del Backend (`GET /api/forms`)**: Se agregaron consultas SQL con `COALESCE(NULLIF(y.taller, ''), NULLIF(f.data->'datosGenerales'->>'grupo', ''), 'Sin grupo') AS grupo`, mapeando el grupo correspondiente de cada concurrente y sus cuadrículas.
+  2. **Carga Total Sin Límites**: Se aumentó el `pageSize` a 1000 en la vista de cuadrículas para desplegar los 75 concurrentes institucionales y las 224 cuadrículas evaluadas (evitando el límite previo de 200).
+  3. **Píldoras y Selector Dropdown de Grupo**:
+     - Pestañas con contadores de concurrentes por taller para los 7 grupos institucionales (`Emprendedores`, `Artesanos`, `Promotores`, `Empoderadas`, `Atrapasueños`, `Buenos Mozos`, `Clave de Sol`).
+     - Selector dropdown en la barra de búsqueda y filtros.
+     - Sincronización dinámica de la URL con `?grupo=`.
+  4. **Badges Institucionales**: Cada tarjeta de acordeón muestra visiblemente el grupo al que pertenece el concurrente.
+  5. **Generador Rápido Trimestral**: Botón `⚡ Generar Trimestral` por concurrente que unifica automáticamente sus cuadrículas mensuales con IA con 1 click, sin requerir selección manual checkbox por checkbox.
+  6. **Despliegue y Verificación**: Compilación local validada y subida al VPS de producción con servicio PM2 en línea.
+
 # Registro de Conversación - 2026-09-10 (Visualización Facilitador/Grupo, Eliminación Admin/Coordinación y Carga DOCX Manuales)
 
 ## Usuario:

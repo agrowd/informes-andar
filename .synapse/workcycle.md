@@ -1,5 +1,26 @@
 # 🗓️ Workcycle Log
 
+## 2026-09-10 (Filtrado Dinámico por Grupo Institucional y Generador Rápido Trimestral en Cuadrículas Mensuales)
+- **Objetivo**: A petición del usuario ("Que aca haya un filtro por grupo asi como admin puedo generar el informe trimestral"), implementar en la vista de Cuadrículas Mensuales (`/forms`) un sistema de filtrado interactivo por los 7 grupos institucionales para facilitar a administradores y coordinadores la búsqueda de concurrentes y la generación de sus informes trimestrales.
+- **Acciones Realizadas**:
+  1. **Backend `GET /api/forms`**:
+     - Actualizadas las consultas de Postgres (`sql`) para incluir `COALESCE(NULLIF(y.taller, ''), NULLIF(f.data->'datosGenerales'->>'grupo', ''), NULLIF(f.data->'datosGenerales'->>'taller', ''), 'Sin grupo') AS grupo`.
+     - Inyectado `grupo` en el retorno de cada fila de `forms` (Postgres y MongoDB).
+  2. **Elevación de `pageSize` a 1000**:
+     - Se ajustó el parámetro de consulta a `pageSize: 1000` en `loadData`, garantizando la carga completa de las 224 cuadrículas mensuales y los 75 concurrentes sin truncamiento arbitrario.
+  3. **Pestañas y Selector por Grupo Institucional**:
+     - Agregada barra interactiva de píldoras (pills) para los 7 grupos oficiales (`Emprendedores`, `Artesanos`, `Promotores`, `Empoderadas`, `Atrapasueños`, `Buenos Mozos`, `Clave de Sol`) con contadores en tiempo real de concurrentes en cada taller.
+     - Agregado selector dropdown `<select>` de grupo dentro de la tarjeta de filtros, sincronizado bidireccionalmente con la URL (`?grupo=`).
+  4. **Badges de Grupo en Acordeón**:
+     - Incorporada etiqueta visible con el nombre del grupo institucional en la cabecera de cada concurrente.
+  5. **Generador Rápido `⚡ Generar Trimestral`**:
+     - Añadido botón de acción directa en la cabecera del concurrente para que el administrador pueda generar el informe trimestral de ese joven con 1 solo click (unificando sus cuadrículas vía IA), sin requerir selección manual checkbox por checkbox.
+     - Añadidos botones de selección en bloque dentro del acordeón en modo fusión.
+  6. **Compilación y Despliegue en VPS**:
+     - `npm run build` ejecutado localmente con éxito (0 errores).
+     - Archivos desplegados al VPS de producción vía SFTP y reiniciado el servicio PM2 `informes-andar`.
+- **Estado**: Completado con éxito ✅
+
 ## 2026-09-10 (Visualización de Facilitador/Grupo en Trimestrales, Eliminación por Admin/Coordinación y Carga/Interpretación de DOCX Manuales para Informe Final)
 - **Objetivo**: A requerimiento del usuario ("Que aca diga quien lo hizo ese informe trimestral, que facilitador y grupo, ademas como admin y coordinador se pueda eliminar o no. Ademas de esto necesito que de alguna manera se pueda cargar un docx que hayan hecho a mano los facilitadores, que lo detecte el sistema, que lo interprete, lo guarde asi se pueden fusionar trimestrales para generar un informe final..."):
   1. Mostrar en la tabla de informes trimestrales qué facilitador lo elaboró y a qué grupo pertenece el concurrente.

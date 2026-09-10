@@ -1,12 +1,24 @@
 "use client";
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import ExcelImportWizardModal from '../_components/ExcelImportWizardModal';
+
+const INSTITUTIONAL_GROUPS = [
+  { id: 'TODOS', label: '🌐 Todos' },
+  { id: 'Emprendedores', label: 'Emprendedores' },
+  { id: 'Artesanos', label: 'Artesanos' },
+  { id: 'Promotores', label: 'Promotores' },
+  { id: 'Empoderadas', label: 'Empoderadas' },
+  { id: 'Atrapasueños', label: 'Atrapasueños' },
+  { id: 'Buenos Mozos', label: 'Buenos Mozos' },
+  { id: 'Clave de Sol', label: 'Clave de Sol' }
+];
 
 export default function FormsList() {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('');
   const [search, setSearch] = useState('');
+  const [selectedGroup, setSelectedGroup] = useState('TODOS');
   const [showDraftsOnly, setShowDraftsOnly] = useState(false);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -23,6 +35,17 @@ export default function FormsList() {
   const [importWizardOpen, setImportWizardOpen] = useState(false);
   const [importWizardYoungId, setImportWizardYoungId] = useState('');
   const [importWizardMonths, setImportWizardMonths] = useState<any[]>([]);
+
+  // Sincronizar parámetro ?grupo= de la URL
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const g = params.get('grupo') || params.get('group');
+      if (g) {
+        setSelectedGroup(g);
+      }
+    }
+  }, []);
 
   const handleWizardSuccess = (reportId: string) => {
     window.location.href = '/reports';
@@ -70,7 +93,7 @@ export default function FormsList() {
     try {
       const params = new URLSearchParams();
       params.set('page', String(pageNum));
-      params.set('pageSize', '20');
+      params.set('pageSize', '1000');
       const r = await fetch(`/api/forms?${params.toString()}`);
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const j = await r.json();
@@ -80,9 +103,9 @@ export default function FormsList() {
       setPage(pageNum);
       setLoading(false);
     } catch (err) {
-      console.error('Error cargando borradores:', err);
+      console.error('Error cargando cuadrículas:', err);
       setLoading(false);
-      alert('Error al cargar borradores');
+      alert('Error al cargar cuadrículas');
     }
   };
 
@@ -91,14 +114,8 @@ export default function FormsList() {
   }, []);
 
   useEffect(() => {
-    if (items.length > 0) {
-      const initialExpanded: Record<string, boolean> = {};
-      items.forEach(it => {
-        const yId = it.youngId || 'sin-joven';
-        initialExpanded[yId] = true; // Todo expandido por defecto para facilidad de uso
-      });
-      setExpandedIds(initialExpanded);
-    }
+    // Por defecto, todas las cuadrículas comienzan COLAPSADAS para ahorrar espacio
+    setExpandedIds({});
   }, [items]);
 
   const toggleExpand = (youngId: string) => {
@@ -106,6 +123,16 @@ export default function FormsList() {
       ...prev,
       [youngId]: !prev[youngId]
     }));
+  };
+
+  const expandAll = (yIds: string[]) => {
+    const all: Record<string, boolean> = {};
+    yIds.forEach(id => { all[id] = true; });
+    setExpandedIds(all);
+  };
+
+  const collapseAll = () => {
+    setExpandedIds({});
   };
 
   const changeStatus = async (id: string, status: string) => {
@@ -188,6 +215,91 @@ export default function FormsList() {
     });
   };
 
+  const allYoungsMap = useMemo(() => {
+    const map: Record<string, { youngId: string; jovenNombre: string; grupo: string; drafts: any[] }> = {};
+    items.forEach(it => {
+      const yId = it.youngId ? String(it.youngId) : `noyoung-${it.jovenNombre || 'desconocido'}`;
+      let grp = it.grupo || 'Sin grupo';
+      if (grp.toLowerCase() === 'atrapa sueños') grp = 'Atrapasueños';
+      if (!map[yId]) {
+        map[yId] = {
+          youngId: yId,
+          jovenNombre: it.jovenNombre || 'Sin joven asignado',
+          grupo: grp,
+          drafts: []
+        };
+      }
+      map[yId].drafts.push(it);
+    });
+    return map;
+  }, [items]);
+
+  const groupCounts = useMemo(() => {
+    const counts: Record<string, { youngs: number; forms: number }> = {
+      TODOS: { youngs: Object.keys(allYoungsMap).length, forms: items.length }
+    };
+    INSTITUTIONAL_GROUPS.forEach(g => {
+      if (g.id !== 'TODOS') counts[g.id] = { youngs: 0, forms: 0 };
+    });
+
+    Object.values(allYoungsMap).forEach(y => {
+      let g = y.grupo;
+      if (g.toLowerCase() === 'atrapa sueños') g = 'Atrapasueños';
+      if (counts[g]) {
+        counts[g].youngs++;
+        counts[g].forms += y.drafts.length;
+      }
+    });
+
+    return counts;
+  }, [allYoungsMap, items]);
+
+  const filteredYoungs = useMemo(() => {
+    return Object.values(allYoungsMap).filter(y => {
+      // 1. Filtrado por Grupo Institucional
+      if (selectedGroup && selectedGroup !== 'TODOS') {
+        const selLower = selectedGroup.toLowerCase().trim();
+        const grpLower = (y.grupo || '').toLowerCase().trim();
+        const matchesGroup = grpLower === selLower || 
+          (selLower === 'atrapasueños' && grpLower === 'atrapa sueños') ||
+          grpLower.includes(selLower);
+        if (!matchesGroup) return false;
+      }
+
+      // 2. Filtrado por Texto (concurrente, grupo o facilitador)
+      const searchLower = search.toLowerCase().trim();
+      if (searchLower) {
+        const matchesSearch = 
+          y.jovenNombre.toLowerCase().includes(searchLower) ||
+          (y.grupo || '').toLowerCase().includes(searchLower) ||
+          y.drafts.some(d => 
+            String(d.periodo || '').toLowerCase().includes(searchLower) ||
+            String(d.facilitadorNombre || '').toLowerCase().includes(searchLower)
+          );
+        if (!matchesSearch) return false;
+      }
+
+      // 3. Filtrado por período
+      const filterPeriodLower = filter.toLowerCase().trim();
+      if (filterPeriodLower) {
+        const hasPeriod = y.drafts.some(d => String(d.periodo || '').toLowerCase().includes(filterPeriodLower));
+        if (!hasPeriod) return false;
+      }
+
+      // 4. Filtrado por solo borradores
+      if (showDraftsOnly) {
+        const hasDraft = y.drafts.some(d => d.status === 'BORRADOR');
+        if (!hasDraft) return false;
+      }
+
+      return true;
+    });
+  }, [allYoungsMap, selectedGroup, search, filter, showDraftsOnly]);
+
+  const totalVisibleForms = useMemo(() => {
+    return filteredYoungs.reduce((acc, y) => acc + y.drafts.length, 0);
+  }, [filteredYoungs]);
+
   const selectedItems = items.filter(it => selectedIds.has(it._id || it.id));
   const selectedYoungIds = [...new Set(selectedItems.map(it => it.youngId))];
   const sameYoung = selectedYoungIds.length === 1;
@@ -228,11 +340,64 @@ export default function FormsList() {
     }
   };
 
+  const generateTrimestralForYoung = async (youngName: string, drafts: any[]) => {
+    if (!drafts || drafts.length === 0) {
+      alert('Este concurrente no tiene cuadrículas mensuales registradas.');
+      return;
+    }
+    const ids = drafts.slice(0, 3).map(it => it._id || it.id);
+    const count = ids.length;
+
+    if (!confirm(`¿Deseas generar el Informe Trimestral para "${youngName}" unificando sus ${count} cuadrícula(s) mensual(es) con Inteligencia Artificial?`)) {
+      return;
+    }
+
+    setGeneratingTrimestral(true);
+    try {
+      const res = await fetch('/api/reports/trimestral', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ formIds: ids })
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Error generando informe trimestral' }));
+        throw new Error(err.error || `HTTP ${res.status}`);
+      }
+
+      const result = await res.json();
+      alert('✅ Informe Trimestral generado con éxito. Se iniciará la descarga en formato Word (.docx).');
+      
+      window.location.href = `/api/reports/${result.reportId}/.docx`;
+    } catch (error: any) {
+      console.error('Error al generar informe trimestral:', error);
+      alert(`Error: ${error.message}`);
+    } finally {
+      setGeneratingTrimestral(false);
+    }
+  };
+
+  const selectAllForYoung = (drafts: any[]) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      drafts.slice(0, 3).forEach(d => next.add(d._id || d.id));
+      return next;
+    });
+  };
+
+  const deselectAllForYoung = (drafts: any[]) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      drafts.forEach(d => next.delete(d._id || d.id));
+      return next;
+    });
+  };
+
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 10 }}>
         <h1>Cuadrículas Mensuales</h1>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           <button 
             className={`ga-btn ${selectionMode ? 'accent' : 'secondary'}`}
             onClick={() => {
@@ -265,37 +430,149 @@ export default function FormsList() {
         </div>
       </div>
 
-      <div className="ga-card" style={{ marginBottom: 12 }}>
-        <div style={{ display:'flex', gap:8, flexWrap: 'wrap' }}>
-          <label style={{ flex:1, minWidth: 200 }}>
-            Buscar<br />
+      {/* Tarjeta de Filtros con Selector de Grupos Institucionales */}
+      <div className="ga-card" style={{ marginBottom: 16, padding: '16px 20px' }}>
+        {/* 1. Selector de Grupo Institucional en Pills */}
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#475569', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span>🏫</span> Filtrar por Grupo Institucional:
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {INSTITUTIONAL_GROUPS.map(tab => {
+              const isActive = (tab.id === 'TODOS' && (!selectedGroup || selectedGroup === 'TODOS')) ||
+                selectedGroup.toLowerCase().trim() === tab.id.toLowerCase().trim();
+              const c = groupCounts[tab.id] || { youngs: 0, forms: 0 };
+              const countText = `${c.youngs}`;
+
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => {
+                    const nextGroup = tab.id;
+                    setSelectedGroup(nextGroup);
+                    if (typeof window !== 'undefined') {
+                      const url = new URL(window.location.href);
+                      if (nextGroup === 'TODOS') {
+                        url.searchParams.delete('grupo');
+                      } else {
+                        url.searchParams.set('grupo', nextGroup);
+                      }
+                      window.history.replaceState({}, '', url.toString());
+                    }
+                  }}
+                  style={{
+                    padding: '6px 14px',
+                    borderRadius: 20,
+                    fontSize: 13,
+                    fontWeight: 700,
+                    border: isActive ? '2px solid #2563eb' : '1px solid #cbd5e1',
+                    background: isActive ? '#eff6ff' : '#ffffff',
+                    color: isActive ? '#1d4ed8' : '#64748b',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  <span>{tab.label}</span>
+                  <span style={{
+                    fontSize: 11,
+                    padding: '1px 7px',
+                    borderRadius: 10,
+                    background: isActive ? '#2563eb' : '#e2e8f0',
+                    color: isActive ? '#ffffff' : '#475569'
+                  }}>
+                    {countText}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* 2. Filtros de búsqueda y período */}
+        <div style={{ display:'flex', gap:12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+          <label style={{ flex: 2, minWidth: 200 }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: '#475569' }}>Buscar</span>
             <input 
               className="ga-input" 
               value={search} 
               onChange={(e) => setSearch(e.target.value)} 
-              placeholder="Buscar por período, facilitador o joven..."
+              placeholder="Buscar por concurrente, facilitador o período..."
+              style={{ marginTop: 4 }}
             />
           </label>
-          <label style={{ flex:1, minWidth: 150 }}>
-            Filtrar por período<br />
+          <label style={{ flex: 1, minWidth: 160 }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: '#475569' }}>Grupo</span>
+            <select
+              className="ga-select"
+              value={selectedGroup}
+              onChange={(e) => {
+                const nextGroup = e.target.value;
+                setSelectedGroup(nextGroup);
+                if (typeof window !== 'undefined') {
+                  const url = new URL(window.location.href);
+                  if (nextGroup === 'TODOS') {
+                    url.searchParams.delete('grupo');
+                  } else {
+                    url.searchParams.set('grupo', nextGroup);
+                  }
+                  window.history.replaceState({}, '', url.toString());
+                }
+              }}
+              style={{ marginTop: 4, width: '100%' }}
+            >
+              {INSTITUTIONAL_GROUPS.map(g => {
+                const c = groupCounts[g.id] || { youngs: 0, forms: 0 };
+                return (
+                  <option key={g.id} value={g.id}>
+                    {g.label} ({c.youngs} concurrentes - {c.forms} cuadrículas)
+                  </option>
+                );
+              })}
+            </select>
+          </label>
+          <label style={{ flex: 1, minWidth: 130 }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: '#475569' }}>Filtrar por período</span>
             <input 
               className="ga-input" 
               value={filter} 
               onChange={(e) => setFilter(e.target.value)} 
-              placeholder="Ej: 2025-01"
+              placeholder="Ej: 2026-04"
+              style={{ marginTop: 4 }}
             />
           </label>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 20 }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 10 }}>
             <input 
               type="checkbox" 
               checked={showDraftsOnly} 
               onChange={(e) => setShowDraftsOnly(e.target.checked)}
             />
-            <span>Mostrar solo en borrador</span>
+            <span style={{ fontSize: 13, color: '#475569' }}>Solo en borrador</span>
           </label>
+          {(selectedGroup !== 'TODOS' || search || filter || showDraftsOnly) && (
+            <button
+              type="button"
+              className="ga-btn secondary"
+              style={{ padding: '8px 12px', fontSize: 12, marginBottom: 6, display: 'inline-flex', alignItems: 'center', gap: 4 }}
+              onClick={() => {
+                setSelectedGroup('TODOS');
+                setSearch('');
+                setFilter('');
+                setShowDraftsOnly(false);
+                if (typeof window !== 'undefined') {
+                  const url = new URL(window.location.href);
+                  url.searchParams.delete('grupo');
+                  window.history.replaceState({}, '', url.pathname);
+                }
+              }}
+            >
+              ✕ Limpiar filtros
+            </button>
+          )}
         </div>
-
-
       </div>
 
       {selectionMode && (
@@ -312,48 +589,46 @@ export default function FormsList() {
           alignItems: 'center',
           gap: '8px'
         }}>
-          💡 <span>Selecciona entre 1 y 3 cuadrículas mensuales (checklists de cuadraditos) del <strong>mismo joven</strong> para generar el informe trimestral.</span>
+          💡 <span>Selecciona entre 1 y 3 cuadrículas mensuales del <strong>mismo joven</strong> para generar el informe trimestral.</span>
         </div>
       )}
 
       {loading ? 'Cargando…' : (() => {
-        // Filtrar ítems
-        const filteredItems = items.filter((it) => {
-          const searchLower = search.toLowerCase();
-          const matchesSearch = !search || 
-            String(it.periodo || '').toLowerCase().includes(searchLower) ||
-            String(it.facilitadorNombre || '').toLowerCase().includes(searchLower) ||
-            String(it.jovenNombre || '').toLowerCase().includes(searchLower);
-          const matchesFilter = !filter || String(it.periodo || '').toLowerCase().includes(filter.toLowerCase());
-          const matchesDraft = !showDraftsOnly || it.status === 'BORRADOR';
-          return matchesSearch && matchesFilter && matchesDraft;
-        });
-
-        // Agrupar ítems por joven
-        const grouped: Record<string, { jovenNombre: string; youngId: string; drafts: any[] }> = {};
-        filteredItems.forEach(it => {
-          const yId = it.youngId || 'sin-joven';
-          const name = it.jovenNombre || 'Sin joven asignado';
-          if (!grouped[yId]) {
-            grouped[yId] = {
-              youngId: yId,
-              jovenNombre: name,
-              drafts: []
-            };
-          }
-          grouped[yId].drafts.push(it);
-        });
-        const groupedList = Object.values(grouped);
-
         return (
           <div>
-            {groupedList.length === 0 ? (
+            {filteredYoungs.length === 0 ? (
               <div className="ga-card" style={{ textAlign: 'center', padding: '40px 20px', color: '#64748b' }}>
-                No se encontraron cuadrículas mensuales.
+                No se encontraron cuadrículas mensuales para los filtros seleccionados.
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                {groupedList.map((group) => {
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, padding: '0 4px', flexWrap: 'wrap', gap: 8 }}>
+                  <span style={{ fontSize: '13px', color: '#64748b', fontWeight: 600 }}>
+                    👥 Mostrando {filteredYoungs.length} concurrentes ({totalVisibleForms} cuadrículas en total)
+                    {selectedGroup !== 'TODOS' && <strong style={{ color: '#2563eb', marginLeft: 6 }}>en {selectedGroup}</strong>}
+                  </span>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button 
+                      type="button" 
+                      className="ga-btn secondary" 
+                      style={{ fontSize: '12px', padding: '4px 10px', height: 'auto' }}
+                      onClick={() => expandAll(filteredYoungs.map(g => g.youngId))}
+                    >
+                      📂 Expandir todos
+                    </button>
+                    <button 
+                      type="button" 
+                      className="ga-btn secondary" 
+                      style={{ fontSize: '12px', padding: '4px 10px', height: 'auto' }}
+                      onClick={collapseAll}
+                    >
+                      📁 Colapsar todos
+                    </button>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {filteredYoungs.map((group) => {
                   const isExpanded = !!expandedIds[group.youngId];
                   return (
                     <div 
@@ -375,20 +650,33 @@ export default function FormsList() {
                           display: 'flex', 
                           justifyContent: 'space-between', 
                           alignItems: 'center', 
-                          padding: '16px 20px', 
+                          padding: '14px 20px', 
                           background: '#f8fafc', 
                           borderBottom: isExpanded ? '1px solid #e2e8f0' : 'none',
                           cursor: 'pointer',
                           userSelect: 'none',
-                          transition: 'background 0.2s ease'
+                          transition: 'background 0.2s ease',
+                          flexWrap: 'wrap',
+                          gap: 12
                         }}
                         onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
                         onMouseLeave={(e) => e.currentTarget.style.background = '#f8fafc'}
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                           <span style={{ fontSize: '18px' }}>👤</span>
                           <span style={{ fontSize: '16px', fontWeight: 700, color: '#1e3a8a' }}>
                             {group.jovenNombre}
+                          </span>
+                          <span style={{ 
+                            background: '#e0e7ff', 
+                            color: '#3730a3', 
+                            padding: '2px 8px', 
+                            borderRadius: '6px', 
+                            fontSize: '11px', 
+                            fontWeight: 700,
+                            border: '1px solid #c7d2fe'
+                          }}>
+                            {group.grupo}
                           </span>
                           <span style={{ 
                             background: '#eff6ff', 
@@ -402,7 +690,34 @@ export default function FormsList() {
                             {group.drafts.length} {group.drafts.length === 1 ? 'cuadrícula mensual' : 'cuadrículas mensuales'}
                           </span>
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }} onClick={(e) => e.stopPropagation()}>
+                          {/* Botón rápido Generar Trimestral para este joven */}
+                          {group.drafts.length > 0 && (
+                            <button
+                              type="button"
+                              className="ga-btn"
+                              disabled={generatingTrimestral}
+                              onClick={() => generateTrimestralForYoung(group.jovenNombre, group.drafts)}
+                              style={{
+                                background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+                                color: '#ffffff',
+                                border: 'none',
+                                padding: '5px 12px',
+                                fontSize: '12px',
+                                fontWeight: 700,
+                                borderRadius: '6px',
+                                boxShadow: '0 2px 4px rgba(37, 99, 235, 0.2)',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                cursor: generatingTrimestral ? 'wait' : 'pointer'
+                              }}
+                              title={`Generar informe trimestral unificando las ${group.drafts.length} cuadrículas con IA`}
+                            >
+                              {generatingTrimestral ? '⏳ Generando...' : `⚡ Generar Trimestral (${group.drafts.length})`}
+                            </button>
+                          )}
+
                           {selectionMode && group.drafts.some(d => selectedIds.has(d._id || d.id)) && (
                             <span style={{ 
                               fontSize: '12px', 
@@ -415,12 +730,17 @@ export default function FormsList() {
                               📝 {group.drafts.filter(d => selectedIds.has(d._id || d.id)).length} seleccionados
                             </span>
                           )}
-                          <span style={{ 
-                            transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)', 
-                            transition: 'transform 0.2s ease',
-                            fontSize: '14px',
-                            color: '#64748b'
-                          }}>
+                          <span 
+                            style={{ 
+                              transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)', 
+                              transition: 'transform 0.2s ease',
+                              fontSize: '14px',
+                              color: '#64748b',
+                              cursor: 'pointer',
+                              padding: '4px 8px'
+                            }}
+                            onClick={() => toggleExpand(group.youngId)}
+                          >
                             ▶
                           </span>
                         </div>
@@ -429,6 +749,26 @@ export default function FormsList() {
                       {/* Contenido Desplegable */}
                       {isExpanded && (
                         <div style={{ padding: '16px 20px', background: '#ffffff', overflowX: 'auto' }}>
+                          {selectionMode && (
+                            <div style={{ display: 'flex', gap: 8, marginBottom: 12, alignItems: 'center' }}>
+                              <button
+                                type="button"
+                                className="ga-btn secondary"
+                                style={{ fontSize: 11, padding: '4px 10px' }}
+                                onClick={() => selectAllForYoung(group.drafts)}
+                              >
+                                ✅ Seleccionar las {Math.min(group.drafts.length, 3)} cuadrículas
+                              </button>
+                              <button
+                                type="button"
+                                className="ga-btn secondary"
+                                style={{ fontSize: 11, padding: '4px 10px' }}
+                                onClick={() => deselectAllForYoung(group.drafts)}
+                              >
+                                ✕ Deseleccionar todas
+                              </button>
+                            </div>
+                          )}
                           <table className="ga-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                             <thead>
                               <tr>
@@ -532,12 +872,13 @@ export default function FormsList() {
                     </div>
                   );
                 })}
+                </div>
               </div>
             )}
 
             <div style={{ marginTop: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
               <div style={{ color: 'var(--muted)', fontSize: 14 }}>
-                Mostrando {filteredItems.length} de {total} cuadrículas
+                Mostrando {totalVisibleForms} de {total} cuadrículas
               </div>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 <button 

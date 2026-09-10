@@ -201,7 +201,8 @@ export async function GET(req: NextRequest) {
               f.*,
               u.name as facilitador_nombre,
               u.email as facilitador_email,
-              y.nombre_completo as joven_nombre
+              y.nombre_completo as joven_nombre,
+              COALESCE(NULLIF(y.taller, ''), NULLIF(f.data->'datosGenerales'->>'grupo', ''), NULLIF(f.data->'datosGenerales'->>'taller', ''), 'Sin grupo') as grupo
             FROM forms f
             LEFT JOIN users u ON f.created_by = u.id
             LEFT JOIN youngs y ON f.young_id = y.id
@@ -216,7 +217,8 @@ export async function GET(req: NextRequest) {
               f.*,
               u.name as facilitador_nombre,
               u.email as facilitador_email,
-              y.nombre_completo as joven_nombre
+              y.nombre_completo as joven_nombre,
+              COALESCE(NULLIF(y.taller, ''), NULLIF(f.data->'datosGenerales'->>'grupo', ''), NULLIF(f.data->'datosGenerales'->>'taller', ''), 'Sin grupo') as grupo
             FROM forms f
             LEFT JOIN users u ON f.created_by = u.id
             LEFT JOIN youngs y ON f.young_id = y.id
@@ -233,7 +235,8 @@ export async function GET(req: NextRequest) {
               f.*,
               u.name as facilitador_nombre,
               u.email as facilitador_email,
-              y.nombre_completo as joven_nombre
+              y.nombre_completo as joven_nombre,
+              COALESCE(NULLIF(y.taller, ''), NULLIF(f.data->'datosGenerales'->>'grupo', ''), NULLIF(f.data->'datosGenerales'->>'taller', ''), 'Sin grupo') as grupo
             FROM forms f
             LEFT JOIN users u ON f.created_by = u.id
             LEFT JOIN youngs y ON f.young_id = y.id
@@ -248,7 +251,8 @@ export async function GET(req: NextRequest) {
               f.*,
               u.name as facilitador_nombre,
               u.email as facilitador_email,
-              y.nombre_completo as joven_nombre
+              y.nombre_completo as joven_nombre,
+              COALESCE(NULLIF(y.taller, ''), NULLIF(f.data->'datosGenerales'->>'grupo', ''), NULLIF(f.data->'datosGenerales'->>'taller', ''), 'Sin grupo') as grupo
             FROM forms f
             LEFT JOIN users u ON f.created_by = u.id
             LEFT JOIN youngs y ON f.young_id = y.id
@@ -272,7 +276,8 @@ export async function GET(req: NextRequest) {
         updatedAt: row.updated_at,
         status: row.status || 'BORRADOR',
         facilitadorNombre: row.facilitador_nombre || row.facilitador_email || 'Sin facilitador',
-        jovenNombre: row.joven_nombre || row.data?.datosGenerales?.nombreCompleto || 'Sin joven asignado'
+        jovenNombre: row.joven_nombre || row.data?.datosGenerales?.nombreCompleto || 'Sin joven asignado',
+        grupo: row.grupo || 'Sin grupo'
       }));
       console.log('[API /forms] ✅ Formularios encontrados:', items.length);
       return NextResponse.json({ items, total, page, pageSize, totalPages: Math.ceil(total / pageSize) });
@@ -303,11 +308,13 @@ export async function GET(req: NextRequest) {
           }
         }
         
+        let grupo = item.data?.datosGenerales?.grupo || item.data?.datosGenerales?.taller || 'Sin grupo';
         if (item.youngId) {
           try {
             const young = await YoungModel.findById(item.youngId).lean();
             if (young) {
               jovenNombre = young.nombreCompleto || jovenNombre;
+              if (young.taller) grupo = young.taller;
             }
           } catch (err) {
             console.error('Error obteniendo joven:', err);
@@ -317,7 +324,8 @@ export async function GET(req: NextRequest) {
         return {
           ...item,
           facilitadorNombre,
-          jovenNombre
+          jovenNombre,
+          grupo
         };
       }));
       
