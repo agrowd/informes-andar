@@ -1,5 +1,19 @@
 # 🗓️ Workcycle Log
 
+## 2026-09-10 (Eliminación de Usuario de Prueba Martín Romero y Despliegue en VPS de Producción)
+- **Objetivo**: A petición del usuario ("Eliminar al usuario martin romero ya que era de prueba, y promotores estaba con el usuario de lemuel"), eliminar definitivamente al usuario Martín Romero (ID 6) de la base de datos Neon Postgres y sincronizar/desplegar en el VPS de producción (`informes-andar.nextemarketing.com`) para que la tarjeta del grupo Promotores refleje a Lemuel Sola como Responsable oficial.
+- **Acciones Realizadas**:
+  1. **Auditoría de Dependencias de Martín Romero (ID 6)**:
+     - Verificado que tuviera 0 concurrentes asignados, 0 formularios asociados, 0 reportes y 0 talleres creados.
+  2. **Eliminación en Postgres (`users`)**:
+     - Ejecutado `DELETE FROM users WHERE id = 6`. Registro eliminado de forma limpia sin afectar integridad referencial.
+  3. **Despliegue a Producción (VPS `149.50.128.73:5782`)**:
+     - Sincronizados archivos fuente por SFTP vía `scratch/deploy_files.mjs` (incluyendo `src/app/page.tsx` con Lemuel Sola y `src/app/api/reports/trimestral/route.ts`).
+     - Ejecutado `npm run build` en el VPS con éxito (0 errores).
+     - Reiniciado daemon PM2 `informes-andar` (PID 115750, status online).
+     - Verificado endpoint de producción HTTP 200 en `http://149.50.128.73:8000/login` (`informes-andar.nextemarketing.com`).
+- **Estado**: Completado con éxito ✅
+
 ## 2026-09-08 (Asignación Oficial de Lemuel Sola como Facilitador de Promotores)
 - **Objetivo**: A petición del usuario ("Promotores dejalo con Lemuel Sola, usuario correo es lemuel.sola@granjaandar.org.ar contraseña Lemuel1"), configurar al nuevo facilitador Lemuel Sola en la base de datos Neon Postgres, otorgarle la titularidad del grupo Promotores, transferirle los 11 concurrentes y actualizar las 30 cuadrículas mensuales de evaluación con su autoría y firma institucional.
 - **Acciones Realizadas**:

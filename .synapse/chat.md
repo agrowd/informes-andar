@@ -428,3 +428,14 @@
 - Migró las 30 cuadrículas mensuales de Promotores en la tabla `forms` (`created_by = 14`, `datosGenerales.facilitador = 'Lemuel Sola'`, `facilitadora = 'Lemuel Sola'`, `facilitadorNombre = 'Lemuel Sola'`).
 - Actualizó la interfaz de Inicio (`src/app/page.tsx`) y los fallbacks de IA (`src/app/api/reports/trimestral/route.ts`).
 - Verificó compilación sin errores (`npm run build`).
+
+# Registro de Conversación - 2026-09-10 (Eliminación de Usuario Martín Romero y Despliegue en Producción)
+
+## Usuario:
+- Solicitó eliminar al usuario Martín Romero ya que era de prueba, y verificar que Promotores quede con el usuario de Lemuel (compartiendo captura de pantalla de `informes-andar.nextemarketing.com`).
+
+## Antigravity:
+- Auditó la base de datos Neon Postgres y comprobó que Martín Romero (ID 6) no tenía concurrentes, formularios ni reportes asignados.
+- Eliminó definitivamente al usuario Martín Romero (ID 6) de la tabla `users`.
+- Desplegó la versión compilada al VPS de producción (`149.50.128.73:5782`) con `scratch/deploy_files.mjs`, recompilando Next.js y reiniciando el servicio en PM2 (`informes-andar`, PID 115750).
+- Verificó endpoint de producción HTTP 200 en `informes-andar.nextemarketing.com`.
