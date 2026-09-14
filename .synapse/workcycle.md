@@ -1,19 +1,24 @@
 # 🗓️ Workcycle Log
 
-## 2026-09-14 (Diagnóstico Comparativo y Causa Raíz de Nicolás Maita: Excel vs Sistema)
-- **Objetivo**: Atender la solicitud del usuario: "Analiza el archivo de descargas NICOLAS MAITA.xlsx y comparalo con la cuadricula que esta subido al sistema, por que no es igual? que paso?".
+## 2026-09-14 (Sincronización Exacta de Nicolás Maita y Purga de Sobrantes)
+- **Objetivo**: Atender la solicitud del usuario: "Analiza el archivo de descargas NICOLAS MAITA.xlsx y comparalo con la cuadricula que esta subido al sistema, por que no es igual? que paso?" seguido de "Solucionalo" y "Nicolas maita quedo bien exactamente como el excel entonces? lo que sobre sacalo".
 - **Hallazgos Clave**:
   1. **En el Excel (`NICOLAS MAITA.xlsx`)**:
-     - Solapa `JULIO`: Contiene 8 talleres reales de Buenos Mozos (Marina Trejo), 80 habilidades evaluadas con niveles 2 y 4 (color de relleno cian `#46BDC6`), y 2.777 caracteres de observaciones (adaptación grupal, Semana Invernal, cine Nine Shopping y Polideportivo Maradona).
-  2. **En el Sistema (Neon Postgres - ID 38)**:
-     - **Formulario #280 (JULIO)**: Creado hoy 14/09 a las 11:36 hs. Contiene la plantilla por defecto (`DEFAULT_TALLERES`: Deporte, Viajar, etc.) con 0 habilidades evaluadas y 0 observaciones.
-     - **Formulario #139 (rotulado como AGOSTO)**: Contiene talleres de Cocina/Catering (ajenos al grupo) y paradójicamente tenía pegado el texto de observaciones de Julio.
+     - Estrictamente 2 solapas: `PCP` y `JULIO`. No existe `AGOSTO`.
+     - Solapa `JULIO`: 8 talleres reales de Buenos Mozos (Marina Trejo), 80 habilidades evaluadas con niveles 2 y 4 (color cian `#46BDC6`), y 2.777 caracteres de observaciones (Semana Invernal, Kermés, Nine Shopping Moreno y Polideportivo Maradona).
+  2. **En el Sistema**:
+     - **Formulario #280 (JULIO)**: Creado inicialmente en blanco desde `/form` con talleres genéricos por defecto (`DEFAULT_TALLERES`).
+     - **Formulario #139 (AGOSTO)**: Residuo espurio de pruebas tempranas con 4 talleres de catering (ajenos al grupo) y observaciones copiadas de Julio.
   3. **Causa Raíz**:
-     - El Form #280 fue creado manualmente en la web `/form` en blanco.
-     - El importador de Excel (`/api/youngs/import-excel`) busca estrictamente el prefijo `TALLER:` para detectar talleres. Como la planilla de Marina Trejo titula con códigos de dimensiones (ej. `ARTE "RECICLADO" / DP - BM`), el importador descartó todos los talleres y habilidades.
-- **Acciones Pendientes / Siguientes Pasos**:
-  - Calibrar el importador de planillas para que reconozca los talleres de Buenos Mozos sin el prefijo `TALLER:`.
-  - Reemplazar/actualizar el Form #280 con los 8 talleres y 80 habilidades evaluadas reales de Julio.
+     - El importador de planillas (`import-excel/route.ts`) exigía el prefijo `'TALLER:'`, descartando los talleres titulados con códigos de dimensión (`/ DP - BM`) propios de Marina Trejo.
+- **Acciones Realizadas**:
+  1. Se amplió el reconocedor de talleres en `src/app/api/youngs/import-excel/route.ts` para detectar patrones `/ [A-Z]{2}` y nombres de talleres institucionales directos sin prefijo.
+  2. Se sincronizó el Formulario #280 en Neon PostgreSQL con los 8 talleres, 80 habilidades evaluadas y los 2.777 caracteres de observaciones de Julio.
+  3. Se auditó la base de datos y se confirmó que el Formulario #139 no estaba vinculado a ningún informe (`[]`).
+  4. Se eliminó permanentemente el Formulario #139 espurio (`DELETE FROM forms WHERE id = 139`).
+  5. Se compiló el proyecto (`npm run build`), se desplegó al VPS de producción y se reinició PM2 (`online`).
+  6. Registrada decisión técnica `D-73`, error `ERR-28`, changelog `1.9.2` y logs de Ariadne.
+- **Estado**: Completado y Verificado al 100% ✅
 
 ## 2026-09-14 (Auditoría de Memoria Persistente y Estado General del Proyecto)
 - **Objetivo**: Responder a la consulta del usuario ("Se perdio toda la memoria de las conversaciones? o que paso?") verificando la integridad del Cortex y del sistema Ariadne Engine v5.0.

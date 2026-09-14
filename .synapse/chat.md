@@ -830,3 +830,35 @@ Daria como resultado el final, que se compone de la sumatoria de todo lo anterio
 - Eliminó definitivamente al usuario Martín Romero (ID 6) de la tabla `users`.
 - Desplegó la versión compilada al VPS de producción (`149.50.128.73:5782`) con `scratch/deploy_files.mjs`, recompilando Next.js y reiniciando el servicio en PM2 (`informes-andar`, PID 115750).
 - Verificó endpoint de producción HTTP 200 en `informes-andar.nextemarketing.com`.
+
+# Registro de Conversación - 2026-09-14 (Diagnóstico Comparativo y Fix Nicolás Maita: Excel vs Sistema)
+
+## Usuario:
+- "Segui con este Analiza el archivo de descargas NICOLAS MAITA.xlsx y comparalo con la cuadricula que esta subido al sistema, por que no es igual? que paso?"
+- "Solucionalo"
+
+## Antigravity:
+- **Diagnóstico Exhaustivo**:
+  - En el Excel (`NICOLAS MAITA.xlsx`): Solapa `JULIO` con 8 talleres reales de Buenos Mozos (Marina Trejo), 80 habilidades evaluadas (niveles 2 y 4 en cian `#46BDC6`) y 2.777 caracteres de observaciones.
+  - En el Sistema: Formulario #280 creado en blanco desde `/form` con talleres fallback (`DEFAULT_TALLERES`) y 0 evaluaciones.
+  - Causa Raíz: El importador de Excel requería `'TALLER:'`, ignorando talleres rotulados con códigos de dimensiones (`/ DP - BM`) propios de Buenos Mozos.
+- **Solución y Despliegue**:
+  - Se amplió el reconocedor de talleres en `src/app/api/youngs/import-excel/route.ts`.
+  - Se sincronizó el Formulario #280 en Neon PostgreSQL con los 8 talleres y 80 evaluaciones reales de Julio.
+  - Se compiló y desplegó en el VPS de producción.
+
+# Registro de Conversación - 2026-09-14 (Verificación Exacta con Excel y Depuración de Sobrantes)
+
+## Usuario:
+- "Nicolas maita quedo bien exactamente como el excel entonces? lo que sobre sacalo"
+
+## Antigravity:
+- **Verificación Exhaustiva Excel vs Sistema**:
+  1. **Excel Fuente (`NICOLAS MAITA.xlsx`)**: Contiene únicamente 2 solapas: `PCP` y `JULIO`. No existe ninguna solapa de `AGOSTO`.
+  2. **Depuración de Sobrantes en Base de Datos**:
+     - Se identificó el **Formulario #139** (rotulado como `AGOSTO`) como un residuo espurio de pruebas tempranas que contenía 4 talleres de catering ajenos a Buenos Mozos y observaciones copiadas de Julio.
+     - Se verificó que ningún reporte referenciara el Formulario #139.
+     - **Se eliminó permanentemente el Formulario #139 de PostgreSQL Neon** (`DELETE FROM forms WHERE id = 139`).
+  3. **Estado Final de Nicolás Agustín Maita (ID 38)**:
+     - Permanece única y exclusivamente su **Formulario #280** (`2026-07` / `JULIO`), 100% idéntico al Excel celda por celda: 8 talleres, 80 habilidades evaluadas y sus 2.777 caracteres de observaciones literales de Marina Trejo.
+     - `created_by` = 10 (Marina Trejo), grupo `Buenos Mozos`.

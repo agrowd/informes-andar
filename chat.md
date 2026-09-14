@@ -197,9 +197,25 @@
   3. **Causa Raíz de la Discrepancia**:
      - El Formulario #280 se guardó desde el formulario web manual sin importar el Excel.
      - El importador de Excel (`/api/youngs/import-excel`) exigía el prefijo `TALLER:`, por lo que al procesar planillas de Buenos Mozos de Marina Trejo (que usan códigos de dimensión como `ARTE "RECICLADO" / DP - BM`) ignoraba las cabeceras y descartaba todas las habilidades.
+- **Solución Aplicada**:
+  - Se actualizó el reconocedor de talleres en `src/app/api/youngs/import-excel/route.ts` para capturar sufijos de dimensiones y nombres institucionales directos sin prefijo.
+  - Se sincronizó el Formulario #280 en PostgreSQL Neon con los 8 talleres reales, 80 habilidades evaluadas y los 2.777 caracteres de observaciones.
+  - Se compiló y desplegó en el VPS de producción.
 
+# Registro de Conversación - 2026-09-14 (Verificación Exacta con Excel y Depuración de Sobrantes)
 
+## Usuario:
+- "Nicolas maita quedo bien exactamente como el excel entonces? lo que sobre sacalo"
 
-
-
-
+## Antigravity:
+- **Verificación Exhaustiva Excel vs Sistema**:
+  1. **Excel Fuente (`NICOLAS MAITA.xlsx`)**:
+     - Contiene estrictamente 2 solapas: `PCP` y `JULIO`. No existe ninguna solapa de `AGOSTO`.
+     - La solapa `JULIO` cuenta con 8 talleres de Buenos Mozos, 80 habilidades evaluadas (niveles 2 y 4 en color cian `#46BDC6`) y 2.777 caracteres de observaciones.
+  2. **Depuración de Sobrantes en Base de Datos**:
+     - Se identificó que el **Formulario #139** (rotulado históricamente como `AGOSTO`) era un residuo de pruebas tempranas con 4 talleres de catering ajenos a Buenos Mozos y una copia del texto de Julio.
+     - Se verificó que ningún informe dependiera del Formulario #139 (`[]`).
+     - **Se eliminó permanentemente el Formulario #139 de PostgreSQL Neon** (`DELETE FROM forms WHERE id = 139`).
+  3. **Estado Final de Nicolás Agustín Maita (ID 38)**:
+     - Permanece única y exclusivamente su **Formulario #280** (`2026-07` / `JULIO`), 100% idéntico al Excel celda por celda: 8 talleres, 80 habilidades evaluadas y sus 2.777 caracteres de observaciones literales de Marina Trejo.
+     - Creado por facilitadora ID 10 (Marina Trejo), grupo `Buenos Mozos`.
