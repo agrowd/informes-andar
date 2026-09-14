@@ -192,3 +192,19 @@
 4. Se sincronizó el Formulario #280 en PostgreSQL Neon para Nicolás Agustín Maita con los 8 talleres reales, 80 habilidades evaluadas y los 2,777 caracteres de observaciones literales de Julio.
 5. Se construyó y desplegó la actualización al VPS de producción con PM2 reiniciado y verificado.
 **Estado:** ✅ FIXED
+
+## ERR-29: Alucinación de Taller de Gastronomía en Concurrente de Buenos Mozos (2026-09-14)
+**Síntoma:** Al generar el informe trimestral de Franco Luciano Martinez (Buenos Mozos), en la sección 1 ("¿Ha alcanzado su meta o sueño 2026?") la IA redactó: *"despliega habilidades prácticas en el taller de gastronomía, donde explora técnicas culinarias y se familiariza con el uso de utensilios de cocina..."*, a pesar de que Buenos Mozos no posee ningún taller de gastronomía ni cocina.
+**Root Cause:**
+1. En `src/lib/ai/quarterlyGenerator.ts`, el prompt contextual del grupo Buenos Mozos indicaba erróneamente `Buenos Mozos (Formación Sociolaboral y Gastronomía)` y `Orientación laboral gastronómica y de servicios (rotisería, salón, comensales)`.
+2. Las directivas de adaptación curricular (línea 330) instruían enfocarse en "rotisería/salón".
+3. En el fallback determinístico, `isCatering` agrupaba indiscriminadamente a `buenos mozos`.
+4. El sueño personal del PCP de Franco indicaba "Cocinar ravioles solo", lo cual gatilló que la IA inventara que asiste a un "taller de gastronomía" institucional para aprender a cocinar.
+5. El generador contenía directivas obsoletas que forzaban el uso de "integración" en reemplazo de "inclusión" (violando D-70).
+**Solución:**
+1. Se depuraron y reescribieron las descripciones y directivas de Buenos Mozos en `quarterlyGenerator.ts` con sus 7 talleres reales de desarrollo personal, inclusión social, arte reciclado, huerta 'Sumemos Verde', derechos, habilidades sociales, bienestar emocional y deporte.
+2. Se incorporó una directiva estricta de prohibición de talleres culinarios en Buenos Mozos, obligando a la IA a tratar los sueños culinarios (ej. cocinar en casa) como metas de autonomía en la vida diaria y del hogar, sin inventar talleres institucionales de cocina.
+3. Se desacopló Buenos Mozos de catering/gastronomía en el fallback determinístico.
+4. Se corrigieron los sanitizadores y directivas de lenguaje institucional para forzar **INCLUSIÓN** (D-70).
+5. Se validó la generación mediante test automatizado (`scratch/test_franco.mjs`), se compiló el proyecto, se desplegó al VPS de producción con reinicio de PM2 y se actualizó el informe de Franco Martinez en la base de datos.
+**Estado:** ✅ FIXED

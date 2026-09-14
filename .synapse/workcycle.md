@@ -1,5 +1,29 @@
 # 🗓️ Workcycle Log
 
+## 2026-09-14 (Erradicación de Gastronomía en Buenos Mozos y Alineación con INCLUSIÓN)
+- **Objetivo**: Atender la solicitud: "Me salen cosas de gastronomia cuando no deberia de ser asi ya que no hay talleres en buenos mozos que diga eso. que es lo que pasa? lee el trimestral que genere que esta en descargas de franco martinez".
+- **Hallazgos Clave**:
+  1. **Documento Generado (`informe-trimestral-Martinez_Franco_Luciano-Buenos_Mozos-2026-09-14.docx`)**:
+     - En Sección 1 ("¿Ha alcanzado su meta o sueño 2026?"), la IA redactó: *"despliega habilidades prácticas en el taller de gastronomía, donde explora técnicas culinarias y se familiariza con el uso de utensilios de cocina..."*.
+  2. **Causa Raíz**:
+     - `src/lib/ai/quarterlyGenerator.ts` contenía en las descripciones del grupo Buenos Mozos: *"Buenos Mozos (Formación Sociolaboral y Gastronomía)"* y *"rotisería/salón"*.
+     - El sueño del concurrente en su PCP incluía "Cocinar ravioles solo", lo que sumado a la mención de gastronomía provocó que GPT-4o alucinara que asistía a un taller institucional de gastronomía.
+     - El fallback determinístico agrupaba a Buenos Mozos en `isCatering`.
+     - Había directivas obsoletas que forzaban el reemplazo de "inclusión" por "integración".
+- **Acciones Realizadas**:
+  1. **Generador Trimestral (`src/lib/ai/quarterlyGenerator.ts`)**:
+     - Se reemplazó la identidad curricular de Buenos Mozos por sus 7 talleres reales de Marina Trejo (Desarrollo personal y vida independiente, Arte reciclado y fotografía, Huerta 'Sumemos Verde', Derechos a ser protagonistas, Habilidades sociales e interacción, Bienestar emocional 'Expresando', Deporte 'Activando').
+     - Se prohibió explícitamente atribuir talleres de cocina o gastronomía a Buenos Mozos, instruyendo que metas culinarias personales (ej. "cocinar solo en casa") se aborden como autonomía de la vida diaria/hogar y no como taller institucional.
+     - Se desacopló Buenos Mozos de `isCatering` en el fallback determinístico.
+     - Se actualizaron las directivas y sanitizadores para garantizar **INCLUSIÓN** (D-70).
+  2. **Pruebas Automatizadas y Base de Datos**:
+     - Se testeó la generación para Franco Martinez con IA real (`scratch/test_franco.mjs`), confirmando CERO menciones de gastronomía/cocina en talleres y 100% de respeto a INCLUSIÓN.
+     - Se actualizó el Reporte #136 de Franco Martinez en Neon PostgreSQL con la narrativa fidedigna.
+  3. **Compilación y Despliegue en VPS**:
+     - `npm run build` local exitoso.
+     - Despliegue SFTP al VPS de producción (`149.50.128.73:5782`), compilación en servidor y reinicio de PM2 con código de salida 0.
+- **Estado**: Completado, Verificado y Desplegado en Producción ✅
+
 ## 2026-09-14 (Sincronización Exacta de Franco Luciano Martinez y Purga de Sobrantes)
 - **Objetivo**: Atender la solicitud: "hace lo mismo con FRANCO LUCIANO MARTINEZ".
 - **Hallazgos Clave**:

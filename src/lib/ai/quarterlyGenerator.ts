@@ -43,7 +43,21 @@ DIRECTIVAS ESTRICTAS DE ESTILO INSTITUCIONAL:
    Toda tu redacción debe estar expresada estrictamente en tiempo PRESENTE (ej: "asiste", "participa", "colabora", "comparte").
 4) TONO 100% POSITIVO:
    Queda TERMINANTEMENTE PROHIBIDO usar frases negativas o de falta de registro como "aunque no se registran datos", "no se registran salidas", "sin datos". En su lugar, SIEMPRE debes redactar en positivo indicando continuidad y avance activo.
-5) FORMATO JSON:
+5) EL PROTAGONISTA ES EL JOVEN (CENTRICIDAD EN LA PERSONA):
+   El joven/concurrente es el protagonista absoluto y el centro de todo el informe.
+   La institución y el facilitador son APOYOS externos, NUNCA el centro ni el sujeto grammatical principal de los párrafos.
+   - EVITA centrar las oraciones en el facilitador (PROHIBIDO abusar de: "La facilitadora acompaña...", "El equipo facilitador brinda...", "Bajo la guía del facilitador...", "Su relación con la facilitadora es de confianza...").
+   - En su lugar, redacta SIEMPRE desde la persona: qué hace, qué elige, cómo participa, qué estrategias despliega y qué apoyos utiliza (ej: "Participa activamente...", "Pone en práctica estrategias de...", "Recurre a apoyos visuales o recordatorios verbales cuando lo requiere...", "Consolida sus tareas cotidianas contando con la orientación del entorno institucional...").
+6) TERMINOLOGÍA INSTITUCIONAL OBLIGATORIA - "INCLUSIÓN" (NO INTEGRACIÓN):
+   El paradigma institucional mandatorio es INCLUSIÓN ("inclusión social", "inclusión comunitaria", "espacios inclusivos", "procesos de inclusión").
+   Queda terminantemente prohibido forzar "integración" en reemplazo de "inclusión".
+7) PROHIBICIÓN DE REDACCIÓN REITERATIVA / "ESTILO CHATGPT" (FOCO EN HABILIDADES, ESTRATEGIAS Y APOYOS):
+   Evita que el texto suene a plantilla genérica de inteligencia artificial con párrafos idénticos o muletillas repetitivas.
+   Haz hincapié sustancial en toda la información disponible en las planillas y observaciones:
+   - **Habilidades**: Nombra las destrezas prácticas, motrices, sociales y ocupacionales reales evaluadas en sus talleres.
+   - **Estrategias**: Menciona las técnicas concretas que funcionan con la persona (anticipación, apoyos visuales, secuencias por pasos, modelado entre pares, pausas activas, autoregulación).
+   - **Apoyos**: Detalla el grado y tipo de apoyo que requiere o utiliza (supervisión general, apoyos verbales, apoyos gestuales o soporte físico puntual).
+8) FORMATO JSON:
    Tu salida debe ser estrictamente un objeto JSON con las 12 claves oficiales.`
         },
         {
@@ -72,9 +86,26 @@ function cleanPositiveNarrative(obj: any, jovenNombre?: string): any {
 
   const nameTrimmed = (jovenNombre || '').trim();
   const nameParts = nameTrimmed.split(/\s+/).filter(Boolean);
-  const firstName = nameParts.length > 0 ? nameParts[0] : '';
-  const fullNamePattern = nameTrimmed.length > 2
-    ? new RegExp(`^\\s*${nameTrimmed.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[,\\s]+`, 'i')
+  
+  // Lista de posibles referencias al nombre (completo, compuestos, nombres de pila individuales)
+  const nameVariations: string[] = [];
+  if (nameTrimmed.length > 2) nameVariations.push(nameTrimmed);
+  if (nameParts.length > 1) {
+    nameVariations.push(nameParts.slice(0, 2).join(' '));
+    if (nameParts.length > 2) {
+      nameVariations.push(nameParts.slice(1).join(' '));
+    }
+  }
+  for (const part of nameParts) {
+    if (part.length > 2) nameVariations.push(part);
+  }
+  nameVariations.sort((a, b) => b.length - a.length);
+
+  const escapedVariations = nameVariations.map(n => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+
+  // Patrón para capturar oraciones que inician con el nombre o con fórmulas como "A lo largo del trimestre, Inés..."
+  const openerPattern = escapedVariations.length > 0
+    ? new RegExp(`^\\s*(?:(?:A lo largo del (?:trimestre|período|ciclo)|Durante el (?:trimestre|período|ciclo)|En el transcurso del (?:trimestre|ciclo)|En este sentido|Asimismo|En cuanto a)[,\\s]+)?(?:${escapedVariations})[,:\\s]+`, 'i')
     : null;
 
   let sectionIndex = 0;
@@ -87,7 +118,7 @@ function cleanPositiveNarrative(obj: any, jovenNombre?: string): any {
       cleaned = cleaned.replace(/a pesar de no contar con registros? [^,.]+[,.]?/gi, '');
       cleaned = cleaned.replace(/no se registran? datos específicos [^,.]+[,.]?/gi, 'se continúa trabajando activamente en esta área.');
       cleaned = cleaned.replace(/no se registran? salidas específicas[,.]?/gi, 'se continúa disfrutando de las actividades al aire libre dentro del predio institucional,');
-      cleaned = cleaned.replace(/no se registran? [^,.]+ durante el trimestre[,.]?/gi, 'se continúa trabajando y avanzando con el acompañamiento de los facilitadores.');
+      cleaned = cleaned.replace(/no se registran? [^,.]+ durante el trimestre[,.]?/gi, 'se continúa trabajando y avanzando con apoyos orientados a su desarrollo.');
       cleaned = cleaned.replace(/sin novedades particulares registradas [^,.]+[,.]?/gi, 'con un proceso de desarrollo continuo.');
 
       // 2. Erradicación estricta de términos pedagógicos / CET
@@ -107,13 +138,34 @@ function cleanPositiveNarrative(obj: any, jovenNombre?: string): any {
       cleaned = cleaned.replace(/\balumnos\b/gi, 'concurrentes');
       cleaned = cleaned.replace(/\balumno\b/gi, 'concurrente');
       cleaned = cleaned.replace(/\balumnas\b/gi, 'concurrentes');
-      cleaned = cleaned.replace(/\balumna\b/gi, 'concurrente');
       cleaned = cleaned.replace(/\bdocentes\b/gi, 'facilitadores');
       cleaned = cleaned.replace(/\bdocente\b/gi, 'facilitador/a');
 
-      // 3. Variación de sujeto: evitar que cada punto comience repitiendo el nombre completo
-      if (fullNamePattern && sectionIndex > 1 && fullNamePattern.test(cleaned)) {
-        cleaned = cleaned.replace(fullNamePattern, '');
+      // 3. Paradigma institucional mandatorio: "inclusión" en lugar de "integración"
+      cleaned = cleaned.replace(/integraci[oó]n social/gi, 'inclusión social');
+      cleaned = cleaned.replace(/integraci[oó]n comunitaria/gi, 'inclusión comunitaria');
+      cleaned = cleaned.replace(/procesos? de integraci[oó]n/gi, 'procesos de inclusión');
+      cleaned = cleaned.replace(/espacios? integradores?/gi, 'espacios inclusivos');
+      cleaned = cleaned.replace(/propuestas? integradoras?/gi, 'propuestas inclusivas');
+      cleaned = cleaned.replace(/integrador[oa]s?/gi, 'inclusivo/a');
+
+      // 4. Centricidad en la persona: suavizar protagonismo excesivo del facilitador
+      cleaned = cleaned.replace(/su relaci[oó]n con la facilitadora es de confianza, recurriendo a ella para orientaci[oó]n y apoyo\.?/gi, 'participa con seguridad y confianza, recurriendo a apoyos y orientaciones cuando lo requiere.');
+      cleaned = cleaned.replace(/su relaci[oó]n con (el|la) facilitador(a)? [^.]*es de confianza[^.]*\.?/gi, 'participa con seguridad y confianza en las actividades compartidas.');
+      cleaned = cleaned.replace(/el equipo facilitador brinda contenci[oó]n y orientaci[oó]n/gi, 'cuenta con apoyos y orientaciones adaptadas');
+      cleaned = cleaned.replace(/bajo la gu[ií]a de la facilitadora/gi, 'con apoyos individualizados');
+      cleaned = cleaned.replace(/bajo la gu[ií]a del facilitador/gi, 'con apoyos individualizados');
+      cleaned = cleaned.replace(/la facilitadora acompaña y gu[ií]a/gi, 'cuenta con orientación individualizada');
+      cleaned = cleaned.replace(/el facilitador acompaña y gu[ií]a/gi, 'cuenta con orientación individualizada');
+      cleaned = cleaned.replace(/con el acompañamiento de los facilitadores/gi, 'con apoyos adaptados a sus requerimientos');
+      cleaned = cleaned.replace(/con el acompañamiento de la facilitadora/gi, 'con apoyos personalizados');
+      cleaned = cleaned.replace(/con el acompañamiento del facilitador/gi, 'con apoyos personalizados');
+      cleaned = cleaned.replace(/con el apoyo de la facilitadora/gi, 'con apoyos específicos');
+      cleaned = cleaned.replace(/con el apoyo del facilitador/gi, 'con apoyos específicos');
+
+      // 5. Variación de sujeto: evitar que cada punto comience repitiendo el nombre o fórmulas cliché
+      if (openerPattern && sectionIndex > 1 && openerPattern.test(cleaned)) {
+        cleaned = cleaned.replace(openerPattern, '');
         cleaned = cleaned.trim();
         cleaned = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
       }
@@ -142,8 +194,9 @@ function buildQuarterlyPrompt(options: QuarterlyGeneratorOptions): string {
   const grupoLower = grupoNombre.toLowerCase();
 
   if (grupoLower.includes('buenos mozos') || grupoLower.includes('mozos')) {
-    contextoGrupo = `* ÁREA / GRUPO: **Buenos Mozos (Formación Sociolaboral y Gastronomía)**.
-* ACTIVIDADES Y TALLERES INTERNOS: Taller de Expresión Emocional y Habilidades Sociales; Orientación laboral gastronómica y de servicios (rotisería, salón, comensales); Área deportiva y atlética (entrenamientos, juegos cooperativos y de equipo); Expresión artística (elaboración de banderas, bocetos, pintura, arte reciclado y fotografía para eventos y Juegos Bonaerenses); y Taller de Vida Independiente (orden, cuidado y mantenimiento de espacios comunes, preparación y servicio de la mesa).`;
+    contextoGrupo = `* ÁREA / GRUPO: **Buenos Mozos (Desarrollo Personal, Inclusión Social y Vida Independiente)**.
+* ACTIVIDADES Y TALLERES INTERNOS: Arte Reciclado y Fotografía (expresión plástica, pintura, confección de banderas, exploración de texturas); Desarrollo Personal y Vida Independiente (hábitos de higiene, cuidado del espacio, orden de pertenencias y autonomía cotidiana); Huerta 'Sumemos Verde' (plantación, esquejes, sustratos y cuidado de especies); Derechos a ser Protagonistas (conocimiento de derechos, convención sobre discapacidad y participación en debates grupales); Habilidades Sociales e Interacción (diálogo, empatía, escucha activa, saludos y convivencia grupal); Bienestar Emocional 'Expresando' (reconocimiento de emociones, reflexión y diálogo); y Deporte 'Activando' (actividad física, circuitos motores, destrezas saludables y juegos en equipo).
+* REGLA ESTRICTA DE GRUPO: Buenos Mozos NO tiene talleres de gastronomía, cocina, rotisería ni catering. QUEDA TERMINANTEMENTE PROHIBIDO inventar o atribuirle talleres de gastronomía o cocina.`;
   } else if (grupoLower.includes('atrapa') || grupoLower.includes('sueños')) {
     contextoGrupo = `* ÁREA / GRUPO: **Atrapasueños (Expresión Artística, Bienestar y Desarrollo Integral)**.
 * ACTIVIDADES Y TALLERES INTERNOS: Taller de Motricidad Fina (coordinación óculo-manual, destreza y precisión); Taller Cognitivo (atención, memoria, concentración y razonamiento); Taller de Arte (dibujo, pintura en cuadros y producciones creativas); Taller de Relajación (estrategias de bienestar, calma y autorregulación emocional); Talleres Deportivos (caminatas, fútbol adaptado, bochas, equilibrio y movilidad); Taller de Armado de Actividades Lúdicas; y Talleres de Vida Independiente y Vida en el Hogar (organización de espacios, cuidado de pertenencias, preparación de la mesa, rutinas cotidianas y anticipación de viajes).`;
@@ -161,7 +214,7 @@ function buildQuarterlyPrompt(options: QuarterlyGeneratorOptions): string {
 * ACTIVIDADES Y TALLERES INTERNOS: Espacios de escucha activa, diálogo y regulación emocional; Autodeterminación y perspectiva de género; Habilidades de vida cotidiana y autonomía femenina; Deportes adaptados y movimiento saludable; Expresión artística y creativa; y participación en eventos comunitarios.`;
   } else if (grupoLower.includes('promotores')) {
     contextoGrupo = `* ÁREA / GRUPO: **Promotores (Derechos, Comunicación y Participación Ciudadana)**.
-* ACTIVIDADES Y TALLERES INTERNOS: Promoción y difusión de los derechos de personas con discapacidad; Comunicación comunitaria, oratoria y liderazgo; Participación en foros, eventos institucionales y redes comunitarias; y Habilidades sociolaborales orientadas a la inclusión activa.`;
+* ACTIVIDADES Y TALLERES INTERNOS: Promoción y difusión de los derechos de personas con discapacidad; Comunicación comunitaria, oratoria y liderazgo; Participación en foros, eventos institucionales y redes comunitarias; y Habilidades sociolaborales orientadas a la integración activa.`;
   } else {
     contextoGrupo = `* ÁREA / GRUPO: **Centro de Día**.
 * ACTIVIDADES Y TALLERES INTERNOS: Desarrollo integral, habilidades de autonomía personal, socialización, actividad física adaptada, expresión artística y vinculación comunitaria.`;
@@ -274,7 +327,7 @@ ${monthlyContext}
    - Cada concurrente tiene una historia y un proceso único. Si el texto suena genérico o podría aplicarse a cualquier otra persona cambiando solo el nombre, EL INFORME ESTARÁ MAL.
    - **MOTOR PRINCIPAL = LAS OBSERVACIONES DEL FACILITADOR**: Debes extraer, interpretar y plasmar las situaciones, recetas, productos, anécdotas, emociones (ej. tolerancia a la corrección, momentos de llanto o alegría, diálogo con facilitadoras), compañeros y festejos que efectivamente figuran en las observaciones de **${jovenNombre}**.
 2. **ADAPTACIÓN RIGUROSA AL GRUPO REAL DEL CONCURRENTE**:
-   - Si el joven pertenece a **Buenos Mozos**: Toda la narrativa de talleres debe enfocarse en Formación sociolaboral, rotisería/salón, expresión emocional, deportes y vida independiente.
+   - Si el joven pertenece a **Buenos Mozos**: Toda la narrativa de talleres debe enfocarse en Desarrollo personal y vida independiente, arte reciclado y fotografía, huerta 'Sumemos Verde', derechos a ser protagonistas, habilidades sociales e interacción, bienestar emocional 'Expresando' y deporte 'Activando'. **NUNCA atribuyas a Buenos Mozos talleres de gastronomía, cocina, rotisería ni catering.** Aunque los sueños del concurrente incluyan cocinar o preparar alimentos en su vida personal o familiar (ej. 'cocinar ravioles solo'), aclara que es una aspiración de su vida cotidiana y del hogar que se apoya transversalmente desde la autonomía, y NUNCA afirmes que asiste a un taller de gastronomía en Buenos Mozos.
    - Si el joven pertenece a **Atrapasueños**: Enfócate en motricidad fina, estimulación cognitiva, arte (pintura), relajación y autorregulación, deportes adaptados (bochas), vida independiente y vida en el hogar.
    - Si pertenece a **Artesanos**: Enfócate en producción manual, centros de interés, campamentos, convivencia grupal, show de talentos y vida cotidiana.
    - Si pertenece a **Clave de Sol**: Enfócate en musicoterapia, estímulo sensorial, encastre, taller de huerta 'Manos Verdes' interno, circuitos motores y desplazamientos.
@@ -287,27 +340,38 @@ ${monthlyContext}
 4. **ENFOQUE POSITIVO Y EN TIEMPO PRESENTE**:
    - Todo debe estar redactado en tiempo **PRESENTE** (ej: "asiste", "participa", "elabora", "atiende", "se desenvuelve").
    - **PROHIBIDAS FRASES NEGATIVAS O DE FALTA DE DATOS**: Jamás escribas "no se registran datos", "aunque no hay registros", "sin novedades". Siempre formula en positivo ("se continúa trabajando activamente en...", "avanza de manera progresiva con el acompañamiento de facilitadores...").
-5. **ESTILO NARRATIVO Y VARIEDAD DE REFERENCIA**:
-   - Redacta párrafos integrados de 4 a 6 líneas cada uno, fluidos, cálidos y con rigor técnico. Cero listas o viñetas.
-   - **VARIABILIDAD AL NOMBRAR A LA PERSONA (PROHIBIDO REPETIR EL NOMBRE COMPLETO EN CADA PUNTO)**: No comiences cada sección con el nombre completo de ${jovenNombre}. Alterna con sujeto tácito ("Asiste...", "Participa...", "Demuestra..."), primer nombre de pila ocasional, o términos como "el concurrente", "la joven", "el joven".
-   - **PROHIBIDO USAR TÉRMINOS PEDAGÓGICOS O EDUCATIVO-TERAPÉUTICOS**: Granja Andar es un Centro de Día y espacio de inclusión sociolaboral/ocupacional. PROHIBIDO usar "pedagogía", "pedagógico/a", "CET", "alumno/a", "docente", "profesor". Usa "apoyos formativos/sociolaborales", "talleres", "concurrente", "facilitador/a".
+5. **EL PROTAGONISTA ES LA PERSONA (CENTRICIDAD ABSOLUTA EN EL JOVEN)**:
+   - El joven es el centro de gravedad del texto. La institución y el equipo facilitador actúan como apoyos y andamiajes, NUNCA como protagonistas de la acción.
+   - EVITA centrar párrafos en el facilitador (PROHIBIDO oraciones como: "El facilitador guía con dedicación...", "La relación con la facilitadora es de confianza...", "El equipo brinda contención...").
+   - Escribe SIEMPRE desde la vivencia, acción y autodeterminación de la persona: qué habilidades pone en práctica, qué estrategias despliega para organizarse y resolver, y qué tipo de apoyos requiere o aprovecha (ej: "Pone en práctica...", "Se desenvuelve con apoyos verbales mínimos...", "Aplica estrategias de anticipación para...").
+6. **TERMINOLOGÍA OBLIGATORIA: INCLUSIÓN EN VEZ DE INTEGRACIÓN**:
+   - El paradigma institucional de Granja Andar es estrictamente la **INCLUSIÓN**. Usa SIEMPRE "inclusión", "inclusión social", "inclusión comunitaria" y "espacios inclusivos". Queda terminantemente prohibido forzar "integración" en reemplazo de "inclusión".
+7. **PROHIBIDO ESTILO REITERATIVO / "CHATGPT" (HABILIDADES, ESTRATEGIAS Y APOYOS)**:
+   - Evita estructuras robóticas o repetitivas que comiencen siempre igual.
+   - Aterriza obligatoriamente la redacción en:
+     * **Habilidades**: Nombra las destrezas específicas logradas en las planillas (ej. modelado, reciclado, jardinería, relajación, desplazamientos, interacción grupal, autonomía en almuerzo).
+     * **Estrategias**: Menciona las técnicas prácticas empleadas (anticipación verbal, secuencias visuales, modelado entre pares, pausas de regulación).
+     * **Apoyos**: Describe el nivel de apoyo (supervisión a distancia, apoyos verbales, gestuales o físicos específicos).
+8. **VARIEDAD AL NOMBRAR Y SIN TÉRMINOS PEDAGÓGICOS**:
+   - PROHIBIDO repetir el nombre completo de ${jovenNombre} al inicio de cada sección. Alterna sujeto tácito, primer nombre de pila ocasional, o "el joven", "la concurrente".
+   - PROHIBIDO términos escolares/CET ("pedagogía", "pedagógico", "malla curricular", "alumno", "docente"). Usa "apoyos formativos/sociolaborales", "talleres", "facilitador/a".
 
 ## FORMATO DE SALIDA (JSON ESTRICTO)
 Responde con un objeto JSON con las siguientes 12 claves:
 
 {
-  "metaAlcanzada": "Evolución activa y concreta hacia las metas y sueños del concurrente (${pcpSuenos}), vinculándolos con las tareas formativas y responsabilidades que asume en ${grupoNombre}.",
-  "participacion": "Asistencia, constancia e implicación en las propuestas de ${grupoNombre}. Detalla con fidelidad los apoyos formativos, emocionales y prácticos brindados por los facilitadores. (PROHIBIDO usar el término pedagógico).",
-  "integracionRelaciones": "Vínculos afectivos, comunicación y convivencia con pares y facilitadores. Su trato con compañeros y referentes, y su participación en las dinámicas de taller.",
-  "actividadesRelacionadas": "Detalle técnico, rico y específico de las tareas formativas y ocupacionales desarrolladas en el trimestre (recetas, técnicas, herramientas o productos que constan en sus registros).",
-  "vidaIndependiente": "Autonomía funcional adaptada a su grupo: cumplimiento de BPM (higiene, cofia, delantal) si es gastronomía/catering; o hábitos de cuidado personal, orden de pertenencias y espacios cotidianos si es Centro de Día.",
-  "habilidadesViajar": "Desplazamientos y actividades en espacios exteriores según sus posibilidades: traslados para servicios, caminatas, circuitos motores o recorridos asistidos en el predio.",
-  "desarrolloPersonal": "Capacidad de aprendizaje, concentración, motricidad, iniciativa y respuesta constructiva ante las orientaciones del equipo facilitador.",
-  "metasDeportivas": "Participación en actividad física adaptada, movilidad, elongación o juegos saludables, destacando el bienestar y la autorregulación.",
-  "metasSociales": "Participación en celebraciones colectivas, festejos temáticos de cumpleaños y jornadas institucionales compartidas con pares.",
-  "dimensionesCalidadVida": "Fortalecimiento del bienestar emocional, autodeterminación, escucha activa y contención afectiva.",
-  "actividadesComplementarias": "Participación en dinámicas recreativas, artísticas, culturales, de huerta o música según los talleres del grupo.",
-  "mejoraCalidadVida": "Conclusión integradora sobre la evolución favorable a lo largo del trimestre, su bienestar anímico y el acompañamiento del equipo de Granja Andar."
+  "metaAlcanzada": "Cómo la persona avanza activamente en sus metas y sueños (${pcpSuenos}), poniendo en juego habilidades prácticas y estrategias personales en ${grupoNombre}. IMPORTANTE: Si la meta personal refiere a cocinar en casa o recetas del hogar, vincúlala a su autonomía personal cotidiana, NUNCA inventes que asiste a un taller de gastronomía o cocina institucional.",
+  "participacion": "Asistencia, constancia e implicación del joven en las propuestas de ${grupoNombre}. Destaca sus habilidades de participación, sus estrategias para sostener la jornada y los apoyos brindados por el equipo.",
+  "integracionRelaciones": "Vínculos de compañerismo, convivencia e inclusión social con pares. Cómo se comunica, comparte espacios y resuelve situaciones cotidianas.",
+  "actividadesRelacionadas": "Detalle riguroso y empírico de las habilidades prácticas y técnicas desarrolladas en los talleres reales evaluados en sus planillas (herramientas, materiales, tareas y producciones reales registradas).",
+  "vidaIndependiente": "Autonomía funcional en la vida diaria: hábitos de higiene, orden de sus pertenencias, autocuidado y estrategias de desenvolvimiento cotidiano con sus requerimientos de apoyo.",
+  "habilidadesViajar": "Movilidad comunitaria y desplazamientos: reconocimiento de semáforos, sendas peatonales, uso de transporte público o circuitos motores y paseos adaptados dentro del predio.",
+  "desarrolloPersonal": "Capacidad de aprendizaje, concentración, iniciativa y autoregulación del concurrente, destacando las estrategias que favorecen su crecimiento personal.",
+  "metasDeportivas": "Participación activa en actividades corporales, natación, movilidad adaptada o juegos saludables, destacando sus logros motrices y bienestar físico.",
+  "metasSociales": "Participación protagónica en celebraciones colectivas, festejos y eventos compartidos con pares, fortaleciendo sus redes de inclusión comunitaria.",
+  "dimensionesCalidadVida": "Fortalecimiento de la autodeterminación, bienestar emocional y toma de decisiones sobre sus propios intereses, contando con un entorno de apoyo respetuoso.",
+  "actividadesComplementarias": "Participación y disfrute en propuestas creativas, artísticas, culturales o de huerta según las dinámicas de su grupo.",
+  "mejoraCalidadVida": "Conclusión integradora centrada en la persona, sus avances en autonomía y bienestar subjetivo, y la continuidad de sus apoyos institucionales hacia el futuro."
 }
 `;
 }
@@ -349,7 +413,8 @@ function generateDeterministicFallback(options: QuarterlyGeneratorOptions): any 
   });
 
   const tallerNames = Object.keys(skillsByTaller);
-  const isCatering = grupoLower.includes('buenos mozos') || grupoLower.includes('mozos') || grupoLower.includes('catering') || obsLower.includes('catering');
+  const isBuenosMozos = grupoLower.includes('buenos mozos') || grupoLower.includes('mozos');
+  const isCatering = !isBuenosMozos && (grupoLower.includes('emprendedores') || grupoLower.includes('catering') || obsLower.includes('catering'));
   const isTextil = grupoLower.includes('atrapa') || grupoLower.includes('sueños') || grupoLower.includes('relajaci');
   const isHuerta = grupoLower.includes('manos verdes') || grupoLower.includes('huerta') || grupoLower.includes('vivero');
 
@@ -380,6 +445,8 @@ function generateDeterministicFallback(options: QuarterlyGeneratorOptions): any 
       return `En ${tName}, trabaja en ${skills}`;
     }).join('. ');
     actividadesRelacionadas = `En sus talleres asignados participa activamente: ${descripcionesTalleres}. Evidencia dedicación e interés en cada propuesta, afianzando sus competencias prácticas con el acompañamiento del equipo.`;
+  } else if (isBuenosMozos) {
+    actividadesRelacionadas = `En sus talleres asignados participa activamente en el fortalecimiento de habilidades de vida independiente, arte reciclado, huerta institucional 'Sumemos Verde', derechos y bienestar emocional, afianzando sus competencias prácticas con el acompañamiento del equipo.`;
   } else if (isCatering) {
     actividadesRelacionadas = `En el área gastronómica y de catering participa activamente en la elaboración de productos, preparación de mesas, atención a comensales y tareas de cocina, afianzando destrezas prácticas y de manipulación higiénica de alimentos.`;
   } else {
@@ -390,6 +457,8 @@ function generateDeterministicFallback(options: QuarterlyGeneratorOptions): any 
   let vidaIndependiente = '';
   if (isCatering) {
     vidaIndependiente = `Incorpora de manera sostenida las Buenas Prácticas de Manufactura (BPM), cumpliendo con el uso de cofia, delantal y sanitización constante de manos. Desarrolla autonomía en el cuidado y orden de los elementos de trabajo en la cocina y salón.`;
+  } else if (isBuenosMozos) {
+    vidaIndependiente = `En el área de vida independiente, fortalece hábitos de autonomía cotidiana, organizando sus pertenencias, cuidando la higiene personal y de los espacios compartidos, y consolidando rutinas funcionales en el día a día.`;
   } else if (isWheelchairUser) {
     vidaIndependiente = `En el ámbito de la autonomía y rutinas de cuidado personal, se trabaja con apoyos adaptados en momentos de alimentación, descanso y orden de pertenencias, promoviendo su participación activa y manifestación de preferencias.`;
   } else {

@@ -258,3 +258,27 @@
   1. Se sincronizaron celda por celda los Formularios #134 (Mayo: 8 talleres, 80 ítems evaluados) y #135 (Junio: 8 talleres, 88 ítems evaluados) con sus 8 talleres discriminados y niveles exactos.
   2. Se vincularon formalmente a Marina Trejo (`created_by = 10`, grupo `Buenos Mozos`).
   3. **Se eliminó el reporte trimestral obsoleto #23**, conservando únicamente el Informe Trimestral #130 oficial reciente.
+
+# Registro de Conversación - 2026-09-14 (Erradicación de Gastronomía en Buenos Mozos y Alineación con INCLUSIÓN)
+
+## Usuario:
+- "Me salen cosas de gastronomia cuando no deberia de ser asi ya que no hay talleres en buenos mozos que diga eso. que es lo que pasa? lee el trimestral que genere que esta en descargas de franco martinez"
+
+## Antigravity:
+- **Análisis del Archivo Word Generado**:
+  - Se leyó `informe-trimestral-Martinez_Franco_Luciano-Buenos_Mozos-2026-09-14.docx` mediante `mammoth`.
+  - Se confirmó que en la Sección 1 ("¿Ha alcanzado su meta o sueño 2026?"), figuraba: *"despliega habilidades prácticas en el taller de gastronomía, donde explora técnicas culinarias y se familiariza con el uso de utensilios de cocina..."*.
+- **Identificación de la Causa Raíz**:
+  1. En `src/lib/ai/quarterlyGenerator.ts`, el contexto institucional para Buenos Mozos tenía hardcodeado: `Buenos Mozos (Formación Sociolaboral y Gastronomía)` y `rotisería, salón, comensales`.
+  2. La directiva de adaptación curricular de la línea 330 instruía enfocar Buenos Mozos en "rotisería/salón".
+  3. En el fallback determinístico, `isCatering` incluía a `buenos mozos`.
+  4. En el PCP de Franco Martinez figura como sueño personal: *"Cocinar ravioles solo"*, lo que provocó que el modelo GPT-4o creyera que existía un taller institucional de gastronomía en Buenos Mozos para cumplir esa meta.
+  5. Existían directivas obsoletas que forzaban el reemplazo de "inclusión" por "integración", contraviniendo la Decisión D-70.
+- **Acciones y Solución**:
+  1. Se reescribió la identidad curricular de Buenos Mozos en `src/lib/ai/quarterlyGenerator.ts` con sus 7 talleres reales de Marina Trejo (Arte Reciclado y Fotografía, Desarrollo Personal y Vida Independiente, Huerta 'Sumemos Verde', Derechos a ser Protagonistas, Habilidades Sociales e Interacción, Bienestar Emocional 'Expresando' y Deporte 'Activando').
+  2. Se introdujo una regla explícita prohibiendo terminantemente atribuir talleres de cocina o gastronomía a Buenos Mozos, y ordenando que si el sueño del concurrente es culinario (ej: cocinar en su hogar), se aborde desde la autonomía personal en la vida diaria sin inventar talleres institucionales.
+  3. Se desacopló Buenos Mozos de catering en el fallback determinístico.
+  4. Se corrigieron los filtros de sanitización y directivas del prompt para garantizar el paradigma obligatorio de **INCLUSIÓN** (D-70).
+  5. Se validó la generación mediante test automatizado (`scratch/test_franco.mjs`), confirmando CERO menciones de gastronomía/cocina en talleres y 100% de uso de inclusión.
+  6. Se compiló el proyecto (`npm run build`), se desplegó por SFTP al VPS de producción (`149.50.128.73:5782`) y se reinició PM2 (`pm2 restart ecosystem.config.cjs --update-env`).
+  7. Se actualizó el reporte trimestral de Franco Martinez en la base de datos con la nueva narrativa limpia y fidedigna.
