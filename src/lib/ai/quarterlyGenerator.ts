@@ -188,37 +188,48 @@ function buildQuarterlyPrompt(options: QuarterlyGeneratorOptions): string {
   const pcpRutinaSemana = pcp?.rutinas?.semana || 'Sin registrar';
   const pcpRutinaFin = pcp?.rutinas?.finDeSemana || 'Sin registrar';
 
-  // Contexto de los talleres del grupo institucional
-  const grupoNombre = jovenTaller || forms[0]?.data?.datosGenerales?.taller || 'Centro de Día';
-  let contextoGrupo = '';
-  const grupoLower = grupoNombre.toLowerCase();
+  // Consolidar todos los talleres y habilidades efectivamente evaluadas en las cuadrículas mensuales de este joven
+  const realWorkshopsMap = new Map<string, { evaluatedSkills: string[]; allSkills: string[] }>();
 
-  if (grupoLower.includes('buenos mozos') || grupoLower.includes('mozos')) {
-    contextoGrupo = `* ÁREA / GRUPO: **Buenos Mozos (Desarrollo Personal, Inclusión Social y Vida Independiente)**.
-* ACTIVIDADES Y TALLERES INTERNOS: Arte Reciclado y Fotografía (expresión plástica, pintura, confección de banderas, exploración de texturas); Desarrollo Personal y Vida Independiente (hábitos de higiene, cuidado del espacio, orden de pertenencias y autonomía cotidiana); Huerta 'Sumemos Verde' (plantación, esquejes, sustratos y cuidado de especies); Derechos a ser Protagonistas (conocimiento de derechos, convención sobre discapacidad y participación en debates grupales); Habilidades Sociales e Interacción (diálogo, empatía, escucha activa, saludos y convivencia grupal); Bienestar Emocional 'Expresando' (reconocimiento de emociones, reflexión y diálogo); y Deporte 'Activando' (actividad física, circuitos motores, destrezas saludables y juegos en equipo).
-* REGLA ESTRICTA DE GRUPO: Buenos Mozos NO tiene talleres de gastronomía, cocina, rotisería ni catering. QUEDA TERMINANTEMENTE PROHIBIDO inventar o atribuirle talleres de gastronomía o cocina.`;
-  } else if (grupoLower.includes('atrapa') || grupoLower.includes('sueños')) {
-    contextoGrupo = `* ÁREA / GRUPO: **Atrapasueños (Expresión Artística, Bienestar y Desarrollo Integral)**.
-* ACTIVIDADES Y TALLERES INTERNOS: Taller de Motricidad Fina (coordinación óculo-manual, destreza y precisión); Taller Cognitivo (atención, memoria, concentración y razonamiento); Taller de Arte (dibujo, pintura en cuadros y producciones creativas); Taller de Relajación (estrategias de bienestar, calma y autorregulación emocional); Talleres Deportivos (caminatas, fútbol adaptado, bochas, equilibrio y movilidad); Taller de Armado de Actividades Lúdicas; y Talleres de Vida Independiente y Vida en el Hogar (organización de espacios, cuidado de pertenencias, preparación de la mesa, rutinas cotidianas y anticipación de viajes).`;
-  } else if (grupoLower.includes('artesanos')) {
-    contextoGrupo = `* ÁREA / GRUPO: **Artesanos (Producción Manual, Expresión y Convivencia)**.
-* ACTIVIDADES Y TALLERES INTERNOS: Producción manual y centros de interés; Campamentos y recreación comunitaria; Habilidades de Vida Independiente y del hogar (tareas cotidianas, orden, barrido y colaboración); Habilidades para viajar y movilidad comunitaria; Gestión emocional, autorregulación y normas de convivencia grupal; Actividades deportivas adaptadas y circuitos motores; Área artística, show de talentos y canto; y actividades recreativas al aire libre.`;
-  } else if (grupoLower.includes('clave de sol') || grupoLower.includes('musica')) {
-    contextoGrupo = `* ÁREA / GRUPO: **Clave de Sol (Musicoterapia, Estímulo Sensorial y Desarrollo Funcional)**.
-* ACTIVIDADES Y TALLERES INTERNOS: Taller de Musicoterapia (creatividad, conexión emocional y expresión sonora); Actividades de encastre y coordinación fina; Taller interno 'Manos Verdes' (contacto con la naturaleza, siembra, relleno de macetas y traslado de herramientas); Actividades físicas y circuitos motores (lanzamiento y traslado de pelotas, aros, caminatas de distancia); y Habilidades de Vida Independiente (traslado de elementos, control de luces y espacios comunes, autonomía en merienda y almuerzo).`;
-  } else if (grupoLower.includes('emprendedores')) {
-    contextoGrupo = `* ÁREA / GRUPO: **Emprendedores (Formación Laboral, Pastelería, Catering y Autonomía)**.
-* ACTIVIDADES Y TALLERES INTERNOS: Talleres de Pastelería y Cocina (elaboración de recetas, técnicas culinarias, seguridad e higiene alimentaria); Buenas Prácticas de Manufactura (BPM); Experiencias de servicio de catering en empresas e instituciones (entrenamiento funcional laboral, bandejeo, responsabilidad y trabajo en equipo); Expresión artística y fotografía ocupacional (presentación en Juegos Bonaerenses); Entrenamientos de atletismo (lanzamiento de sóftbol, carrera, caminatas saludables); Habilidades de Vida Independiente y autocuidado; y Desarrollo de autonomía para la realización de viajes y salidas comunitarias.`;
-  } else if (grupoLower.includes('empoderadas')) {
-    contextoGrupo = `* ÁREA / GRUPO: **Empoderadas (Autodeterminación, Género y Desarrollo Personal)**.
-* ACTIVIDADES Y TALLERES INTERNOS: Espacios de escucha activa, diálogo y regulación emocional; Autodeterminación y perspectiva de género; Habilidades de vida cotidiana y autonomía femenina; Deportes adaptados y movimiento saludable; Expresión artística y creativa; y participación en eventos comunitarios.`;
-  } else if (grupoLower.includes('promotores')) {
-    contextoGrupo = `* ÁREA / GRUPO: **Promotores (Derechos, Comunicación y Participación Ciudadana)**.
-* ACTIVIDADES Y TALLERES INTERNOS: Promoción y difusión de los derechos de personas con discapacidad; Comunicación comunitaria, oratoria y liderazgo; Participación en foros, eventos institucionales y redes comunitarias; y Habilidades sociolaborales orientadas a la integración activa.`;
+  forms.forEach(f => {
+    const tList = f.data?.talleres || [];
+    tList.forEach((t: any) => {
+      const tName = (t.nombre || '').trim();
+      if (!tName) return;
+      if (!realWorkshopsMap.has(tName)) {
+        realWorkshopsMap.set(tName, { evaluatedSkills: [], allSkills: [] });
+      }
+      const entry = realWorkshopsMap.get(tName)!;
+      (t.items || []).forEach((it: any) => {
+        const itName = (it.nombre || '').trim();
+        if (!itName) return;
+        if (!entry.allSkills.includes(itName)) entry.allSkills.push(itName);
+        if (it.nivel && Number(it.nivel) >= 1 && !entry.evaluatedSkills.includes(itName)) {
+          entry.evaluatedSkills.push(itName);
+        }
+      });
+    });
+  });
+
+  const realWorkshopNames = Array.from(realWorkshopsMap.keys());
+  let resumenTalleresReales = '';
+  if (realWorkshopNames.length > 0) {
+    resumenTalleresReales = `## TALLERES REALES Y HABILIDADES EVALUADAS EN LAS CUADRÍCULAS DE ${jovenNombre.toUpperCase()} (FUENTE OFICIAL):\n`;
+    resumenTalleresReales += `Los siguientes son los ÚNICOS talleres y destrezas prácticas registrados y evaluados para ${jovenNombre} en sus planillas mensuales:\n`;
+    realWorkshopNames.forEach((wName, i) => {
+      const wData = realWorkshopsMap.get(wName)!;
+      const skillsStr = wData.evaluatedSkills.length > 0 
+        ? wData.evaluatedSkills.join(', ') 
+        : (wData.allSkills.length > 0 ? wData.allSkills.slice(0, 5).join(', ') : 'Participación activa');
+      resumenTalleresReales += `${i + 1}. **${wName}**: ${skillsStr}\n`;
+    });
   } else {
-    contextoGrupo = `* ÁREA / GRUPO: **Centro de Día**.
-* ACTIVIDADES Y TALLERES INTERNOS: Desarrollo integral, habilidades de autonomía personal, socialización, actividad física adaptada, expresión artística y vinculación comunitaria.`;
+    resumenTalleresReales = `## TALLERES REGISTRADOS:\nNo se detallan nombres de talleres en las cuadrículas. Toda la redacción de actividades debe ceñirse estrictamente a las situaciones y dinámicas descritas en las observaciones literales del facilitador.\n`;
   }
+
+  const grupoNombre = jovenTaller || forms[0]?.data?.datosGenerales?.taller || 'Centro de Día';
+  const contextoGrupo = `* GRUPO INSTITUCIONAL: **${grupoNombre}** (Asociación Civil Granja Andar - Centro de Día).
+* REGLA DE FIDELIDAD CURRICULAR: Granja Andar organiza a sus concurrentes en grupos, pero cada joven tiene una asignación de talleres singular según su Plan Centrado en la Persona. Los talleres reales de ${jovenNombre} son ESTRICTAMENTE los evaluados en sus cuadrículas (${realWorkshopNames.join(' | ') || 'los registrados en sus observaciones'}). NUNCA inventes talleres ni asumas estereotipos del grupo.`;
 
   // Extraer metas y sueños con respaldo positivo institucional si no vino explicitado
   let pcpSuenos = '';
@@ -319,6 +330,8 @@ ${pfpText}
 ## IDENTIDAD DEL GRUPO INSTITUCIONAL
 ${contextoGrupo}
 
+${resumenTalleresReales}
+
 ## REGISTROS MENSUALES DEL TRIMESTRE (OBSERVACIONES Y HABILIDADES)
 ${monthlyContext}
 
@@ -326,15 +339,15 @@ ${monthlyContext}
 1. **PROHIBIDO GENERAR INFORMES PLANTILLA O TEXTOS IDÉNTICOS ENTRE JÓVENES**:
    - Cada concurrente tiene una historia y un proceso único. Si el texto suena genérico o podría aplicarse a cualquier otra persona cambiando solo el nombre, EL INFORME ESTARÁ MAL.
    - **MOTOR PRINCIPAL = LAS OBSERVACIONES DEL FACILITADOR**: Debes extraer, interpretar y plasmar las situaciones, recetas, productos, anécdotas, emociones (ej. tolerancia a la corrección, momentos de llanto o alegría, diálogo con facilitadoras), compañeros y festejos que efectivamente figuran en las observaciones de **${jovenNombre}**.
-2. **ADAPTACIÓN RIGUROSA AL GRUPO REAL DEL CONCURRENTE**:
-   - Si el joven pertenece a **Buenos Mozos**: Toda la narrativa de talleres debe enfocarse en Desarrollo personal y vida independiente, arte reciclado y fotografía, huerta 'Sumemos Verde', derechos a ser protagonistas, habilidades sociales e interacción, bienestar emocional 'Expresando' y deporte 'Activando'. **NUNCA atribuyas a Buenos Mozos talleres de gastronomía, cocina, rotisería ni catering.** Aunque los sueños del concurrente incluyan cocinar o preparar alimentos en su vida personal o familiar (ej. 'cocinar ravioles solo'), aclara que es una aspiración de su vida cotidiana y del hogar que se apoya transversalmente desde la autonomía, y NUNCA afirmes que asiste a un taller de gastronomía en Buenos Mozos.
-   - Si el joven pertenece a **Atrapasueños**: Enfócate en motricidad fina, estimulación cognitiva, arte (pintura), relajación y autorregulación, deportes adaptados (bochas), vida independiente y vida en el hogar.
-   - Si pertenece a **Artesanos**: Enfócate en producción manual, centros de interés, campamentos, convivencia grupal, show de talentos y vida cotidiana.
-   - Si pertenece a **Clave de Sol**: Enfócate en musicoterapia, estímulo sensorial, encastre, taller de huerta 'Manos Verdes' interno, circuitos motores y desplazamientos.
-   - Si pertenece a **Emprendedores**: Enfócate en pastelería, catering en empresas, BPM, fotografía cultural, entrenamientos de atletismo para Bonaerenses y vida independiente.
-   - Si pertenece a **Empoderadas**: Enfócate en autodeterminación, perspectiva de género, hábitos de autonomía femenina, diálogo y expresión artística.
-   - Si pertenece a **Promotores**: Enfócate en promoción comunitaria, defensa de derechos, oratoria y liderazgo social.
-   - **NUNCA le atribuyas talleres ajenos a su grupo o que no figuren en sus datos**.
+2. **FIDELIDAD ESTRICTA Y ABSOLUTA A LOS TALLERES DE LAS CUADRÍCULAS (PROHIBIDO ALUCINAR O ASUMIR TALLERES)**:
+   - La redacción de las secciones "actividadesRelacionadas", "vidaIndependiente", "desarrolloPersonal", "metasDeportivas" y demás DEBE basarse **EXCLUSIVA Y ESTRICTAMENTE en los talleres evaluados en sus cuadrículas mensuales** (${realWorkshopNames.length > 0 ? realWorkshopNames.join(', ') : 'según sus observaciones'}).
+   - **QUEDA TERMINANTEMENTE PROHIBIDO inventar, alucinar o atribuirle talleres o áreas que NO figuren en sus cuadrículas**:
+     * Si un concurrente pertenece a Emprendedores y sus planillas evalúan rol auxiliar, mantenimiento, limpieza o actitudes laborales, redacta sobre su rol auxiliar y mantenimiento; **PROHIBIDO inventar pastelería, cocina, catering ni elaboración de alimentos si no están evaluados en sus planillas**.
+     * Si un concurrente de Buenos Mozos, Artesanos, Atrapasueños, Clave de Sol, Empoderadas o Promotores no tiene taller de cocina en sus planillas, **QUEDA TERMINANTEMENTE PROHIBIDO inventar tareas de gastronomía, cocina o catering**.
+     * Si en sus planillas no figuran bochas, campamentos, telar, atletismo o show de talentos, **PROHIBIDO mencionarlos**.
+     * Toda mención de herramientas, tareas, producciones o dinámicas debe corresponder a lo efectivamente evaluado en sus planillas u observaciones.
+   - **TRATAMIENTO DE SUEÑOS Y METAS PERSONALES DEL PCP**:
+     * Si el concurrente expresa un sueño personal en su PCP que involucra una actividad diferente (ej. cocinar ravioles en su casa, viajar en avión, manejar un vehículo, practicar una disciplina deportiva fuera de la institución), trátalo SIEMPRE como una meta personal, familiar o de su vida privada en el hogar apoyada desde su autonomía general. **NUNCA inventes que asiste a un taller institucional de esa actividad si no está evaluado en sus cuadrículas**.
 3. **RESPETO POR LA CONDICIÓN MOTRIZ Y REQUERIMIENTOS DE APOYO**:
    - Si el joven asiste en silla de ruedas o tiene apoyo físico total, jamás hables de caminatas a pie o desplazamientos autónomos. Describe paseos asistidos, control postural y traslados con apoyo.
 4. **ENFOQUE POSITIVO Y EN TIEMPO PRESENTE**:
@@ -360,7 +373,7 @@ ${monthlyContext}
 Responde con un objeto JSON con las siguientes 12 claves:
 
 {
-  "metaAlcanzada": "Cómo la persona avanza activamente en sus metas y sueños (${pcpSuenos}), poniendo en juego habilidades prácticas y estrategias personales en ${grupoNombre}. IMPORTANTE: Si la meta personal refiere a cocinar en casa o recetas del hogar, vincúlala a su autonomía personal cotidiana, NUNCA inventes que asiste a un taller de gastronomía o cocina institucional.",
+  "metaAlcanzada": "Cómo la persona avanza activamente en sus metas y sueños (${pcpSuenos}), poniendo en juego habilidades prácticas y estrategias personales en ${grupoNombre}. IMPORTANTE: Si la meta personal refiere a actividades del hogar o vida privada (ej. cocinar en casa, salidas familiares), vincúlala a su autonomía personal cotidiana, NUNCA inventes que asiste a un taller institucional que no figure en sus cuadrículas.",
   "participacion": "Asistencia, constancia e implicación del joven en las propuestas de ${grupoNombre}. Destaca sus habilidades de participación, sus estrategias para sostener la jornada y los apoyos brindados por el equipo.",
   "integracionRelaciones": "Vínculos de compañerismo, convivencia e inclusión social con pares. Cómo se comunica, comparte espacios y resuelve situaciones cotidianas.",
   "actividadesRelacionadas": "Detalle riguroso y empírico de las habilidades prácticas y técnicas desarrolladas en los talleres reales evaluados en sus planillas (herramientas, materiales, tareas y producciones reales registradas).",
@@ -413,10 +426,12 @@ function generateDeterministicFallback(options: QuarterlyGeneratorOptions): any 
   });
 
   const tallerNames = Object.keys(skillsByTaller);
-  const isBuenosMozos = grupoLower.includes('buenos mozos') || grupoLower.includes('mozos');
-  const isCatering = !isBuenosMozos && (grupoLower.includes('emprendedores') || grupoLower.includes('catering') || obsLower.includes('catering'));
-  const isTextil = grupoLower.includes('atrapa') || grupoLower.includes('sueños') || grupoLower.includes('relajaci');
-  const isHuerta = grupoLower.includes('manos verdes') || grupoLower.includes('huerta') || grupoLower.includes('vivero');
+  const allTallerNamesLower = forms.flatMap(f => (f.data?.talleres || []).map((t: any) => (t.nombre || '').toLowerCase()));
+  const hasCooking = allTallerNamesLower.some(t => /cocina|pasteler|catering|alimento|bpm|rotiser/i.test(t));
+  const hasCleaning = allTallerNamesLower.some(t => /limpieza|auxiliar|mantenimiento/i.test(t));
+  const hasArt = allTallerNamesLower.some(t => /arte|pintura|reciclado|foto|dibujo|manual|danza|música|musico/i.test(t));
+  const hasHuerta = allTallerNamesLower.some(t => /huerta|manos verdes|vivero|planta/i.test(t));
+  const hasCatering = allTallerNamesLower.some(t => /catering/i.test(t));
 
   // 1. Metas alcanzadas (primer punto menciona al concurrente)
   const metaAlcanzada = `${jovenNombre} continúa avanzando con constancia hacia su meta personal de: "${pcpSuenos}". Durante este trimestre, su participación activa en ${grupoNombre} le permite consolidar habilidades prácticas y de convivencia que fortalecen su autonomía y su proyecto de vida.`;
@@ -440,37 +455,33 @@ function generateDeterministicFallback(options: QuarterlyGeneratorOptions): any 
   // 4. Actividades relacionadas (Dinámicas y fidedignas según los talleres reales de este joven)
   let actividadesRelacionadas = '';
   if (tallerNames.length > 0) {
-    const descripcionesTalleres = tallerNames.slice(0, 3).map(tName => {
+    const descripcionesTalleres = tallerNames.slice(0, 4).map(tName => {
       const skills = (skillsByTaller[tName] || []).slice(0, 3).join(', ');
-      return `En ${tName}, trabaja en ${skills}`;
+      return skills ? `En ${tName}, trabaja en ${skills}` : `En ${tName}, participa activamente en las propuestas`;
     }).join('. ');
     actividadesRelacionadas = `En sus talleres asignados participa activamente: ${descripcionesTalleres}. Evidencia dedicación e interés en cada propuesta, afianzando sus competencias prácticas con el acompañamiento del equipo.`;
-  } else if (isBuenosMozos) {
-    actividadesRelacionadas = `En sus talleres asignados participa activamente en el fortalecimiento de habilidades de vida independiente, arte reciclado, huerta institucional 'Sumemos Verde', derechos y bienestar emocional, afianzando sus competencias prácticas con el acompañamiento del equipo.`;
-  } else if (isCatering) {
-    actividadesRelacionadas = `En el área gastronómica y de catering participa activamente en la elaboración de productos, preparación de mesas, atención a comensales y tareas de cocina, afianzando destrezas prácticas y de manipulación higiénica de alimentos.`;
   } else {
-    actividadesRelacionadas = `En sus talleres cotidianos realiza actividades formativas y recreativas orientadas a afianzar destrezas funcionales y de motricidad, mostrando predisposición y compromiso ante cada consigna.`;
+    actividadesRelacionadas = `En sus propuestas formativas y ocupacionales cotidianas realiza actividades orientadas a afianzar destrezas funcionales y de autonomía, mostrando predisposición y compromiso ante cada consigna con apoyos individualizados.`;
   }
 
   // 5. Vida independiente (variación de sujeto)
   let vidaIndependiente = '';
-  if (isCatering) {
-    vidaIndependiente = `Incorpora de manera sostenida las Buenas Prácticas de Manufactura (BPM), cumpliendo con el uso de cofia, delantal y sanitización constante de manos. Desarrolla autonomía en el cuidado y orden de los elementos de trabajo en la cocina y salón.`;
-  } else if (isBuenosMozos) {
-    vidaIndependiente = `En el área de vida independiente, fortalece hábitos de autonomía cotidiana, organizando sus pertenencias, cuidando la higiene personal y de los espacios compartidos, y consolidando rutinas funcionales en el día a día.`;
+  if (hasCooking) {
+    vidaIndependiente = `Incorpora de manera sostenida las pautas de higiene y Buenas Prácticas de Manufactura (BPM), cumpliendo con el uso de indumentaria adecuada y sanitización constante de manos. Desarrolla autonomía en el cuidado y orden de los elementos de trabajo.`;
+  } else if (hasCleaning) {
+    vidaIndependiente = `Fortalece hábitos de orden, higiene y responsabilidad operativa, organizando los elementos de trabajo y colaborando activamente en el mantenimiento y acondicionamiento de los espacios institucionales.`;
   } else if (isWheelchairUser) {
     vidaIndependiente = `En el ámbito de la autonomía y rutinas de cuidado personal, se trabaja con apoyos adaptados en momentos de alimentación, descanso y orden de pertenencias, promoviendo su participación activa y manifestación de preferencias.`;
   } else {
-    vidaIndependiente = `En el área de vida independiente, fortalece hábitos de autonomía cotidiana, colaborando en el cuidado y orden de sus pertenencias personales y en el mantenimiento de los espacios comunes de la institución.`;
+    vidaIndependiente = `En el área de vida independiente, fortalece hábitos de autonomía cotidiana, organizando sus pertenencias personales, cuidando la higiene y colaborando en el mantenimiento de los espacios comunes de la institución.`;
   }
 
   // 6. Habilidades para viajar / espacios exteriores (sujeto tácito)
   let habilidadesViajar = '';
   if (isWheelchairUser) {
     habilidadesViajar = `Participa de paseos asistidos y actividades en espacios exteriores dentro del predio institucional con traslados adaptados en su silla de ruedas, disfrutando del contacto con el entorno natural.`;
-  } else if (isCatering) {
-    habilidadesViajar = `Colabora activamente en la logística y traslado de insumos para servicios de catering, participando en la carga y descarga ordenada de materiales y vajilla en la camioneta institucional.`;
+  } else if (hasCatering) {
+    habilidadesViajar = `Colabora en la logística y traslado de insumos para eventos institucionales, participando en la carga y descarga ordenada de materiales y vajilla.`;
   } else {
     habilidadesViajar = `Se desenvuelve con seguridad en desplazamientos dentro de la institución y en actividades al aire libre, respetando pautas de organización, hidratación y cuidado del entorno.`;
   }
@@ -494,12 +505,12 @@ function generateDeterministicFallback(options: QuarterlyGeneratorOptions): any 
 
   // 11. Actividades complementarias
   let actividadesComplementarias = '';
-  if (isTextil) {
-    actividadesComplementarias = `Disfruta de propuestas de relajación guiada, música suave y técnicas artesanales que favorecen la expresión personal y el bienestar anímico.`;
-  } else if (isHuerta) {
+  if (hasHuerta) {
     actividadesComplementarias = `Participa en actividades de contacto con la naturaleza, siembra y plantas aromáticas, encontrando espacios de calma y disfrute al aire libre.`;
+  } else if (hasArt) {
+    actividadesComplementarias = `Disfruta de propuestas creativas, técnicas plásticas y dinámicas artísticas que favorecen la expresión personal y el bienestar anímico.`;
   } else {
-    actividadesComplementarias = `Participa con entusiasmo en dinámicas recreativas, artísticas y musicales que enriquecen su jornada y estimulan su creatividad.`;
+    actividadesComplementarias = `Participa con entusiasmo en dinámicas recreativas, artísticas y de estimulación que enriquecen su jornada y estimulan su participación social.`;
   }
 
   // 12. Conclusión y mejora de calidad de vida

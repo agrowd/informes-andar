@@ -925,3 +925,19 @@ Daria como resultado el final, que se compone de la sumatoria de todo lo anterio
   5. Se validó la generación mediante test automatizado (`scratch/test_franco.mjs`), confirmando CERO menciones de gastronomía/cocina en talleres y 100% de uso de inclusión.
   6. Se compiló el proyecto (`npm run build`), se desplegó por SFTP al VPS de producción (`149.50.128.73:5782`) y se reinició PM2 (`pm2 restart ecosystem.config.cjs --update-env`).
   7. Se actualizó el reporte trimestral de Franco Martinez en la base de datos con la nueva narrativa limpia y fidedigna.
+
+# Registro de Conversación - 2026-09-14 (Fidelidad Curricular Universal a las Cuadrículas Mensuales en IA)
+
+## Usuario:
+- "El mismo problema puede ser que este en otros grupos? tienen que reflejar los talleres que aparecen en las cuadriculas mensuales, no alucinar"
+
+## Antigravity:
+- **Confirmación del Problema en Otros Grupos**:
+  - Se confirmó que el generador trimestral (`quarterlyGenerator.ts`) contenía directivas con menús de talleres fijos por grupo que inducían a la IA a alucinar actividades no cursadas por el joven (ej: en Emprendedores forzaba pastelería/catering incluso para jóvenes con rol auxiliar/limpieza; en Artesanos mencionaba campamentos o show de talentos; en Atrapasueños mencionaba bochas).
+- **Solución Universal Implementada**:
+  1. Se modificó `quarterlyGenerator.ts` para extraer de forma dinámica y canónica los talleres y habilidades efectivamente evaluados en las cuadrículas mensuales de cada joven (`forms[].data.talleres`).
+  2. Se inyecta la sección obligatoria `TALLERES REALES Y HABILIDADES EVALUADAS EN LAS CUADRÍCULAS DE [JOVEN]`, eliminando los menús estáticos de grupo.
+  3. Se instauró una directiva universal que prohíbe terminantemente alucinar talleres estereotipados del grupo institucional si no figuran en las cuadrículas.
+  4. Se actualizó el fallback determinístico para operar 100% sobre los nombres de talleres reales evaluados.
+  5. Se verificó con IA en un caso extremo (David Carrizo, Emprendedores - rol auxiliar/limpieza), confirmando 0 menciones de catering o pastelería y 100% apego a sus tareas de limpieza y auxiliar.
+  6. Compilado con éxito (`npm run build`), desplegado al VPS (`149.50.128.73`) y reiniciado PM2.

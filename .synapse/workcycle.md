@@ -1,5 +1,24 @@
 # 🗓️ Workcycle Log
 
+## 2026-09-14 (Fidelidad Curricular Universal a las Cuadrículas Mensuales en IA - Erradicación de Alucinaciones en Todos los Grupos)
+- **Objetivo**: Atender la consulta del usuario: *"El mismo problema puede ser que este en otros grupos? tienen que reflejar los talleres que aparecen en las cuadriculas mensuales, no alucinar"*.
+- **Diagnóstico Exhaustivo**:
+  - **Confirmado**: El generador `quarterlyGenerator.ts` contenía menús fijos y directivas con estereotipos hardcodeados para cada grupo (ej: obligaba a enfocarse en pastelería/catering en Emprendedores; campamentos/show de talentos en Artesanos; bochas en Atrapasueños).
+  - En la práctica, dentro de un mismo grupo los concurrentes realizan talleres muy diferentes (ej: en Emprendedores, David Carrizo realiza tareas de auxiliar y limpieza, sin pastelería ni catering; en Artesanos, Gabriel Kubar cursa Manos Verdes, Yoga, Pintura, Música y Deporte, sin show de talentos ni campamentos).
+- **Solución Universal Implementada**:
+  1. **Extracción Dinámica y Canónica**: Se refactorizó `buildQuarterlyPrompt` para extraer de las cuadrículas mensuales de cada joven (`forms[].data.talleres`) el 100% de los talleres reales y habilidades evaluadas con nivel >= 1.
+  2. **Inyección en Prompt como Fuente Oficial Única**: Se inyecta la sección obligatoria `TALLERES REALES Y HABILIDADES EVALUADAS EN LAS CUADRÍCULAS DE [JOVEN]` con sus destrezas evaluadas, reemplazando los menús estáticos de grupo.
+  3. **Directiva Inviolable de No Alucinación**: Se sustituyeron los párrafos por grupo por una regla universal estricta: prohibición terminante de inventar, alucinar o atribuir talleres estereotipados que no figuren en las cuadrículas (especialmente catering/cocina a no gastronómicos, o bochas/campamentos a quienes no los cursan). Los sueños personales de vida cotidiana (ej. cocinar en casa) se abordan estrictamente desde la autonomía personal y familiar sin inventar talleres institucionales.
+  4. **Fallback Dinámico Libre de Estereotipos**: Se adaptó `generateDeterministicFallback` para activar menciones de BPM, auxiliares, huerta o arte exclusivamente si el joven tiene talleres reales de esas áreas.
+  5. **Actualización de `system_prompt.md`**: Se corrigió la regla histórica residual de "integración" consolidando **INCLUSIÓN** (D-70).
+  6. **Pruebas Automatizadas de Control de Calidad**:
+     - David Carrizo (Emprendedores - Limpieza/Auxiliar): 0 menciones de catering o pastelería; 100% enfocado en sus talleres reales de limpieza y rol auxiliar.
+     - Franco Martínez (Buenos Mozos): 0 menciones de gastronomía; 100% en sus 7 talleres reales.
+  7. **Compilación y Despliegue en VPS**:
+     - `npm run build` local exitoso (0 errores).
+     - Desplegado al VPS (`149.50.128.73`), build remoto en servidor y reiniciado PM2 con código 0 (`online`).
+- **Estado**: Completado, Verificado y Desplegado en Producción ✅
+
 ## 2026-09-14 (Erradicación de Gastronomía en Buenos Mozos y Alineación con INCLUSIÓN)
 - **Objetivo**: Atender la solicitud: "Me salen cosas de gastronomia cuando no deberia de ser asi ya que no hay talleres en buenos mozos que diga eso. que es lo que pasa? lee el trimestral que genere que esta en descargas de franco martinez".
 - **Hallazgos Clave**:
