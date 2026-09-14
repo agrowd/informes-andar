@@ -239,3 +239,22 @@
   1. Se sincronizaron celda por celda los Formularios #131 (Abril: 9 talleres, 80 ítems), #132 (Mayo: 8 talleres, 80 ítems) y #133 (Junio: 8 talleres, 88 ítems) con el 100% de los talleres discriminados y niveles exactos según los checks del Excel.
   2. Se vincularon formalmente a Marina Trejo (`created_by = 10`, grupo `Buenos Mozos`).
   3. **Se eliminaron los 3 reportes trimestrales duplicados y obsoletos** (IDs #21, #35 y #37), conservando únicamente el Informe Trimestral #116 oficial reciente.
+
+# Registro de Conversación - 2026-09-14 (Sincronización Exacta de Franco Luciano Martinez y Purga de Sobrantes)
+
+## Usuario:
+- "hace lo mismo con FRANCO LUCIANO MARTINEZ"
+
+## Antigravity:
+- **Diagnóstico Comparativo Excel vs Sistema**:
+  1. **Excel Fuente (`FRANCO LUCIANO MARTINEZ.xlsx`)**:
+     - Solapas: `PCP`, `MAYO` y `JUNIO`.
+     - Mayo: 8 talleres reales de Buenos Mozos, 80 ítems (80 evaluados > 0), 4.688 caracteres de observaciones.
+     - Junio: 8 talleres reales, 88 ítems (88 evaluados > 0), 5.598 caracteres de observaciones.
+  2. **Discrepancia en Base de Datos**:
+     - Los Formularios #134 y #135 tenían sólo 4 talleres porque los talleres posteriores a `DERECHOS` no tenían prefijo `TALLER:` y se habían absorbido en un bloque de 44 ítems.
+     - Existían 2 informes trimestrales, siendo el Reporte #23 un borrador obsoleto de agosto.
+- **Acciones Realizadas**:
+  1. Se sincronizaron celda por celda los Formularios #134 (Mayo: 8 talleres, 80 ítems evaluados) y #135 (Junio: 8 talleres, 88 ítems evaluados) con sus 8 talleres discriminados y niveles exactos.
+  2. Se vincularon formalmente a Marina Trejo (`created_by = 10`, grupo `Buenos Mozos`).
+  3. **Se eliminó el reporte trimestral obsoleto #23**, conservando únicamente el Informe Trimestral #130 oficial reciente.

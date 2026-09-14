@@ -1,5 +1,21 @@
 # 🗓️ Workcycle Log
 
+## 2026-09-14 (Sincronización Exacta de Franco Luciano Martinez y Purga de Sobrantes)
+- **Objetivo**: Atender la solicitud: "hace lo mismo con FRANCO LUCIANO MARTINEZ".
+- **Hallazgos Clave**:
+  1. **Excel Fuente (`FRANCO LUCIANO MARTINEZ.xlsx`)**:
+     - Solapas: `PCP`, `MAYO` y `JUNIO` (no hay Abril ni Julio).
+     - Mayo: 8 talleres reales de Buenos Mozos, 80 ítems (80 evaluados > 0), 4.688 car. de observaciones.
+     - Junio: 8 talleres reales, 88 ítems (88 evaluados > 0), 5.598 car. de observaciones.
+  2. **Discrepancia en Base de Datos**:
+     - Formularios #134 y #135 tenían sólo 4 talleres porque los talleres posteriores a `DERECHOS` se habían absorbido en un único bloque de 44 ítems.
+     - Existían 2 informes trimestrales en reports: #23 (borrador obsoleto de agosto) y #130 (reciente de septiembre).
+- **Acciones Realizadas**:
+  1. Se sincronizaron celda por celda los Formularios #134 (Mayo: 8 talleres, 80 ítems evaluados) y #135 (Junio: 8 talleres, 88 ítems evaluados).
+  2. Se vincularon formalmente a Marina Trejo (`created_by = 10`, grupo `Buenos Mozos`).
+  3. Se eliminó el reporte trimestral duplicado obsoleto #23, conservando únicamente el Informe Trimestral #130 oficial.
+- **Estado**: Completado y Verificado al 100% ✅
+
 ## 2026-09-14 (Sincronización Exacta de Barraza, Camilo Federico y Purga de Sobrantes)
 - **Objetivo**: Atender la solicitud: "Hacer lo mismo con el de BARRAZA, CAMILO FEDERICO que esta en descargas, verifica que la cuadricula mensual este bien, con todos los talleres y bien marcado etc etc y lo que sobra sacalo".
 - **Hallazgos Clave**:
