@@ -1,5 +1,69 @@
 # Changelog
 
+## [1.9.2] - 2026-09-14
+### Fixed
+- **Parser Resiliente para Planillas de Buenos Mozos (Marina Trejo) y Carga de Nicolás Agustín Maita**:
+  - *Detección de Talleres sin prefijo `TALLER:`*: Se amplió `import-excel/route.ts` para reconocer talleres codificados con dimensiones de calidad de vida (`/ DP - BM`, `/ AU`, `/ BE`, etc.) o nombres institucionales directos (`HABILIDADES DE INTERACCIÓN`, `DESARROLLO PERSONAL`).
+  - *Depuración de Encabezados y Observaciones*: Se evitó la ingesta de títulos de talleres como ítems evaluables (`!itemName.includes('/')`) y se eliminaron prefijos de encabezado en la extracción del bloque narrativo.
+  - *Sincronización de Nicolás Maita (ID 38)*: Formulario #280 (`2026-07`) actualizado y sincronizado en PostgreSQL Neon con los 8 talleres reales, 80 habilidades evaluadas (niveles 2 y 4 en cian `#46BDC6`) y 2,777 caracteres literales de observaciones de Julio (salida al Nine Shopping Moreno, Kermés, Polideportivo Maradona).
+  - *Despliegue*: Compilación exitosa y actualización en el VPS de producción.
+
+## [1.9.1] - 2026-09-11
+### Added
+- **Soporte Dinámico para el Mes de Julio en Planillas Excel e Informe Final Anual**:
+  - *Parser de Excel Mejorado*: Reconocimiento flexible del encabezado de observaciones en singular ("Observación", con o sin tilde) y en columnas 1 a 8, además de detección automática por longitud y contenido en filas 65+ cuando no existe encabezado formal. Deduplicación inteligente con Set para celdas combinadas de múltiples filas (ej. A72:AF83 en Julio que repetía el texto 12 veces).
+  - *Julio como Mes Opcional*: En `evaluateBlocks`, Julio (07) no bloquea la generación del informe final (ya que en Centros de Día suele ser receso invernal), pero si está presente (`has07`), se suma a `mensuales1` y se refleja con badge visual `4 meses evaluados (incluye Julio)`.
+  - *Consolidación Anual con IA*: En `finalReportGenerator.ts`, `m1Auto` incluye automáticamente `07` / `julio`. El generador adapta dinámicamente el título del bloque a `Cuadrículas y Observaciones de Abril, Mayo, Junio y Julio` e instruye a GPT-4o a incorporar sus datos de asistencia, autorregulación y talleres de invierno como puente evolutivo hacia el segundo semestre.
+  - *Caso Magalí Gómez (ID 14)*: Sincronizadas las 6 planillas mensuales de Abril a Septiembre (incluyendo Julio con sus 6 talleres, 94 ítems y 4,257 caracteres de observaciones en Form #277).
+  - *Corrección en Generador*: Corregido bug en `mensuales2.forEach` donde los talleres de Agosto y Septiembre se acumulaban erróneamente en `m1Text` en lugar de `m2Text`.
+
+## [1.9.0] - 2026-09-11
+### Added
+- **Nuevo Formato Oficial para el Informe Final y Plan de Abordaje Centrado en la Persona (Modelo Miriam Gallardo)**:
+  - **Plantilla DOCX (`templates/final_template.docx`)**: Plantilla Word de alta fidelidad basada en el modelo institucional con 45 tags de `docxtemplater`, tablas formateadas y estilos tipográficos idénticos.
+  - **Estructura en Dos Partes**:
+    1. *Parte 1: Informe Final PCP*: Datos del concurrente, círculo de apoyo ampliado, secciones 2 a 5, tabla de evaluación de las 8 dimensiones de calidad de vida (`✔/➖/❌` + comentarios breves), logros categorizados en 4 áreas funcionales, sueños y metas, valoración del círculo y proyecciones.
+    2. *Parte 2: Plan de Abordaje Anual*: Introducción institucional, objetivo general, objetivos específicos, 6 líneas de acción por ejes, sueños y metas, indicadores multidimensionales y lineamientos para el facilitador.
+  - **Motor IA (`finalReportGenerator.ts`)**: Generador con GPT-4o parametrizado con la estructura dual, anclaje estricto en los 4 momentos del año, respeto absoluto por el paradigma de **INCLUSIÓN** (0 menciones forzadas de integración) y erradicación total de términos escolares/CET.
+  - **Componente Web `FinalReportViewer.tsx`**: Visualizador enriquecido y editor interactivo con semáforos para las 8 dimensiones y tarjetas de edición rápida, conectado a `/reports/[id]`.
+  - **Endpoints Actualizados**: `/api/reports/final` (POST), `/api/reports/[id]/.docx` (GET) y `/api/reports/[id]` (PUT).
+  - **Despliegue en VPS**: Probado contra PostgreSQL Neon con Yamila Legarreta (#104), compilado y desplegado exitosamente en el servidor de producción.
+
+## [1.8.3] - 2026-09-10
+### Added
+- **Consolidación Longitudinal Profunda desde Archivos Word Físicos**:
+  - Extracción automática con `mammoth` del buffer binario (`edited_docx_base64`) de informes trimestrales cargados o editados en Word, asegurando que la IA reciba el 100% de la redacción original sin truncamientos de bases de datos.
+  - Sincronización obligatoria de los 4 momentos del año: Bloque 1 (Verano: autonomía en AVD, transporte público), Bloque 2 y 3 (Talleres, semáforos, conmemoraciones), y Bloque 4 (Natación, motricidad, Juegos Bonaerenses y salud).
+  - Actualización de Report #89 de Yamila Inés Legarreta con las 12 secciones narrativas completas del Word oficial y generación exitosa del Informe Final Anual consolidado (#104).
+
+
+
+## [1.8.2] - 2026-09-10
+### Added
+- **Página Dedicada de Informes Finales (`/final-reports`)**:
+  - Vista completa e interactiva con diagrama explicativo de los 4 bloques constitutivos y la regla de validación inviolable.
+  - KPIs en tiempo real (Total 75 concurrentes, Finales Generados, Listos 4/4, Incompletos).
+  - Píldoras de filtrado dinámico por los 7 grupos oficiales de Granja Andar con contadores vivos.
+  - Buscador reactivo y filtro por estado (Todos, Listos, Incompletos, Generados).
+  - Matriz visual de semáforos individuales para cada bloque (T1: Ene-Mar, M1: Abr-Jun, T2: Abr-Jun, M2: Ago-Sep).
+  - Botones de acción contextual para resolver insumos faltantes (`📤 Subir Word Ene-Mar`, `⚡ Generar Trimestral 2`, `📥 Subir Meses Excel`).
+  - Botón de generación con bloqueo de seguridad: activo únicamente si se cumple el 100% de los 4 bloques (`canGenerate === true`), bloqueado (`🔒 Bloqueado: Insumos Incompletos`) en caso contrario.
+  - Visualización directa de informes ya generados con accesos a `👁️ Ver / Editar` e `📥 Word (.docx)`.
+- **Validación Estricta de Insumos en Backend (`/api/reports/final`)**:
+  - `GET ?overview=true`: Diagnóstico institucional masivo optimizado en ~500ms para los 75 concurrentes.
+  - `POST`: Validación rigurosa que rechaza con `HTTP 400` y listado de errores si falta cualquier insumo o mes requerido.
+- **Acceso en Barra de Navegación Principal (`Nav.tsx`)**:
+  - Pestaña directa "Informe Final" para administradores, coordinadores y facilitadores.
+
+## [1.8.1] - 2026-09-10
+### Added
+- **Carga Integral de Yamila Inés Legarreta (ID 15)**:
+  - Ingesta completa de sus 6 cuadrículas mensuales de evaluación (Abril a Septiembre 2026) desde `Ines Lagarreta (1).xlsx`, con detección precisa de la grilla Empoderadas (102 a 159 ítems y 71 a 94 evaluados por mes) y extensas observaciones literales (hasta 2,693 caracteres).
+  - Ingesta e interpretación con IA de su informe trimestral manual `Ines Lagarreta .docx` (Experiencia Verano 2026: Ene-Mar), asignado con facilitadora Ana Reartes y sus 12 secciones narrativas institucionales oficiales (Report ID 89).
+  - Generación de Informe Trimestral 2 (`2026-04 a 2026-06`, Report ID 90) a partir de sus cuadrículas de Abril, Mayo y Junio.
+  - Actualización de constraint en PostgreSQL para soportar `report_type = 'FINAL'`.
+  - Generación del **Informe Final Anual** consolidado (`2026 (Ciclo Anual Consolidado)`, Report ID 92) sintetizando longitudinalmente los 4 bloques del año con GPT-4o.
+
 ## [1.8.0] - 2026-09-10
 ### Added
 - **Variabilidad de Referencia en Informes Trimestrales y Finales**:

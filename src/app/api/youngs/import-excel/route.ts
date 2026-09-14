@@ -685,24 +685,59 @@ export async function POST(req: NextRequest) {
           }
         }
 
+        // Fallback: Formato Buenos Mozos / Marina Trejo sin prefijo "TALLER:"
+        if (!tallerFoundInRow) {
+          const c1 = getCellText(sheet.getCell(r, 1)).trim();
+          const c1Upper = c1.toUpperCase();
+          if (
+            c1.length > 3 &&
+            !c1Upper.includes('REFERENCIAS') &&
+            !c1Upper.includes('OBSERVACI') &&
+            !c1Upper.includes('FACILITADOR') &&
+            !c1Upper.includes('NOMBRE') &&
+            !c1Upper.includes('FECHA') &&
+            !c1Upper.includes('INFORME') &&
+            (
+              (c1.includes('/') && /(DP|BM|AU|BE|DR|RI|IS|BF)/i.test(c1)) ||
+              c1Upper.startsWith('HABILIDADES DE INTERACCI') ||
+              c1Upper.startsWith('DESARROLLO PERSONAL') ||
+              c1Upper.startsWith('BIENESTAR EMOCIONAL')
+            )
+          ) {
+            tallerFoundInRow = c1;
+          }
+        }
+
         if (tallerFoundInRow) {
           currentTaller = { nombre: tallerFoundInRow, items: [] };
           report.talleres.push(currentTaller);
           continue;
         }
 
-        // 2. Observaciones Heading
+        // 2. Observaciones Heading o detección de párrafo narrativo
         let isObsRow = false;
-        for (let c = 1; c <= 4; c++) {
+        for (let c = 1; c <= 8; c++) {
           const txt = getCellText(sheet.getCell(r, c)).trim().toLowerCase();
-          if (txt.startsWith('observaciones:') || txt === 'observaciones') {
+          if (txt.includes('observaci') || txt.startsWith('obs:')) {
             isObsRow = true;
+            obsStartRow = r + 1;
             break;
           }
         }
 
+        // Si no hubo encabezado explícito, pero a partir de la fila 63 hay un texto narrativo extenso
+        if (!isObsRow && r >= 63) {
+          const rawTxt = getCellText(sheet.getCell(r, 1)).trim();
+          if (
+            rawTxt.length > 45 &&
+            (rawTxt.includes('.') || rawTxt.toLowerCase().includes('asistencia') || rawTxt.toLowerCase().includes('período') || rawTxt.toLowerCase().includes('participa'))
+          ) {
+            isObsRow = true;
+            obsStartRow = r;
+          }
+        }
+
         if (isObsRow) {
-          obsStartRow = r + 1;
           break;
         }
 
@@ -716,7 +751,8 @@ export async function POST(req: NextRequest) {
             !itemName.toUpperCase().includes('LO REALIZA') &&
             !itemName.toUpperCase().includes('PUEDE ENSEÑAR') &&
             !itemName.toUpperCase().includes('TALLER:') &&
-            !itemName.toUpperCase().includes('OBSERVACIONES')
+            !itemName.toUpperCase().includes('OBSERVACI') &&
+            !itemName.includes('/')
           ) {
             let nivel = 0;
             const check1 = isCellChecked(sheet.getCell(r + 2, c)) || isCellChecked(sheet.getCell(r + 2, c + 1));
@@ -751,16 +787,16 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // 4. Observaciones (extraer todas las filas de texto de observaciones sin duplicar)
+      // 4. Observaciones (extraer todas las filas de texto de observaciones sin duplicar celdas combinadas)
       let obsText = '';
       if (obsStartRow > 0) {
+        const seenTexts = new Set<string>();
         for (let r = obsStartRow; r <= Math.min(sheet.rowCount, obsStartRow + 100); r++) {
-          const seenInRow = new Set<string>();
           for (let c = 1; c <= 32; c++) {
             const txt = getCellText(sheet.getCell(r, c)).trim();
-            if (txt && !seenInRow.has(txt)) {
-              seenInRow.add(txt);
-              obsText += txt + '\n';
+            if (txt && !seenTexts.has(txt) && !txt.toLowerCase().startsWith('observaci')) {
+              seenTexts.add(txt);
+              obsText += (obsText ? '\n\n' : '') + txt;
               break;
             }
           }

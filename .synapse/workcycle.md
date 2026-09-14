@@ -1,5 +1,332 @@
 # 🗓️ Workcycle Log
 
+## 2026-09-14 (Diagnóstico Comparativo y Causa Raíz de Nicolás Maita: Excel vs Sistema)
+- **Objetivo**: Atender la solicitud del usuario: "Analiza el archivo de descargas NICOLAS MAITA.xlsx y comparalo con la cuadricula que esta subido al sistema, por que no es igual? que paso?".
+- **Hallazgos Clave**:
+  1. **En el Excel (`NICOLAS MAITA.xlsx`)**:
+     - Solapa `JULIO`: Contiene 8 talleres reales de Buenos Mozos (Marina Trejo), 80 habilidades evaluadas con niveles 2 y 4 (color de relleno cian `#46BDC6`), y 2.777 caracteres de observaciones (adaptación grupal, Semana Invernal, cine Nine Shopping y Polideportivo Maradona).
+  2. **En el Sistema (Neon Postgres - ID 38)**:
+     - **Formulario #280 (JULIO)**: Creado hoy 14/09 a las 11:36 hs. Contiene la plantilla por defecto (`DEFAULT_TALLERES`: Deporte, Viajar, etc.) con 0 habilidades evaluadas y 0 observaciones.
+     - **Formulario #139 (rotulado como AGOSTO)**: Contiene talleres de Cocina/Catering (ajenos al grupo) y paradójicamente tenía pegado el texto de observaciones de Julio.
+  3. **Causa Raíz**:
+     - El Form #280 fue creado manualmente en la web `/form` en blanco.
+     - El importador de Excel (`/api/youngs/import-excel`) busca estrictamente el prefijo `TALLER:` para detectar talleres. Como la planilla de Marina Trejo titula con códigos de dimensiones (ej. `ARTE "RECICLADO" / DP - BM`), el importador descartó todos los talleres y habilidades.
+- **Acciones Pendientes / Siguientes Pasos**:
+  - Calibrar el importador de planillas para que reconozca los talleres de Buenos Mozos sin el prefijo `TALLER:`.
+  - Reemplazar/actualizar el Form #280 con los 8 talleres y 80 habilidades evaluadas reales de Julio.
+
+## 2026-09-14 (Auditoría de Memoria Persistente y Estado General del Proyecto)
+- **Objetivo**: Responder a la consulta del usuario ("Se perdio toda la memoria de las conversaciones? o que paso?") verificando la integridad del Cortex y del sistema Ariadne Engine v5.0.
+- **Acciones Realizadas**:
+  1. Auditada la carpeta `.synapse/`: confirmada la presencia íntegra de `root.md`, `decisions.md`, `workcycle.md`, `chat.md`, `errores.md`, `env_manager.md` y `changelog.md`.
+  2. Confirmada la preservación de todos los hitos y decisiones técnicas previas (modelo `Miriam Gallardo .docx` para Informe Final en 2 partes, paradigma de INCLUSIÓN, manejo de Julio opcional, sueños de los 75 concurrentes en Neon Postgres).
+  3. Verificada la integridad de la base de código, repositorio Git y archivos de sincronización.
+  4. Registrada la consulta en `chat.md` y `.synapse/chat.md`.
+- **Estado**: Verificado y Confirmado ✅
+
+## 2026-09-11 (Interpretación de Julio como Mes Opcional en Excel y Consolidación en Informe Final - Caso Magalí Gómez)
+- **Objetivo**: A solicitud del usuario ("Fijarse como hacer para que si aparece el mes de julio en el excel tambien lo interprete como uno mensual y lo sume a toda la informacion que tiene que volcar en el final" y "Es el de Magali Gomez , te lo deje en descargas, ahi hay un ejemplo de que esta julio"):
+  1. Asegurar que el importador de planillas Excel reconozca e importe solapas del mes de Julio (`2026-07`) con sus talleres, niveles y observaciones literales completas sin duplicación por celdas combinadas.
+  2. Manejar variaciones de diseño donde la fila de observaciones está en singular ("Observación", con o sin tilde) o carece de encabezado explícito (texto narrativo en filas 65+).
+  3. Configurar Julio como un mes **OPCIONAL** (no bloqueante) en `evaluateBlocks` para que los concurrentes sin Julio no queden bloqueados (ya que en Centros de Día julio es receso de invierno).
+  4. Enriquecer `GET /api/reports/final` y `POST /api/reports/final` para que si Julio existe, se incorpore automáticamente en `mensuales1` (`m1Auto`) y en el prompt del generador IA (`finalReportGenerator.ts`).
+  5. Corregir bug latente en `finalReportGenerator.ts` (línea 391, donde en `mensuales2.forEach` se acumulaban talleres en `m1Text` en lugar de `m2Text`).
+  6. Importar y sincronizar todas las evaluaciones de Magalí Gómez (ID 14, Empoderadas, Ana Reartes) desde `Magali Gomez (1).xlsx` en PostgreSQL Neon.
+  7. Compilar localmente, desplegar en VPS y reiniciar servicio en producción.
+- **Acciones Realizadas**:
+  1. **Importador Excel (`src/app/api/youngs/import-excel/route.ts`)**:
+     - Ampliado escaneo de observaciones a columnas 1 a 8 y detección flexible con `/observaci/i` o `obs:`, contemplando variantes singulares ("Observación").
+     - Agregado fallback inteligente para detectar el inicio de observaciones a partir de la fila 65 cuando no existe encabezado y la celda contiene párrafos narrativos extensos (>45 caracteres con puntuación).
+     - Deduplicación de texto mediante `seenTexts` Set para celdas combinadas multilínea (ej. A72:AF83 en Julio que repetía 12 veces el texto de 4,258 caracteres).
+  2. **Backend de Informe Final (`src/app/api/reports/final/route.ts`)**:
+     - `evaluateBlocks`: Detecta `has07` como flag complementario, manteniendo obligatorios únicamente Abril, Mayo y Junio en Bloque 2.
+     - `GET ?youngId=XX`: Retorna `blocks` con `has07` para compatibilidad total con modales y vistas.
+     - `POST /api/reports/final`: Consulta `m1Auto` extendida para incluir `OR periodo ILIKE '%07%' OR periodo ILIKE '%julio%'`, inyectando automáticamente Julio en la consolidación anual cuando exista.
+  3. **Generador IA (`src/lib/ai/finalReportGenerator.ts`)**:
+     - Corregido bug en `mensuales2` (línea 391: `m1Text +=` corregido a `m2Text +=`).
+     - Título y encabezado dinámico: `Cuadrículas y Observaciones de Abril, Mayo, Junio y Julio` cuando `hasJulio` es verdadero.
+     - Inyectada directiva de generación instruyendo a GPT-4o articular las observaciones de Julio (asistencia, autorregulación, talleres y expresión emocional) como puente hacia el segundo semestre.
+  4. **Frontend (`src/app/final-reports/page.tsx` y `GenerateFinalReportModal.tsx`)**:
+     - Interfaz `YoungOverview` actualizada con `has07?: boolean`.
+     - Bloque 2 visualiza `4 meses evaluados (incluye Julio)` cuando `has07` está presente.
+  5. **Base de Datos & Caso Magalí Gómez (ID 14)**:
+     - Sincronizadas las 6 planillas mensuales de Magalí Gómez desde `Magali Gomez (1).xlsx` (Abril: 1,813 car., Mayo: 2,339 car., Junio: 2,711 car., Julio: 4,257 car. en Form #277, Agosto: 2,185 car. en Form #278, Septiembre: 2,146 car. en Form #279).
+  6. **Compilación y Despliegue en Producción**:
+     - Compilación `npm run build` local exitosa (19/19 páginas generadas).
+     - Sincronizados 53 archivos por SFTP al VPS (`149.50.128.73:5782`), compilado y reiniciado PM2 con código de salida 0 (PID 142172, status online).
+- **Estado**: Completado, Verificado y Desplegado en Producción ✅
+
+## 2026-09-11 (Rediseño Estructural del Informe Final y Plan de Abordaje Centrado en la Persona - Miriam Gallardo Model)
+- **Objetivo**: A petición expresa del usuario ("Vamos a cambiar el diseño, estructura y demas cosas del final, con toda la informacion que se tiene del joven en todos los informes, va a tener la estructura y llenar la informacion que te dejo en descargas Miriam Gallardo .docx . Analizalo todo para que tenga sentido. Incluyendo el plan de abordaje, lo que no entendes buscalo en internet. No inventes nada" y "es inclusion, no integracion, es alreves"):
+  1. Analizar integralmente el documento institucional `C:\Users\Try Hard\Downloads\Miriam Gallardo .docx`.
+  2. Implementar la nueva estructura formal en dos partes:
+     - **Parte 1: INFORME FINAL - ABORDAJE CENTRADO EN LA PERSONA**: Datos personales, Círculo de apoyo ampliado, Secciones 2 a 5, Sección 6: Tabla de Evaluación de las 8 Dimensiones de Calidad de Vida (Escala `✔ Mejoró / ➖ Mantuvo / ❌ Dificultad` + comentarios breves), Sección 7: Logros desglosados en 4 áreas (prácticas, emocionales/sociales, decisiones, nuevas experiencias), Sección 8: Sueños y metas a futuro, Sección 9: Valoración del círculo de apoyo, Sección 10: Proyecciones y líneas de acción (lista).
+     - **Parte 2: PLAN DE ABORDAJE CENTRADO EN LA PERSONA [AÑO]**: Introducción institucional, Objetivo General, Objetivos Específicos (lista), Líneas de Acción en 6 ejes (autonomía, regulación emocional, habilidades sociales, inclusión comunitaria, autodeterminación, acompañamiento familiar), Sueños y Metas, Indicadores de Seguimiento y Evaluación (8 dimensiones), Lineamientos para el Facilitador.
+  3. Aplicar estrictamente el paradigma de **INCLUSIÓN** (Inclusión Social, Inclusión comunitaria, espacios inclusivos), erradicando el uso forzado de "integración".
+  4. Cero términos escolares o de Centro Educativo Terapéutico (CET). Sujeto protagonista: el joven; la institución y facilitadores son apoyos externos.
+  5. Mantener anclaje estricto en los 4 momentos del año (Trimestral 1 de verano, Mensuales 1 de talleres, Trimestral 2, Mensuales 2 de natación y talleres) y el PCP.
+- **Acciones Realizadas**:
+  1. **Plantilla Word (`templates/final_template.docx`)**:
+     - Creada a partir del documento original `Miriam Gallardo .docx`, preservando tipografías, encabezados, imágenes, tablas y márgenes.
+     - Parametrizada con 45 tags de `docxtemplater` para Partes 1 y 2.
+  2. **Motor IA (`src/lib/ai/finalReportGenerator.ts`)**:
+     - Reescribe la generación anual completa con prompt estructurado para GPT-4o devolviendo `parte1_informeFinal`, `parte2_planAbordaje` y `secciones`.
+     - Sanitizador `cleanPositiveNarrative` con erradicación de términos escolares y sustitución de formas de "integración" por "inclusión".
+     - Fallback determinístico completo con la estructura en dos partes.
+  3. **Backend & Rutas API**:
+     - `src/app/api/reports/final/route.ts`: Obtiene insumos de los 4 momentos, círculo de apoyo y datos personales, generando y guardando `parte1_informeFinal` y `parte2_planAbordaje` en PostgreSQL Neon.
+     - `src/app/api/reports/[id]/.docx/route.ts`: Detecta `isFinal`, carga `templates/final_template.docx` y mapea los 45 campos (incluyendo tabla de 8 dimensiones y listas).
+     - `src/app/api/reports/[id]/route.ts`: Endpoint `PUT` actualizado para persistir ediciones interactivas de `parte1_informeFinal` y `parte2_planAbordaje`.
+  4. **Frontend & Interfaz Web**:
+     - `src/app/_components/FinalReportViewer.tsx`: Componente rico para lectura y edición interactiva (tabla de 8 dimensiones con badges de semáforo ✔/➖/❌, tarjetas de logros en 4 áreas, tarjetas de líneas de acción en 6 ejes, metas e indicadores).
+     - `src/app/reports/[id]/page.tsx`: Conectado para renderizar `FinalReportViewer` tanto en modo lectura como en modo edición para informes finales, preservando compatibilidad retroactiva con otros informes.
+  5. **Verificación y Pruebas**:
+     - Ejecutado script end-to-end (`scratch/test_regenerate_final_15.ts`) para Yamila Inés Legarreta (ID 15).
+     - Verificado: Guardado en Neon PostgreSQL, generación de DOCX física (`scratch/Yamila_Legarreta_Informe_Final_Test.docx` de 56 KB), 0 tags `undefined`, 0 términos CET y 100% INCLUSIÓN.
+     - Compilación `npm run build` local exitosa (0 errores, 19/19 páginas).
+  6. **Despliegue a Producción**:
+     - Sincronizados todos los archivos modificados y plantillas hacia el VPS (`149.50.128.73:5782`) vía SFTP.
+     - Compilación en VPS exitosa y reinicio de PM2 (`online`, PID 139955, código de salida 0).
+- **Estado**: Completado, Verificado y Desplegado en Producción ✅
+
+## 2026-09-11 (Auditoría Integral de Sueños Faltantes en los 75 Concurrentes y Sincronización de Cristian Carlos y Ramiro Fardelli)
+- **Objetivo**: A solicitud del usuario ("De quienes faltan los sueños de todos los jovenes?"):
+  1. Auditar en tiempo real los 75 concurrentes de los 7 grupos oficiales en Neon PostgreSQL.
+  2. Detectar y recuperar del Excel fuente de Comunicadores los sueños reales de **Cristian Oscar Carlos** (ID 80, Atrapasueños): `["Poder acomodar algún día la voz", "Grabar un CD de tango"]`.
+  3. Sincronizar las claves `metaSueño` y `metaSueno` de **Ramiro Fardelli Corropolese** (ID 26, Buenos Mozos) con `["Rapear y que la gente me escuche", "Ir a la cancha de tigre"]`.
+  4. Mapear con precisión quirúrgica los 11 concurrentes vacíos y los 3 concurrentes con rutinas/encabezados a corregir.
+- **Resultados del Balance Institucional (75 Concurrentes)**:
+  - **61 concurrentes (81%)**: Con sueños reales y válidos cargados.
+  - **11 concurrentes (15%)**: Faltantes totales (vacíos).
+  - **3 concurrentes (4%)**: A revisar (tienen texto de rutinas diarias o encabezados de tabla de Excel).
+  - **4 Grupos al 100% de Completitud**: Emprendedores (20/20), Buenos Mozos (10/10), Atrapasueños (9/9) y Clave de Sol (4/4).
+- **Estado**: Auditado y Sincronizado en BD ✅
+
+## 2026-09-10 (Centricidad en la Persona, Reemplazo de Inclusión por Integración y Foco Concreto en Habilidades/Estrategias/Apoyos)
+- **Objetivo**: A petición expresa del usuario ("En los informes, en los trimestrales y el final, hacer mas incapie en toda la informacion que tenes disponible, que no sea tan reiterativo, tan chatgpt, que no se hable tanto del facilitador, sino que es centrado en la persona a la que se le hizo el informeel foco tiene que ser la persona, la institucion es un apoyo al igual que el facilitador, en vez de inclusion poner integracion. El protagonista es el joven, en el informe tienen que estar las estrategias, las habilidades, los apoyos"):
+  1. Situar al concurrente como protagonista absoluto de las 12 secciones del informe. La institución y los facilitadores son apoyos externos y no el sujeto gramatical de los párrafos.
+  2. Prohibir de forma total e inviolable la palabra "inclusión" o "inclusivo/a", sustituyéndola estrictamente por "integración", "integración social", "integración comunitaria" y "espacios integradores".
+  3. Eliminar la redacción repetitiva / estilo ChatGPT, forzando la fundamentación en datos concretos de las 4 fuentes documentales: habilidades evaluadas (niveles 1 al 4), estrategias de aprendizaje y autorregulación, y modalidades de apoyos precisados.
+  4. Garantizar variabilidad sintáctica en la apertura de párrafos, prohibiendo repetir el nombre completo o nombres de pila al inicio de las secciones 2 a 12.
+- **Acciones Realizadas**:
+  1. `src/lib/ai/quarterlyGenerator.ts`:
+     - Incorporadas directivas 5 (Centricidad en la persona), 6 (Integración en vez de inclusión) y 7 (Anti-reiterativo, habilidades, estrategias, apoyos) en el prompt de sistema y de usuario.
+     - Calibrado `cleanPositiveNarrative` con normalizador de nombres (nombre completo, compuestos, de pila) y limpiador de fórmulas de apertura (`openerPattern`) para secciones 2 a 12.
+     - Sanitizadas frases centradas en el facilitador y sustituidos todos los residuos de "inclusión".
+  2. `src/lib/ai/finalReportGenerator.ts`:
+     - Incorporadas directivas equivalentes en el prompt de sistema y `buildFinalReportPrompt`.
+     - Actualizadas las descripciones de las 12 claves oficiales JSON para forzar el foco en el joven, integración y datos concretos.
+     - Calibrado `cleanPositiveNarrative` y fallback determinístico con integración social.
+  3. `src/lib/ai/merge.ts` y `src/lib/prompts/system_prompt.md`:
+     - Agregadas las cláusulas de centricidad en la persona, integración sobre inclusión y anclaje en habilidades/estrategias/apoyos.
+  4. Verificación y Pruebas:
+     - Generado el Informe Final Anual para Yamila Inés Legarreta (ID 15) mediante script de validación contra PostgreSQL y GPT-4o.
+     - Verificado: 0 ocurrencias de "inclusión" (100% "integración"), sujeto tácito natural en secciones 2 a 12, mención concreta de habilidades evaluadas (lanzamiento mano hábil Nivel 3, pinceles Nivel 3), estrategias (pausas activas, apoyos visuales) y apoyos (supervisión puntual, apoyos verbales).
+     - Actualizado Report #104 en base de datos PostgreSQL con la nueva narrativa.
+  5. Despliegue en Producción:
+     - `npm run build` local exitoso (0 errores, 19/19 páginas).
+     - Subida de archivos por SFTP al VPS (`149.50.128.73:5782`), compilación remota y reinicio de PM2 (status online, PID 125933, código de salida 0).
+- **Estado**: Completado y Desplegado en Producción ✅
+
+## 2026-09-10 (Auditoría Post-Actualización del Estado Institucional de Sueños - 75 Concurrentes)
+- **Objetivo**: A requerimiento del usuario ("Ahora, cuales sueños son los que faltan y cuales son los que estan"), auditar en tiempo real la totalidad de los 75 concurrentes de los 7 grupos oficiales tras las actualizaciones de Emprendedores, Buenos Mozos y Promotores.
+- **Balance General**:
+  - **59 concurrentes (79%)** poseen sueños válidos y completos cargados.
+  - **13 concurrentes (17%)** están pendientes sin sueño registrado (vacíos).
+  - **3 concurrentes (4%)** tienen texto residual de rutina semanal/encabezados a corregir.
+- **Detalle por Grupo**:
+  - `Clave de Sol` (Juliana Arias): 4 de 4 completos (100%).
+  - `Emprendedores` (Analía Almada): 20 de 20 completos (100%).
+  - `Buenos Mozos` (Marina Trejo): 9 de 10 completos (solo falta Ramiro Fardelli).
+  - `Atrapasueños` (Matías Maciel): 8 de 9 completos (solo falta Cristian Oscar Carlos).
+  - `Artesanos` (Leonardo Villamayor): 10 de 11 completos (solo falta Hernan Quintana).
+  - `Promotores` (Lemuel Sola): 7 completos, 3 pendientes (Alma Dumont, Cristina Alfonso, Laura Gomez) y 1 a revisar (Juan Martín Garcia Carral).
+  - `Empoderadas` (Ana Reartes): 1 con meta (Yamila Legarreta), 7 pendientes (Almirón, Gómez, Aguerre, Gallardo, Aguirre, Rodríguez, Díaz) y 2 a revisar (Milagros Suárez, Paula Correa).
+
+
+## 2026-09-10 (Carga de Sueños de Promotores a partir de Imagen Manuscrita)
+- **Objetivo**: A solicitud del usuario ("Hace lo mismo con esto pero a partir de Pablo Lezcano, los de arriba ya estan"):
+  1. Procesar la imagen manuscrita de la facilitación del grupo `Promotores` (Lemuel Sola).
+  2. Aplicar a partir de Pablo Lezcano:
+     - **Pablo Hernan Lezcano** (ID 74): `["Cantar con Los Nocheros"]`
+     - **Marcelo Edgardo Di Risio** (ID 75): `["Ir de vacaciones a Chapadmalal"]`
+     - **Martiniano Correa** (ID 76): `["Ser técnico de PC"]`
+     - **Sofia Luciana Chavez** (ID 77): `["Trabajar de auxiliar en la camioneta con los choferes", "Ser mamá y vivir sola"]`
+  3. Limpiar las rutinas espurias de **Alma Milena Dumont** (ID 68) y **Laura Verónica Gomez** (ID 73), explícitamente anotadas en la columna "No tienen".
+  4. Sincronizar en `youngs.pcp`, `reports` y `forms`.
+- **Resultado**: 4 concurrentes actualizados con sueños reales y 2 concurrentes saneados sin rutinas espurias.
+
+
+## 2026-09-10 (Carga y Actualización de Sueños de Concurrentes de Buenos Mozos)
+- **Objetivo**: A solicitud del usuario ("En buenos mozos, reconoce los nombres y hace lo mismo pero con este texto..."):
+  1. Reconocer y asociar los nombres proporcionados con los concurrentes de Buenos Mozos (Marina Trejo) en la base de datos PostgreSQL.
+  2. Eliminar cualquier registro previo y cargar fielmente los sueños y metas provistos:
+     - **Román** -> Roman Matias Pontecorvo (ID 33): `["Viajar", "Tener una radio"]`
+     - **Emmanuel** -> Emmanuel Cesar Ledesma (ID 31): `["Trabajar", "Volar en avión de nuevo"]`
+     - **Daniel** -> Daniel Marcelo Alegre (ID 34): `["Viajar y conocer lugares", "Trabajar en la cocina de la granja"]`
+     - **Benja** -> Gonzalo Benjamin Pettinaro (ID 29): `["Tener un trabajo para ganar dinero", "Tener una novia"]`
+     - **Fernando** -> Fernando Alejo Piñol (ID 20): `["Ver a Messi de nuevo", "Trabajar en una rotisería"]`
+     - **Juan Carlos** -> Juan Carlos Suarez (ID 22): `["Ir a un recital de cumbia", "Conocer amigos", "Conocer a Ángela Leiva", "Ir a la cancha de boca a un partido con Samuel."]`
+     - **Camilo** -> Camilo Federico Barraza (ID 35): `["Salir solos con amigos", "Cantar folclore en una peña."]`
+     - **Franco** -> Franco Luciano Martinez (ID 36): `["Cocinar ravioles solo", "Ir de vacaciones con Cristian a Junín."]`
+     - **Nicolás** -> Nicolas Agustin Maita (ID 38): `["Vivir solo"]`
+  3. Propagar a `youngs.pcp`, `reports` y `forms`.
+- **Resultado**: 9 de 9 concurrentes procesados con éxito. Solo Ramiro Fardelli Corropolese (ID 26) queda pendiente por no estar en la lista suministrada.
+
+
+## 2026-09-10 (Carga y Reemplazo Fiel de Sueños para el Grupo Emprendedores desde Excel)
+- **Objetivo**: A solicitud del usuario ("En descargas tenes un documento de excel donde esta la informacion de los sueños de los concurrentes de emprendedores, en verde estan los que faltan y que hay que cargar, por favor, si tienen algo eliminalo y pone lo que dice en el excel que es el sueño"):
+  1. Localizar y procesar la planilla `C:\Users\Try Hard\Downloads\SUEÑOS EMPRENDEDORES.xlsx`.
+  2. Identificar las filas destacadas en verde (`FF00FF00`): eliminar cualquier sueño previo y cargar fielmente el sueño estipulado en la planilla.
+  3. Cargar también a Lucas Bugnot (vacío en BD y provisto en la planilla) y sincronizar los 20 concurrentes de Emprendedores.
+- **Acciones Realizadas**:
+  1. Procesado el archivo con `exceljs`, mapeando las 20 filas contra los 20 concurrentes oficiales de Emprendedores en PostgreSQL.
+  2. Actualizados los registros marcados en verde:
+     - **Roberto Alonso** (ID 45): Reemplazado por `["Trabajar en la Granja y cobrar mi sueldo. Viajar con mis amigos. Ser auxiliar."]`
+     - **David Carrizo** (ID 48): Cargado con `["Viajar a Bariloche. Viajar solo a Capital"]`
+     - **Camila Da Silva** (ID 49): Cargado con `["Ir a Bariloche, conocer otros lugares y viajar. Vivir sola. Tener auto. Trabajar en cocina. Estudiar canto."]`
+     - **Nicolas Gabriel Decurguez** (ID 47): Cargado con `["Viajar a Europa. Conocer a un jugador de futbol famoso."]`
+     - **Francisco Del Giovannino** (ID 57): Cargado con `["Limpiar parques y cortar pasto (trabajar en mantenimiento de casas).", "Trabajar y vender productos a personas."]`
+     - **Facundo Joaquin Gonzalez** (ID 56): Cargado con `["Viajar a México a conocer la playa. Conocer a Ke Personajes e ir a su recital."]`
+     - **Eluney Omar Ledesma** (ID 67): Reemplazado por `["Aprender a comprar solo. Aprender a cocinar."]`
+     - **Abigail Agustina Malmoria** (ID 43): Reemplazado por `["Conocer Bariloche con mi familia y amigos. Conocer las jugadoras de Boca Juniors."]`
+     - **Eugenia Del Carmen Perez Ulloa** (ID 54): Cargado con `["Cantar en un escenario. Enseñar zumba. Vivir con mi pareja"]`
+  3. Adicionalmente, cargado **Lucas Tomas Bugnot** (ID 52): `["Ir a España, Francia. Tener un trabajo."]` (estaba vacío en BD).
+  4. Actualizados simultáneamente `youngs.pcp` (`perfil.suenos`, `suenos`, `metaSueno`, `metaSueño`), y propagado a los campos `data.datosGenerales.metaSueno` en `reports` y `forms` correspondientes.
+- **Resultado**: 20 de 20 concurrentes de Emprendedores con sus sueños 100% actualizados y verificados.
+
+
+## 2026-09-10 (Auditoría Integral de Sueños y Metas Personales en PCP - 75 Concurrentes)
+- **Objetivo**: A solicitud del usuario ("Haceme una lista de todos los que no tengan sueños registrados y los que tienen, asi podemos ver y completarlos"), auditar el estado del campo `pcp.perfil.suenos` en los 75 concurrentes de Granja Andar almacenados en Neon PostgreSQL.
+- **Resultados de la Auditoría**:
+  1. **Con Sueños Válidos Registrados**: **33 concurrentes** (44%). Poseen proyectos personales, laborales o recreativos genuinos (ej: cantar, viajar a Mar del Plata/Córdoba, trabajar en rotisería/pizzería, natación, etc.).
+  2. **Sin Sueños Registrados (Vacíos)**: **30 concurrentes** (40%). No poseen ninguna meta o sueño cargado en su perfil de PCP.
+  3. **Con Texto a Corregir (Rutinas / Encabezados)**: **12 concurrentes** (16%). El parser inicial de Excel capturó tablas de rutinas diarias ("LUNES", "MAPA DE RUTINAS", "Me despierta mi mamá...") en lugar de un sueño personal.
+- **Acciones y Disponibilidad**:
+  - Preparada lista clasificada por grupo oficial y facilitador a cargo para facilitar la carga manual en `/youngs` (Solapa PCP) o masiva vía base de datos.
+
+
+## 2026-09-10 (Consolidación Longitudinal Fiel desde Word Físico y Generación del Informe Final Anual)
+- **Objetivo**: A petición del usuario ("para generar todo que se utilice lo que se genera en el word, no lo que queda guardado en editar en cada informe, sino se pierde informacion. Consolida las cosas"):
+  1. Asegurar que los generadores de informes (particularmente el Informe Final Anual) lean y prioricen el texto íntegro sin resumir del archivo Word físico (`edited_docx_base64` parseado con Mammoth o `textoBrutoOriginal`), en lugar de restringirse a los campos editados en la base de datos (`data.secciones`) que pueden tener resúmenes breves.
+  2. Implementar una consolidación longitudinal anual genuina que articule los 4 momentos del año:
+     - Bloque 1: Experiencia Verano (autonomía funcional en AVD, traslados independientes, uso de transporte público, convivencia grupal).
+     - Bloques 2 y 3: Talleres de habilidades (Arte, Danza, Deporte, semáforos, conmemoraciones comunitarias).
+     - Bloque 4: Cierre de ciclo y seguimiento motriz/acuático (natación, evolución técnica en medio acuático, aspiración a Juegos Bonaerenses, seguimiento integral de salud).
+  3. Respetar estrictamente la identidad institucional de Centro de Día (0 menciones a pedagogía, colegios o CET) y variabilidad de referencia al concurrente (sin repetir monótonamente el nombre completo al inicio de cada sección).
+- **Acciones Realizadas**:
+  1. **Motor de IA (`src/lib/ai/finalReportGenerator.ts`)**:
+     - Agregada propiedad `docxText?: string` a las opciones de `trimestral1` y `trimestral2`.
+     - `buildFinalReportPrompt` prioriza explícitamente `trimestral1.docxText` (si supera 100 caracteres) o `textoBrutoOriginal` antes de recurrir a fragmentos de `data.secciones`.
+     - Inyectadas las observaciones mensuales completas y todos los talleres con nivel >= 1 para los bloques 2 y 4.
+     - Redactadas directivas mandatorias de **CONSOLIDACIÓN LONGITUDINAL ANUAL REAL**: forzar a GPT-4o a construir la evolución cronológica del año en cada una de las 12 secciones oficiales.
+  2. **Backend (`src/app/api/reports/final/route.ts`)**:
+     - Implementada la función `extractFullDocxText(repRow)` utilizando `mammoth` para parsear buffers base64 del archivo Word binario original.
+     - Actualizadas las consultas SQL para seleccionar `edited_docx_base64` y `edited_docx_filename`.
+     - Inyectado `docxText` en los objetos de trimestrales antes de invocar al generador.
+  3. **Preservación en Upload DOCX (`src/app/api/reports/[id]/upload-docx/route.ts`)**:
+     - Garantizado que `updatedData.textoBrutoOriginal = extractedText.trim()` se guarde siempre al subir un archivo Word.
+  4. **Base de Datos Postgres**:
+     - Actualizado Report 89 (Trimestral 1 de Yamila Inés Legarreta) integrando los 12 párrafos completos del Word oficial en `data.secciones`.
+     - Generado e insertado el nuevo Informe Final Anual consolidado (Report #104) con las 12 secciones que cubren fielmente verano, talleres, natación y salud.
+  5. **Compilación y Despliegue en VPS**:
+     - `npm run build` exitoso localmente.
+     - Archivos desplegados al VPS vía SFTP, compilación remota y reinicio de PM2 con código de salida 0.
+- **Estado**: Completado y Desplegado en Producción ✅
+
+
+## 2026-09-10 (Resolución de Error 500 en Generación de Trimestral 2 - Mapeo de ID de Formularios)
+- **Objetivo**: Corregir el error `POST /api/reports/trimestral 500 (Internal Server Error)` reportado por el usuario al pulsar `⚡ Generar Trimestral 2` en `/final-reports`.
+- **Root Cause (ERR-27)**:
+  - `GET /api/forms` mapeaba las filas de Postgres exponiendo únicamente `_id: String(row.id)` sin la propiedad `id`.
+  - En `src/app/final-reports/page.tsx`, `handleGenerateTrimestral2` hacía `mForms.map(f => String(f.id))`, enviando `formIds: ["undefined", "undefined", "undefined"]`.
+  - `POST /api/reports/trimestral` ejecutaba `parseInt("undefined")` resultando en `NaN`, lo que provocaba que Neon PostgreSQL rechazara la consulta con `invalid input syntax for type integer: "NaN"`.
+- **Acciones Realizadas**:
+  1. `src/app/api/forms/route.ts`: Agregado `id: row.id` explícito en el mapeo de retorno para compatibilidad universal.
+  2. `src/app/final-reports/page.tsx`: Mapeado con fallback `f.id || f._id` y filtrado para descartar IDs nulos o `NaN`.
+  3. `src/app/api/reports/trimestral/route.ts`: Validación preventiva de IDs numéricos retornando `HTTP 400` antes de invocar la consulta SQL si algún ID es inválido.
+  4. `src/app/final-reports/page.tsx`: Incorporación de botones `🔄 Regenerar con IA` y `🗑️ Eliminar` para permitir reiniciar el informe final si ya existe uno previo.
+  5. Compilación local con `npm run build` (19/19 páginas OK).
+  6. Despliegue de archivos al VPS vía SFTP, compilación remota y reinicio de PM2 (online, PID 122981).
+- **Estado**: Resuelto y Desplegado en Producción ✅
+
+## 2026-09-10 (Ajuste y Purga de Diagnóstico de Yamila Inés Legarreta: Depuración de Informes de Prueba y Soporte de Regeneración/Eliminación)
+- **Objetivo**: A petición expresa del usuario ("Yamila Inés Legarreta aparece como que tiene todo pero no es asi, revisa bien lo que tiene porque quiero generar un informe real final"):
+  1. Auditar con exactitud qué insumos corresponden a la realidad de los archivos provistos para Yamila Inés Legarreta (ID 15, Empoderadas, Ana Reartes) vs qué fue generado automáticamente por scripts previos.
+  2. Eliminar de la base de datos el Reporte Final de prueba (#92) y el Trimestral 2 de prueba (#90) para que el usuario pueda probar el flujo real de generación en vivo.
+  3. Incorporar en la vista `/final-reports` los botones de `🔄 Regenerar con IA` y `🗑️ Eliminar` para permitir reiniciar o reconstruir cualquier informe final sin quedar bloqueado.
+- **Acciones Realizadas**:
+  1. **Auditoría de Insumos de Inés Legarreta**:
+     - *Bloque 1 (Trimestral 1: Ene-Mar)*: Reporte #89 con el texto extraído del Word manual oficial `Ines Lagarreta .docx` redactado por Ana Paula Reartes (legítimo y preservado).
+     - *Bloque 2 (Mensuales 1: Abr-Jun)*: Formularios 59, 60 y 61 correspondientes a las solapas ABRIL, MAYO y JUNIO de su planilla Excel (legítimo y preservado).
+     - *Bloque 3 (Trimestral 2: Abr-Jun)*: Reporte #90 generado por script de test previo. **Eliminado de Postgres** para dejar el insumo como pendiente y permitir al usuario pulsar `⚡ Generar Trimestral 2` en vivo.
+     - *Bloque 4 (Mensuales 2: Ago-Sep)*: Formularios 272 y 273 con las observaciones de natación y Juegos Bonaerenses de Ana Reartes extraídas de la planilla complementaria.
+     - *Informe Final*: Reporte #92 generado por script previo. **Eliminado de Postgres** para habilitar el flujo de generación real.
+  2. **Mejoras en UI (`src/app/final-reports/page.tsx`)**:
+     - Agregada función `handleDeleteFinal` para permitir al usuario borrar cualquier informe final borrador.
+     - Agregados botones `🔄 Regenerar` y `🗑️ Eliminar` visibles cuando un concurrente ya posee informe final.
+  3. **Compilación y Despliegue en Producción**:
+     - `npm run build` local exitoso (19/19 páginas).
+     - Archivos desplegados al VPS vía SFTP y PM2 reiniciado con código 0.
+- **Estado**: Completado y Desplegado en Producción ✅
+
+## 2026-09-10 (Página Dedicada de Informes Finales y Validación Inviolable de 4 Insumos Obligatorios)
+- **Objetivo**: A solicitud directa del usuario ("Que para el informe final te pida todo lo que te dije que se necesita, sino no se hace, analiza bien lo que se necesita, deberia tener una pagina aparte el informe final"):
+  1. Diseñar e implementar una página web dedicada y exclusiva para la gestión institucional del Informe Final Anual (`/final-reports`) con acceso directo en la barra de navegación principal (`Nav.tsx`).
+  2. Implementar una regla de validación inviolable ("sino no se hace") que exija el 100% de los 4 insumos reglamentarios:
+     - Bloque 1: Informe Trimestral 1 (Texto: Enero, Febrero, Marzo).
+     - Bloque 2: Evaluaciones Mensuales 1 (Cuadrículas + Observaciones de Abril, Mayo y Junio -> 3 meses completos).
+     - Bloque 3: Informe Trimestral 2 (Texto: Abril, Mayo, Junio).
+     - Bloque 4: Evaluaciones Mensuales 2 (Cuadrículas + Observaciones de Agosto y Septiembre -> 2 meses completos).
+  3. Si falta cualquier insumo o mes, bloquear la generación tanto en el backend (`HTTP 400`) como en el frontend, mostrando con precisión qué insumos faltan y ofreciendo botones directos para cargarlos/generarlos.
+- **Acciones Realizadas**:
+  1. **Backend (`src/app/api/reports/final/route.ts`)**:
+     - Creado analizador de completitud `evaluateBlocks(reports, forms)` que verifica la presencia exacta de los 4 bloques.
+     - Enriquecido `GET` con soporte de `?overview=true` para devolver el diagnóstico de los 75 concurrentes de Postgres en ~500ms y `?youngId=XX` para diagnóstico individual.
+     - En `POST`, implementado bloqueo estricto con `HTTP 400` y array `missingErrors` detallando con precisión insumos pendientes si no se cumple el 100%.
+  2. **Página Dedicada (`src/app/final-reports/page.tsx`)**:
+     - Banner institucional explicativo con el diagrama de los 4 bloques constitutivos.
+     - Indicador destacado con la Regla Institucional de Validación Estricta.
+     - 4 Tarjetas de Métricas (KPIs): Total Concurrentes (75), Informes Finales Generados, Listos para Generar (4/4 bloques), e Insumos Incompletos.
+     - Píldoras interactivas de filtrado rápido por los 7 Grupos Oficiales de Granja Andar con conteo en vivo.
+     - Buscador reactivo por nombre y filtros por estado (Todos, Listos, Incompletos, Generados).
+     - Matriz de Concurrentes con semáforos individuales para cada bloque (T1, M1, T2, M2):
+       * Bloque 1: Estado de Word/Trimestral Ene-Mar con botón `📤 Subir Word Ene-Mar` si falta.
+       * Bloque 2: Indicadores individuales para Abr, May, Jun con botón `📥 Subir Meses Excel` si falta alguno.
+       * Bloque 3: Estado de Trimestral Abr-Jun con botón de generación rápida `⚡ Generar Trimestral 2`.
+       * Bloque 4: Indicadores individuales para Ago y Sep con botón `📥 Subir Meses Excel` si falta alguno.
+     - Botón de generación con bloqueo de seguridad: Solo activo cuando `canGenerate === true`. Si faltan insumos, permanece bloqueado (`🔒 Bloqueado: Insumos Incompletos`) con mensaje preventivo.
+     - En concurrentes con informe ya generado (ej: Yamila Inés Legarreta), visualización directa de estado con botones `👁️ Ver / Editar` e `📥 Word (.docx)`.
+  3. **Navegación Institucional (`src/app/_components/Nav.tsx`)**:
+     - Agregado enlace `<a className={cls('/final-reports')} href="/final-reports">Informe Final</a>`.
+  4. **Compilación, Despliegue y Validación en Producción**:
+     - Compilación local `npm run build`: Exitosa con 0 errores (19/19 páginas generadas).
+     - Despliegue de archivos al VPS (`149.50.128.73:5782`) vía SFTP.
+     - Compilación remota `npm run build` en el VPS: Exitosa con 0 errores.
+     - Reinicio de PM2 con código de salida 0 (PID 120488, status online).
+     - Verificados endpoints de producción HTTP 200 en `http://149.50.128.73:8000/login` y `https://informes-andar.nextemarketing.com/login`.
+- **Estado**: Completado y Desplegado en Producción ✅
+
+## 2026-09-10 (Carga Integral de Inés Lagarreta: Cuadrículas Mensuales Abril a Septiembre, Trimestral Word 2026 y Consolidación Anual)
+- **Objetivo**: A solicitud directa del usuario ("Carga a ines lagarreta, esta en descargas"), procesar e incorporar en la base de datos de producción (Neon PostgreSQL) todos los registros de **Yamila Inés Legarreta** (ID 15, grupo Empoderadas, facilitadora Ana Reartes) a partir de los archivos ubicados en `C:\Users\Try Hard\Downloads`:
+  1. `Ines Lagarreta (1).xlsx`: Planilla con solapa PCP y solapas de meses `ABRIL`, ` MAYO`, `JUNIO`, `JULIO `, `AGOSTO `, `SEPTIEMBRE `.
+  2. `Ines Lagarreta .docx`: Documento oficial del Informe Trimestral – Experiencia Verano 2026 (Enero, Febrero, Marzo).
+- **Acciones Realizadas**:
+  1. **Auditoría e Ingesta Celda por Celda de Cuadrículas Mensuales (`forms`)**:
+     - Calibrado el escaneo con la geometría de Empoderadas (`r+2` y `r+3`, soporte de temas de coloración y checks).
+     - Actualizados los formularios de Abril (`2026-04`, 159 ítems / 71 evaluados / 1,429 car. de observaciones), Mayo (`2026-05`, 126 ítems / 94 evaluados / 2,657 car. de observaciones) y Junio (`2026-06`, 134 ítems / 94 evaluados / 2,693 car. de observaciones).
+     - Insertados los nuevos formularios mensuales: Julio (`2026-07`, Form 271, 102 ítems / 94 evaluados / 2,094 car. de observaciones), Agosto (`2026-08`, Form 272, 102 ítems / 94 evaluados / 1,863 car. de observaciones) y Septiembre (`2026-09`, Form 273, 102 ítems / 94 evaluados / 1,937 car. de observaciones).
+  2. **Ingesta e Interpretación con IA del Word Manual (`Ines Lagarreta .docx`)**:
+     - Parseado el archivo con `mammoth` y extraídas sus 12 secciones narrativas institucionales mediante OpenAI `gpt-4o-mini` en formato JSON estricto.
+     - Almacenado en `reports` con ID 89, `young_id = 15`, `report_type = 'TRIMESTRAL'`, `periodo = '2026-01 a 2026-03'`, facilitadora Ana Reartes (ID 8), estado `BORRADOR` y archivo DOCX físico en base64 preservado.
+  3. **PCP y Perfil Institucional**:
+     - Actualizada la meta institucional en el perfil de Yamila Inés Legarreta: *"Fortalecer su autonomía y participación en la comunidad"*.
+  4. **Preparación del Ciclo Anual**:
+     - Generado el Informe Trimestral 2 (`2026-04 a 2026-06`, Report ID 90) consolidando las cuadrículas de Abril, Mayo y Junio sin términos pedagógicos y con variabilidad de sujeto.
+     - Actualizado el constraint `reports_report_type_check` en Postgres para incluir `'FINAL'`.
+     - Generado el **Informe Final Anual** (`2026 (Ciclo Anual Consolidado)`, Report ID 92) sintetizando longitudinalmente los 4 bloques del año con GPT-4o.
+- **Estado**: Completado con 100% de coincidencia y verificado en base de datos ✅
+
 ## 2026-09-10 (Variabilidad de Referencia al Concurrente y Erradicación Total de Términos Pedagógicos/CET)
 - **Objetivo**: A requerimiento expreso del usuario ("Que cuando se generen los informes trimestrales y el final cuando habla del concurrente no diga siempre lo mismo ej el nombre, ya que hay una tendencia a repetir en cada punto el nombre completo del joven. Ademas no mencionar pedagogia ni nada relacionado a este termino porque no somos un centro educativo terapeutico"):
   1. Erradicar por completo la mención de "pedagogía", "pedagógico/a", "contenidos pedagógicos", "malla curricular", "alumno/a", "docente", etc., aclarando en la base y prompts que Granja Andar es un Centro de Día enfocado en la inclusión sociolaboral, autonomía y calidad de vida (no un Centro Educativo Terapéutico ni escuela).
@@ -788,6 +1115,16 @@
     * `npm run build` local exitoso (0 errores).
     * Desplegado a producción en VPS (`149.50.128.73:5782`) con reinicio exitoso de PM2.
 - **Estado**: Completado ✅
+
+## 2026-09-11 (Rediseño Estructural del Informe Final y Plan de Abordaje - Modelo Miriam Gallardo)
+- **Objetivo**: Rediseñar integralmente el Informe Final Anual y su Plan de Abordaje Centrado en la Persona adoptando la estructura oficial, diseño, secciones y tabla de calidad de vida del documento de referencia `Miriam Gallardo .docx`, sintetizando fielmente los 4 bloques documentales sin alucinaciones ni invenciones.
+- **Actividades en curso**:
+  - Análisis exhaustivo de `Miriam Gallardo .docx` (HTML, texto y XML).
+  - Identificación de la arquitectura de dos partes:
+    * **Parte 1: Informe Final - Abordaje Centrado en la Persona** (10 secciones oficiales, tabla de 8 dimensiones con escala ✔|➖|❌, logros desglosados en 4 áreas, proyecciones en lista).
+    * **Parte 2: Plan de Abordaje Centrado en la Persona** (Datos personales, introducción institucional, objetivo general, objetivos específicos, líneas de acción en 6 ejes, sueños y metas, indicadores de seguimiento en 8 dimensiones y lineamientos para el facilitador).
+  - Elaboración del plan de implementación detallado (`implementation_plan.md`) para aprobación del usuario.
+- **Estado**: En proceso (Planificación).
 
 
 

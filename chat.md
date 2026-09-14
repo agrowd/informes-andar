@@ -136,3 +136,70 @@
   - Realizó reemplazos completos de los textos que decían "Borrador/es" por "Cuadrícula/s Mensual/es" en Nav, Dashboard, listados e importador de Excel.
 - **Validación**:
   - Compiló Next.js (`npm run build`) para verificar la consistencia del código.
+
+# Registro de Conversación - 2026-09-10 (Centricidad en la Persona, Integración vs Inclusión, y Enfoque en Habilidades/Estrategias/Apoyos)
+
+## Usuario:
+- "En los informes, en los trimestrales y el final, hacer mas incapie en toda la informacion que tenes disponible, que no sea tan reiterativo, tan chatgpt, que no se hable tanto del facilitador, sino que es centrado en la persona a la que se le hizo el informeel foco tiene que ser la persona, la institucion es un apoyo al igual que el facilitador, en vez de inclusion poner integracion. El protagonista es el joven, en el informe tienen que estar las estrategias, las habilidades, los apoyos"
+
+## Antigravity:
+- **Centricidad en la Persona (El Protagonista es el Joven)**:
+  - Se reconfiguraron los motores de IA (`quarterlyGenerator.ts`, `finalReportGenerator.ts`, `merge.ts` y `system_prompt.md`) para que el concurrente sea el centro y protagonista activo de cada párrafo.
+  - Se eliminaron y sanitizaron fórmulas centradas en el facilitador ("La facilitadora acompaña...", "Su relación con la facilitadora es de confianza...", "Bajo la guía del facilitador..."), reenfocándolas hacia la agencia, decisiones y participación de la persona.
+- **Sustitución Mandatoria de "Inclusión" por "Integración"**:
+  - Se erradicó por completo la palabra "inclusión" o "inclusivo/a" tanto en las instrucciones de prompt como mediante filtros automáticos de sustitución por expresiones regulares, reemplazándolas por "integración", "integración social", "integración comunitaria" y "espacios integradores".
+- **Enfoque Rico en Habilidades, Estrategias y Apoyos (Anti-ChatGPT / Anti-Reiterativo)**:
+  - Se incorporaron directivas para anclar cada una de las 12 secciones en los datos concretos de las planillas: habilidades evaluadas en talleres (con niveles 1 al 4), estrategias prácticas y de autorregulación (apoyos visuales, secuencias por pasos, anticipación, pausas activas), y modalidad de apoyos (supervisión a distancia, apoyos verbales, apoyos físicos puntuales).
+  - Se enriqueció el sistema de variabilidad sintáctica en la apertura de oraciones, suprimiendo la repetición del nombre de la persona o fórmulas formulaicas ("A lo largo del ciclo...") al inicio de los párrafos a partir de la sección 2.
+- **Validación y Despliegue en Producción**:
+  - Se ejecutó `npm run build` local exitoso (0 errores TypeScript).
+  - Se desplegaron los archivos al VPS de producción vía SFTP (`scratch/deploy_files.mjs`), se compiló remotamente y se reinició PM2 con código de salida 0.
+  - Se probó la generación real del Informe Final Anual de Yamila Inés Legarreta (ID 15) contra PostgreSQL y OpenAI GPT-4o, verificando 0 apariciones de "inclusión" (100% "integración"), sujeto activo centrado en la persona y presencia concreta de habilidades, estrategias y apoyos.
+
+# Registro de Conversación - 2026-09-11 (Rediseño Estructural del Informe Final y Plan de Abordaje Centrado en la Persona)
+
+## Usuario:
+- "Vamos a cambiar el diseño, estructura y demas cosas del final, con toda la informacion que se tiene del joven en todos los informes, va a tener la estructura y llenar la informacion que te dejo en descargas Miriam Gallardo .docx . Analizalo todo para que tenga sentido. Incluyendo el plan de abordaje, lo que no entendes buscalo en internet. No inventes nada"
+- "es inclusion, no integracion, es alreves"
+
+## Antigravity:
+- **Análisis Exhaustivo del Modelo Miriam Gallardo**:
+  - Se analizó el documento `C:\Users\Try Hard\Downloads\Miriam Gallardo .docx` descomprimiendo su XML y extrayendo su estructura fidedigna.
+  - Se identificó la división mandatoria en dos partes: 1) Informe Final PCP con tabla de 8 dimensiones y 4 áreas de logros; 2) Plan de Abordaje Centrado en la Persona con 6 líneas de acción por ejes, indicadores y lineamientos para facilitadores.
+- **Corrección Terminológica: INCLUSIÓN Mandatoria**:
+  - Se acató la corrección expresa: el paradigma rector de Granja Andar es la **INCLUSIÓN** (Inclusión Social, Inclusión comunitaria, espacios inclusivos). Se erradicó el uso forzado de "integración".
+  - Se prohibió de forma estricta el uso de vocabulario pedagógico o de escuela/CET.
+- **Desarrollo de Plantilla Fiel DOCX (`templates/final_template.docx`)**:
+  - Construida directamente a partir del archivo de Word original con 45 tags de `docxtemplater`, preservando encabezados, membrete institucional, tablas y formatos.
+- **Motor de IA Reestructurado (`finalReportGenerator.ts`)**:
+  - Generador con GPT-4o que produce `parte1_informeFinal`, `parte2_planAbordaje` y el mapeo para `secciones`.
+  - Anclado 100% en los 4 momentos del año (Trimestral 1 de verano, Mensuales 1 de talleres, Trimestral 2, y Mensuales 2 de natación y talleres) y el PCP.
+- **Componente Web y Edición Interactiva (`FinalReportViewer.tsx`)**:
+  - Creado visor y editor para la página `/reports/[id]` con tarjetas para cada eje, semáforos para las 8 dimensiones y persistencia a través de `PUT /api/reports/[id]`.
+- **Pruebas y Despliegue en Servidor**:
+  - Verificado end-to-end con Yamila Legarreta (ID 15 / Report #104), logrando un documento Word de 56 KB con 0 errores de etiquetas y 100% de coherencia institucional.
+  - Desplegado a producción en el VPS (`149.50.128.73:5782`) con PM2 activo y online.
+
+# Registro de Conversación - 2026-09-14 (Diagnóstico Comparativo Nicolás Maita: Excel vs Sistema)
+
+## Usuario:
+- "Segui con este Analiza el archivo de descargas NICOLAS MAITA.xlsx y comparalo con la cuadricula que esta subido al sistema, por que no es igual? que paso?"
+
+## Antigravity:
+- **Diagnóstico Exhaustivo (Excel vs Sistema)**:
+  1. **En el Excel (`NICOLAS MAITA.xlsx`)**:
+     - Solapa `JULIO`: Contiene los 8 talleres reales de Buenos Mozos (Marina Trejo): Arte Reciclado, Desarrollo Personal, Huerta Sumemos Verde, Derechos, Habilidades de Interacción, Bienestar Emocional, Deporte.
+     - Posee **80 habilidades evaluadas** con niveles 2 y 4 (marcadas en color cian `#46BDC6`).
+     - Posee **2.777 caracteres de observaciones reales** que detallan la adaptación y las actividades de la Semana Invernal de Julio (kermés, salida al cine en Nine Shopping de Moreno, Polideportivo Maradona).
+  2. **En el Sistema (Base de Datos)**:
+     - **Formulario #280 (JULIO)**: Creado hoy a las 11:36 hs desde `/form`. Tiene la plantilla estándar por defecto (`DEFAULT_TALLERES`: Deporte, Viajar, Habilidades Sociales, Musicoterapia, Manos Verdes) con **0 ítems evaluados** y **0 observaciones**.
+     - **Formulario #139 (rotulado como AGOSTO)**: Tenía asignados talleres de Catering, Cocina y BPM (ajenos a Buenos Mozos), pero con el texto de observaciones de Julio pegado erróneamente.
+  3. **Causa Raíz de la Discrepancia**:
+     - El Formulario #280 se guardó desde el formulario web manual sin importar el Excel.
+     - El importador de Excel (`/api/youngs/import-excel`) exigía el prefijo `TALLER:`, por lo que al procesar planillas de Buenos Mozos de Marina Trejo (que usan códigos de dimensión como `ARTE "RECICLADO" / DP - BM`) ignoraba las cabeceras y descartaba todas las habilidades.
+
+
+
+
+
+

@@ -171,8 +171,24 @@
 1. Se ejecutó una migración SQL en PostgreSQL para transformar todas las columnas con restricción de longitud (`VARCHAR(50)`, etc.) a tipo `TEXT` ilimitado.
 2. Se añadió limpieza y remoción de prefijos textuales (`LEGAJO:`, `DNI:`, `OBRA SOCIAL:`, `TALLER:`) en `src/app/api/youngs/import-excel/route.ts`.
 3. Se desplegó la migración y el código actualizado al VPS de producción.
+## ERR-27: NeonDbError: invalid input syntax for type integer: "NaN" al generar Trimestral 2 (2026-09-10)
+**Síntoma:** Al hacer click en `⚡ Generar Trimestral 2` en `/final-reports`, la petición `POST /api/reports/trimestral` fallaba con `HTTP 500 (Internal Server Error)`.
+**Root Cause:** El endpoint `GET /api/forms` devolvía cada formulario con la clave `_id: String(row.id)` pero sin exponer la clave `id: row.id`. Al mapear en el frontend `mForms.map(f => String(f.id))`, `f.id` era `undefined`, enviando en el body `formIds: ["undefined", "undefined", "undefined"]`. En `/api/reports/trimestral`, `parseInt("undefined")` resultaba en `NaN`, y Neon PostgreSQL arrojaba `invalid input syntax for type integer: "NaN"`.
+**Solución:** 
+1. En `src/app/api/forms/route.ts`: Se expuso explícitamente `id: row.id` en el mapeo de Postgres.
+2. En `src/app/final-reports/page.tsx`: Se mapeó `f.id || f._id` y se agregaron filtros para descartar cualquier ID inválido.
+3. En `src/app/api/reports/trimestral/route.ts`: Se agregó validación para rechazar con `HTTP 400` cualquier ID `NaN` antes de ejecutar la consulta SQL.
 **Estado:** ✅ FIXED
 
-
-
-
+## ERR-28: Grilla vacía / 0 talleres importados en solapas de Buenos Mozos (Marina Trejo) (2026-09-14)
+**Síntoma:** Al subir la planilla `NICOLAS MAITA.xlsx` o abrir su formulario de Julio (#280) en el sistema, aparecía una cuadrícula vacía con talleres genéricos por defecto (`DEFAULT_TALLERES`), 0 habilidades evaluadas y sin las observaciones redactadas por la facilitadora, a pesar de que en el Excel existían 8 talleres y 80 evaluaciones coloreadas en cian (`#46BDC6`).
+**Root Cause:** 
+1. El parser en `src/app/api/youngs/import-excel/route.ts` exigía estrictamente la subcadena `'TALLER:'` para abrir un bloque de taller. Marina Trejo rotula los talleres usando códigos de dimensiones de calidad de vida (ej. `ARTE "RECICLADO" / DP - BM`, `DERECHOS A SER PROTAGONISTAS / DP - AU - BM - DR`), por lo que el parser ignoraba todos los encabezados y trataba a las filas evaluadas como ítems huérfanos o inválidos.
+2. Al crearse el formulario desde la UI web de `/form`, heredaba los 5 talleres fallback con nivel 0 y sin observaciones.
+**Solución:**
+1. Se amplió el reconocedor de talleres en `import-excel/route.ts` para detectar patrones `/ [A-Z]{2}` (`/ DP`, `/ BM`, `/ AU`, etc.) y nombres de talleres institucionales directos sin prefijo.
+2. Se añadió filtro `!itemName.includes('/')` para evitar que los títulos de taller se tomen erróneamente como ítems evaluables.
+3. Se filtraron etiquetas de encabezados `"observaci"` para no contaminar el texto de observaciones narrativas.
+4. Se sincronizó el Formulario #280 en PostgreSQL Neon para Nicolás Agustín Maita con los 8 talleres reales, 80 habilidades evaluadas y los 2,777 caracteres de observaciones literales de Julio.
+5. Se construyó y desplegó la actualización al VPS de producción con PM2 reiniciado y verificado.
+**Estado:** ✅ FIXED
