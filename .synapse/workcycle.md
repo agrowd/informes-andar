@@ -1,5 +1,22 @@
 # 🗓️ Workcycle Log
 
+## 2026-09-14 (Sincronización Exacta de Barraza, Camilo Federico y Purga de Sobrantes)
+- **Objetivo**: Atender la solicitud: "Hacer lo mismo con el de BARRAZA, CAMILO FEDERICO que esta en descargas, verifica que la cuadricula mensual este bien, con todos los talleres y bien marcado etc etc y lo que sobra sacalo".
+- **Hallazgos Clave**:
+  1. **Excel Fuente (`BARRAZA, CAMILO FEDERICO.xlsx`)**:
+     - Solapas: `PCP`, `ABRIL`, ` MAYO` y `JUNIO`.
+     - Abril: 9 talleres reales de Buenos Mozos, 80 ítems (79 evaluados > 0), 2.552 car. de observaciones.
+     - Mayo: 8 talleres reales, 80 ítems (80 evaluados > 0), 4.373 car. de observaciones.
+     - Junio: 8 talleres reales, 88 ítems (88 evaluados > 0), 5.805 car. de observaciones.
+  2. **Discrepancia en Base de Datos**:
+     - Formularios #131, #132 y #133 tenían sólo 4 o 5 talleres porque los talleres posteriores a `DERECHOS` no tenían prefijo `TALLER:` y se habían absorbido en un único bloque de 44 ítems.
+     - Existían 4 informes trimestrales en reports para el mismo período (`2026-06 – 2026-04`): #21, #35, #37 y #116. Los tres primeros (#21, #35, #37) eran borradores obsoletos y duplicados de agosto.
+- **Acciones Realizadas**:
+  1. Se sincronizaron celda por celda los Formularios #131, #132 y #133 con el 100% de los talleres separados (9 en abril, 8 en mayo, 8 en junio) y evaluaciones exactas (79/80 en abril, 80/80 en mayo, 88/88 en junio).
+  2. Se vincularon formalmente a Marina Trejo (`created_by = 10`, grupo `Buenos Mozos`).
+  3. Se eliminaron de la base de datos los 3 reportes trimestrales duplicados obsoletos (`DELETE FROM reports WHERE id IN (21, 35, 37)`), manteniendo únicamente el Reporte #116 oficial.
+- **Estado**: Completado y Verificado al 100% ✅
+
 ## 2026-09-14 (Sincronización Exacta de Nicolás Maita y Purga de Sobrantes)
 - **Objetivo**: Atender la solicitud del usuario: "Analiza el archivo de descargas NICOLAS MAITA.xlsx y comparalo con la cuadricula que esta subido al sistema, por que no es igual? que paso?" seguido de "Solucionalo" y "Nicolas maita quedo bien exactamente como el excel entonces? lo que sobre sacalo".
 - **Hallazgos Clave**:

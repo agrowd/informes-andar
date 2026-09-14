@@ -219,3 +219,23 @@
   3. **Estado Final de Nicolás Agustín Maita (ID 38)**:
      - Permanece única y exclusivamente su **Formulario #280** (`2026-07` / `JULIO`), 100% idéntico al Excel celda por celda: 8 talleres, 80 habilidades evaluadas y sus 2.777 caracteres de observaciones literales de Marina Trejo.
      - Creado por facilitadora ID 10 (Marina Trejo), grupo `Buenos Mozos`.
+
+# Registro de Conversación - 2026-09-14 (Sincronización Exacta de Barraza, Camilo Federico y Purga de Sobrantes)
+
+## Usuario:
+- "Hacer lo mismo con el de BARRAZA, CAMILO FEDERICO que esta en descargas, verifica que la cuadricula mensual este bien, con todos los talleres y bien marcado etc etc y lo que sobra sacalo"
+
+## Antigravity:
+- **Diagnóstico Comparativo Excel vs Sistema**:
+  1. **Excel Fuente (`BARRAZA, CAMILO FEDERICO.xlsx`)**:
+     - Solapas: `PCP`, `ABRIL`, ` MAYO` y `JUNIO`.
+     - Abril: 9 talleres reales de Buenos Mozos, 80 ítems (79 evaluados), 2.552 caracteres de observaciones.
+     - Mayo: 8 talleres reales, 80 ítems (80 evaluados), 4.373 caracteres de observaciones.
+     - Junio: 8 talleres reales, 88 ítems (88 evaluados), 5.805 caracteres de observaciones.
+  2. **Discrepancia en Base de Datos**:
+     - Los Formularios #131, #132 y #133 tenían sólo 4 o 5 talleres porque los talleres posteriores a `DERECHOS` (`HABILIDADES SOCIALES`, `HABILIDADES DE INTERACCIÓN`, `BIENESTAR EMOCIONAL`, `DEPORTE`) no tenían prefijo `TALLER:` y se habían agrupado erróneamente en un bloque masivo de 44 ítems.
+     - Existían 4 informes trimestrales para el mismo período (`2026-06 – 2026-04`), siendo 3 de ellos (#21, #35 y #37) borradores viejos duplicados de agosto.
+- **Acciones Realizadas**:
+  1. Se sincronizaron celda por celda los Formularios #131 (Abril: 9 talleres, 80 ítems), #132 (Mayo: 8 talleres, 80 ítems) y #133 (Junio: 8 talleres, 88 ítems) con el 100% de los talleres discriminados y niveles exactos según los checks del Excel.
+  2. Se vincularon formalmente a Marina Trejo (`created_by = 10`, grupo `Buenos Mozos`).
+  3. **Se eliminaron los 3 reportes trimestrales duplicados y obsoletos** (IDs #21, #35 y #37), conservando únicamente el Informe Trimestral #116 oficial reciente.
