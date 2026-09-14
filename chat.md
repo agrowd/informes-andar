@@ -298,3 +298,31 @@
   4. Se actualizó el fallback determinístico para operar 100% sobre los nombres de talleres reales evaluados.
   5. Se verificó con IA en un caso extremo (David Carrizo, Emprendedores - rol auxiliar/limpieza), confirmando 0 menciones de catering o pastelería y 100% apego a sus tareas de limpieza y auxiliar.
   6. Compilado con éxito (`npm run build`), desplegado al VPS (`149.50.128.73`) y reiniciado PM2.
+
+# Registro de Conversación - 2026-09-14 (Indicadores Visuales de Completitud en Cuadrículas Mensuales)
+
+## Usuario:
+- "Pone algo visual en el collapse de cuadricula mensual para que diga cuales tienen las habilidades de los talleres cargadas y 3. Observaciones y detalles del mes . Asi se si los tienen o no"
+
+## Antigravity:
+- **Diagnóstico y Diseño**:
+  - Se identificó que las cuadrículas mensuales se visualizan en `/forms` (agrupadas en un collapse por concurrente) y en `/youngs` (en la pestaña de cuadrículas mensuales del concurrente).
+  - Se analizó la estructura de los datos de `forms`: `data.talleres` (con array de habilidades e ítems evaluados con `nivel >= 1`) y `data.observaciones` ("3. Observaciones y detalles del mes").
+- **Implementación Realizada**:
+  1. **Utilidad Centralizada (`src/lib/formSummary.ts`)**:
+     - Creado helper `extractFormSummary(data)` y `getFormSummary(item)` para calcular la completitud de habilidades (talleres, habilidades totales, habilidades evaluadas) y de observaciones (longitud, vista previa y estado booleano).
+  2. **API `GET /api/forms` (`src/app/api/forms/route.ts`)**:
+     - Retorna pre-calculados `talleresCount`, `talleresNombres`, `totalSkillsCount`, `skillsCount`, `hasHabilidades`, `hasObservaciones`, `observacionesLength`, `observacionesPreview`.
+  3. **Cabecera del Accordion / Collapse (`src/app/forms/page.tsx`)**:
+     - Muestra badges en la fila del concurrente antes de abrir el collapse:
+       - Habilidades: `✓ Habilidades cargadas (X/Y)` en verde o `⚠️ Faltan habilidades (X/Y)` en rojo/rosa.
+       - Observaciones: `📝 Observaciones cargadas (X/Y)` en azul o `⚠️ Sin observaciones (Z faltan)` en ámbar.
+  4. **Columnas en la Tabla Expandida (`src/app/forms/page.tsx` y `src/app/youngs/page.tsx`)**:
+     - Columna `Habilidades de Talleres`: badge verde con conteo de talleres y habilidades evaluadas + lista de nombres en subtexto y tooltip, o badge rojo `⚠️ Sin habilidades`.
+     - Columna `3. Observaciones del Mes`: badge azul con conteo de caracteres + previsualización en cursiva del texto con tooltip (`title`) para ver la observación completa al pasar el mouse, o badge ámbar `⚠️ Sin observaciones (vacío) - Punto 3 del mes sin redactar`.
+  5. **Filtros Rápidos en `/forms`**:
+     - Checkboxes `⚠️ Faltan Observaciones` y `⚠️ Faltan Habilidades` con contador dinámico de concurrentes para filtrar en 1 solo click.
+  6. **Compilación y Despliegue en VPS**:
+     - Compilación `npm run build` local exitosa con 0 errores.
+     - Despliegue de archivos al servidor VPS (`149.50.128.73:5782`), build remoto y reinicio de PM2 con código de salida 0 (`online`, PID 203583).
+     - Verificado en producción `https://informes-andar.nextemarketing.com`.

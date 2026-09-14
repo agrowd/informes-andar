@@ -1,5 +1,30 @@
 # 🗓️ Workcycle Log
 
+## 2026-09-14 (Indicadores Visuales de Completitud en Cuadrículas Mensuales - Habilidades y Observaciones)
+- **Objetivo**: Atender la solicitud: *"Pone algo visual en el collapse de cuadricula mensual para que diga cuales tienen las habilidades de los talleres cargadas y 3. Observaciones y detalles del mes . Asi se si los tienen o no"*.
+- **Solución Integral Implementada**:
+  1. **Helper Universal de Resumen (`src/lib/formSummary.ts`)**:
+     - Función `extractFormSummary(data)` y `getFormSummary(item)` para inspeccionar talleres, contar habilidades evaluadas (`nivel > 0`), extraer nombres de talleres y verificar si `3. Observaciones y detalles del mes` (`data.observaciones`) está cargada o vacía.
+  2. **Enriquecimiento del API `GET /api/forms` (`src/app/api/forms/route.ts`)**:
+     - Agrega a cada registro retornado las propiedades: `talleresCount`, `talleresNombres`, `totalSkillsCount`, `skillsCount`, `hasHabilidades`, `hasObservaciones`, `observacionesLength`, `observacionesPreview`.
+  3. **Visualización en Cabeceras Colapsables (`src/app/forms/page.tsx`)**:
+     - En la cabecera del accordion de cada joven se agregaron badges dinámicos inmediatos:
+       - **Habilidades**: `✓ Habilidades cargadas (X/Y)` en verde si todas tienen ítems evaluados, o `⚠️ Faltan habilidades (X/Y)` en rojo/rosa si alguna está vacía.
+       - **Observaciones**: `📝 Observaciones cargadas (X/Y)` en azul si todas tienen el campo redactado, o `⚠️ Sin observaciones (Z faltan)` en ámbar si falta.
+  4. **Columnas Dedicadas en Tabla Expandida (`src/app/forms/page.tsx` & `src/app/youngs/page.tsx`)**:
+     - **Habilidades de Talleres**: Muestra badge verde `✓ N talleres (M evaluadas)` + nombres de talleres evaluados, o badge rojo `⚠️ Sin habilidades cargadas`.
+     - **3. Observaciones del Mes**: Muestra badge azul `📝 Observaciones (N car.)` + previsualización en cursiva de las observaciones con tooltip flotante (`title`) para leer el texto completo al pasar el mouse, o badge ámbar `⚠️ Sin observaciones (vacío) - Punto 3 del mes sin redactar`.
+  5. **Filtros Rápidos en Barra de Búsqueda (`src/app/forms/page.tsx`)**:
+     - Se agregaron checkboxes de filtrado instantáneo:
+       - `⚠️ Faltan Observaciones (N)`: Aísla concurrentes con al menos una cuadrícula mensual sin observaciones.
+       - `⚠️ Faltan Habilidades (N)`: Aísla concurrentes con cuadrículas mensuales sin habilidades evaluadas.
+  6. **Build y Despliegue en VPS**:
+     - Compilación local `npm run build` exitosa (0 errores).
+     - Despliegue SFTP al VPS (`149.50.128.73:5782`), build en servidor remoto y reinicio de PM2 con código de salida 0 (`online`, PID 203583).
+     - Verificación HTTP en `https://informes-andar.nextemarketing.com` (status 307 redirect a login).
+- **Estado**: Completado, Verificado y Desplegado en Producción ✅
+
+
 ## 2026-09-14 (Fidelidad Curricular Universal a las Cuadrículas Mensuales en IA - Erradicación de Alucinaciones en Todos los Grupos)
 - **Objetivo**: Atender la consulta del usuario: *"El mismo problema puede ser que este en otros grupos? tienen que reflejar los talleres que aparecen en las cuadriculas mensuales, no alucinar"*.
 - **Diagnóstico Exhaustivo**:

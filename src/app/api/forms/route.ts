@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectToDB, sql } from '@/lib/db';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
+import { extractFormSummary } from '@/lib/formSummary';
 
 const USE_POSTGRES = !!(process.env.POSTGRES_URL || process.env.POSTGRES_PRISMA_URL);
 
@@ -266,19 +267,31 @@ export async function GET(req: NextRequest) {
       const total = parseInt(countResult.rows[0].total);
       const result = await dataQuery;
       
-      const items = result.rows.map((row: any) => ({
-        _id: String(row.id),
-        periodo: row.periodo,
-        youngId: row.young_id,
-        data: row.data,
-        createdBy: row.created_by,
-        createdAt: row.created_at,
-        updatedAt: row.updated_at,
-        status: row.status || 'BORRADOR',
-        facilitadorNombre: row.facilitador_nombre || row.facilitador_email || 'Sin facilitador',
-        jovenNombre: row.joven_nombre || row.data?.datosGenerales?.nombreCompleto || 'Sin joven asignado',
-        grupo: row.grupo || 'Sin grupo'
-      }));
+      const items = result.rows.map((row: any) => {
+        const summary = extractFormSummary(row.data);
+        return {
+          id: row.id,
+          _id: String(row.id),
+          periodo: row.periodo,
+          youngId: row.young_id,
+          data: row.data,
+          createdBy: row.created_by,
+          createdAt: row.created_at,
+          updatedAt: row.updated_at,
+          status: row.status || 'BORRADOR',
+          facilitadorNombre: row.facilitador_nombre || row.facilitador_email || 'Sin facilitador',
+          jovenNombre: row.joven_nombre || row.data?.datosGenerales?.nombreCompleto || 'Sin joven asignado',
+          grupo: row.grupo || 'Sin grupo',
+          talleresCount: summary.talleresCount,
+          talleresNombres: summary.talleresNombres,
+          totalSkillsCount: summary.totalSkillsCount,
+          skillsCount: summary.skillsCount,
+          hasHabilidades: summary.hasHabilidades,
+          hasObservaciones: summary.hasObservaciones,
+          observacionesLength: summary.observacionesLength,
+          observacionesPreview: summary.observacionesPreview
+        };
+      });
       console.log('[API /forms] ✅ Formularios encontrados:', items.length);
       return NextResponse.json({ items, total, page, pageSize, totalPages: Math.ceil(total / pageSize) });
     } else if (process.env.MONGODB_URI) {
@@ -291,7 +304,7 @@ export async function GET(req: NextRequest) {
       if (youngIdParam) findFilter.youngId = youngIdParam;
       const total = await FormModel.countDocuments(findFilter);
       const items = await FormModel.find(findFilter).sort({ updatedAt: -1 }).limit(pageSize).skip(offset).lean();
-      
+
       // Populate facilitador y joven
       const itemsWithNames = await Promise.all(items.map(async (item: any) => {
         let facilitadorNombre = 'Sin facilitador';
@@ -321,11 +334,20 @@ export async function GET(req: NextRequest) {
           }
         }
         
+        const summary = extractFormSummary(item.data);
         return {
           ...item,
           facilitadorNombre,
           jovenNombre,
-          grupo
+          grupo,
+          talleresCount: summary.talleresCount,
+          talleresNombres: summary.talleresNombres,
+          totalSkillsCount: summary.totalSkillsCount,
+          skillsCount: summary.skillsCount,
+          hasHabilidades: summary.hasHabilidades,
+          hasObservaciones: summary.hasObservaciones,
+          observacionesLength: summary.observacionesLength,
+          observacionesPreview: summary.observacionesPreview
         };
       }));
       

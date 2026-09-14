@@ -2,6 +2,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import ExcelImportWizardModal from '../_components/ExcelImportWizardModal';
 import { formatDate, formatDateTime } from '@/lib/formatters';
+import { getFormSummary } from '@/lib/formSummary';
 
 const INSTITUTIONAL_GROUPS = [
   { id: 'TODOS', label: '🌐 Todos' },
@@ -21,6 +22,8 @@ export default function FormsList() {
   const [search, setSearch] = useState('');
   const [selectedGroup, setSelectedGroup] = useState('TODOS');
   const [showDraftsOnly, setShowDraftsOnly] = useState(false);
+  const [filterMissingObs, setFilterMissingObs] = useState(false);
+  const [filterMissingSkills, setFilterMissingSkills] = useState(false);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
@@ -292,6 +295,35 @@ export default function FormsList() {
     return counts;
   }, [allYoungsMap, items]);
 
+  const statsOverview = useMemo(() => {
+    let totalForms = items.length;
+    let formsWithSkills = 0;
+    let formsWithObs = 0;
+    let youngsWithMissingObs = 0;
+    let youngsWithMissingSkills = 0;
+
+    items.forEach(it => {
+      const s = getFormSummary(it);
+      if (s.hasHabilidades) formsWithSkills++;
+      if (s.hasObservaciones) formsWithObs++;
+    });
+
+    Object.values(allYoungsMap).forEach(y => {
+      const anyMissingObs = y.drafts.some(d => !getFormSummary(d).hasObservaciones);
+      if (anyMissingObs) youngsWithMissingObs++;
+      const anyMissingSkills = y.drafts.some(d => !getFormSummary(d).hasHabilidades);
+      if (anyMissingSkills) youngsWithMissingSkills++;
+    });
+
+    return {
+      totalForms,
+      formsWithSkills,
+      formsWithObs,
+      youngsWithMissingObs,
+      youngsWithMissingSkills
+    };
+  }, [items, allYoungsMap]);
+
   const filteredYoungs = useMemo(() => {
     return Object.values(allYoungsMap).filter(y => {
       // 1. Filtrado por Grupo Institucional
@@ -330,9 +362,21 @@ export default function FormsList() {
         if (!hasDraft) return false;
       }
 
+      // 5. Filtrado por falta de observaciones
+      if (filterMissingObs) {
+        const hasMissing = y.drafts.some(d => !getFormSummary(d).hasObservaciones);
+        if (!hasMissing) return false;
+      }
+
+      // 6. Filtrado por falta de habilidades
+      if (filterMissingSkills) {
+        const hasMissing = y.drafts.some(d => !getFormSummary(d).hasHabilidades);
+        if (!hasMissing) return false;
+      }
+
       return true;
     });
-  }, [allYoungsMap, selectedGroup, search, filter, showDraftsOnly]);
+  }, [allYoungsMap, selectedGroup, search, filter, showDraftsOnly, filterMissingObs, filterMissingSkills]);
 
   const totalVisibleForms = useMemo(() => {
     return filteredYoungs.reduce((acc, y) => acc + y.drafts.length, 0);
@@ -590,7 +634,41 @@ export default function FormsList() {
             />
             <span style={{ fontSize: 13, color: '#475569' }}>Solo en borrador</span>
           </label>
-          {(selectedGroup !== 'TODOS' || search || filter || showDraftsOnly) && (
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, paddingBottom: 10, cursor: 'pointer' }}>
+            <input 
+              type="checkbox" 
+              checked={filterMissingObs} 
+              onChange={(e) => setFilterMissingObs(e.target.checked)}
+            />
+            <span style={{ 
+              fontSize: 12.5, 
+              color: filterMissingObs ? '#92400e' : '#475569', 
+              fontWeight: filterMissingObs ? 700 : 500,
+              background: filterMissingObs ? '#fef3c7' : 'transparent',
+              padding: '2px 6px',
+              borderRadius: '4px'
+            }}>
+              ⚠️ Faltan Observaciones {statsOverview.youngsWithMissingObs > 0 ? `(${statsOverview.youngsWithMissingObs})` : ''}
+            </span>
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, paddingBottom: 10, cursor: 'pointer' }}>
+            <input 
+              type="checkbox" 
+              checked={filterMissingSkills} 
+              onChange={(e) => setFilterMissingSkills(e.target.checked)}
+            />
+            <span style={{ 
+              fontSize: 12.5, 
+              color: filterMissingSkills ? '#991b1b' : '#475569', 
+              fontWeight: filterMissingSkills ? 700 : 500,
+              background: filterMissingSkills ? '#fee2e2' : 'transparent',
+              padding: '2px 6px',
+              borderRadius: '4px'
+            }}>
+              ⚠️ Faltan Habilidades {statsOverview.youngsWithMissingSkills > 0 ? `(${statsOverview.youngsWithMissingSkills})` : ''}
+            </span>
+          </label>
+          {(selectedGroup !== 'TODOS' || search || filter || showDraftsOnly || filterMissingObs || filterMissingSkills) && (
             <button
               type="button"
               className="ga-btn secondary"
@@ -600,6 +678,8 @@ export default function FormsList() {
                 setSearch('');
                 setFilter('');
                 setShowDraftsOnly(false);
+                setFilterMissingObs(false);
+                setFilterMissingSkills(false);
                 if (typeof window !== 'undefined') {
                   const url = new URL(window.location.href);
                   url.searchParams.delete('grupo');
@@ -700,7 +780,7 @@ export default function FormsList() {
                         onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
                         onMouseLeave={(e) => e.currentTarget.style.background = '#f8fafc'}
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                           <span style={{ fontSize: '18px' }}>👤</span>
                           <span style={{ fontSize: '16px', fontWeight: 700, color: '#1e3a8a' }}>
                             {group.jovenNombre}
@@ -725,8 +805,87 @@ export default function FormsList() {
                             fontWeight: 600,
                             border: '1px solid #bfdbfe'
                           }}>
-                            {group.drafts.length} {group.drafts.length === 1 ? 'cuadrícula mensual' : 'cuadrículas mensuales'}
+                            {group.drafts.length} {group.drafts.length === 1 ? 'cuadrícula' : 'cuadrículas'}
                           </span>
+
+                          {(() => {
+                            const summaries = group.drafts.map((d: any) => getFormSummary(d));
+                            const totalDrafts = group.drafts.length;
+                            const withSkillsCount = summaries.filter((s: any) => s.hasHabilidades).length;
+                            const withObsCount = summaries.filter((s: any) => s.hasObservaciones).length;
+                            const allSkillsOk = totalDrafts > 0 && withSkillsCount === totalDrafts;
+                            const allObsOk = totalDrafts > 0 && withObsCount === totalDrafts;
+
+                            return (
+                              <>
+                                {/* Badge de Habilidades */}
+                                {allSkillsOk ? (
+                                  <span style={{ 
+                                    background: '#dcfce7', 
+                                    color: '#15803d', 
+                                    padding: '2px 8px', 
+                                    borderRadius: '12px', 
+                                    fontSize: '11.5px', 
+                                    fontWeight: 700,
+                                    border: '1px solid #bbf7d0',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px'
+                                  }} title={`Todas las ${totalDrafts} cuadrículas tienen habilidades de talleres evaluadas`}>
+                                    <span>✓ Habilidades cargadas ({withSkillsCount}/{totalDrafts})</span>
+                                  </span>
+                                ) : (
+                                  <span style={{ 
+                                    background: '#fee2e2', 
+                                    color: '#991b1b', 
+                                    padding: '2px 8px', 
+                                    borderRadius: '12px', 
+                                    fontSize: '11.5px', 
+                                    fontWeight: 700,
+                                    border: '1px solid #fca5a5',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px'
+                                  }} title={`${totalDrafts - withSkillsCount} cuadrícula(s) sin habilidades de talleres cargadas`}>
+                                    <span>⚠️ Faltan habilidades ({withSkillsCount}/{totalDrafts})</span>
+                                  </span>
+                                )}
+
+                                {/* Badge de 3. Observaciones del Mes */}
+                                {allObsOk ? (
+                                  <span style={{ 
+                                    background: '#eff6ff', 
+                                    color: '#1e40af', 
+                                    padding: '2px 8px', 
+                                    borderRadius: '12px', 
+                                    fontSize: '11.5px', 
+                                    fontWeight: 700,
+                                    border: '1px solid #bfdbfe',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px'
+                                  }} title={`Todas las ${totalDrafts} cuadrículas tienen '3. Observaciones y detalles del mes' cargadas`}>
+                                    <span>📝 Observaciones cargadas ({withObsCount}/{totalDrafts})</span>
+                                  </span>
+                                ) : (
+                                  <span style={{ 
+                                    background: '#fef3c7', 
+                                    color: '#92400e', 
+                                    padding: '2px 8px', 
+                                    borderRadius: '12px', 
+                                    fontSize: '11.5px', 
+                                    fontWeight: 700,
+                                    border: '1px solid #fde68a',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px'
+                                  }} title={`${totalDrafts - withObsCount} cuadrícula(s) sin '3. Observaciones y detalles del mes'`}>
+                                    <span>⚠️ Sin observaciones ({totalDrafts - withObsCount} faltan)</span>
+                                  </span>
+                                )}
+                              </>
+                            );
+                          })()}
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }} onClick={(e) => e.stopPropagation()}>
                           {/* Botón rápido Generar Trimestral para este joven */}
@@ -842,19 +1001,23 @@ export default function FormsList() {
                           )}
                           <table className="ga-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                             <thead>
-                              <tr>
-                                {selectionMode && <th style={{ border: '1px solid #ccc', padding: 4, width: 40 }}></th>}
-                                <th style={{ border: '1px solid #ccc', padding: 4 }}>Período</th>
-                                <th style={{ border: '1px solid #ccc', padding: 4 }}>Facilitador</th>
-                                <th style={{ border: '1px solid #ccc', padding: 4 }}>Estado</th>
-                                <th style={{ border: '1px solid #ccc', padding: 4 }}>Última actualización</th>
-                                <th style={{ border: '1px solid #ccc', padding: 4, textAlign: 'center', width: '260px' }}>Acciones</th>
+                              <tr style={{ background: '#f8fafc' }}>
+                                {selectionMode && <th style={{ border: '1px solid #cbd5e1', padding: '8px 4px', width: 40, textAlign: 'center' }}></th>}
+                                <th style={{ border: '1px solid #cbd5e1', padding: '8px 10px', minWidth: 90 }}>Período</th>
+                                <th style={{ border: '1px solid #cbd5e1', padding: '8px 10px', minWidth: 130 }}>Facilitador</th>
+                                <th style={{ border: '1px solid #cbd5e1', padding: '8px 10px', minWidth: 200 }}>Habilidades de Talleres</th>
+                                <th style={{ border: '1px solid #cbd5e1', padding: '8px 10px', minWidth: 260 }}>3. Observaciones del Mes</th>
+                                <th style={{ border: '1px solid #cbd5e1', padding: '8px 10px', width: 110, textAlign: 'center' }}>Estado</th>
+                                <th style={{ border: '1px solid #cbd5e1', padding: '8px 10px', width: 130, textAlign: 'center' }}>Última actualización</th>
+                                <th style={{ border: '1px solid #cbd5e1', padding: '8px 10px', textAlign: 'center', width: '260px' }}>Acciones</th>
                               </tr>
                             </thead>
                             <tbody>
                               {group.drafts.map((it: any) => {
                                 const id = it._id || it.id;
                                 const isSelected = selectedIds.has(id);
+                                const summary = getFormSummary(it);
+
                                 return (
                                   <tr 
                                     key={id}
@@ -865,7 +1028,7 @@ export default function FormsList() {
                                     onClick={selectionMode ? () => toggleSelect(id) : undefined}
                                   >
                                     {selectionMode && (
-                                      <td style={{ border: '1px solid #ccc', padding: 4, textAlign: 'center' }}>
+                                      <td style={{ border: '1px solid #cbd5e1', padding: '8px 4px', textAlign: 'center' }}>
                                         <input 
                                           type="checkbox" 
                                           checked={isSelected} 
@@ -875,17 +1038,122 @@ export default function FormsList() {
                                         />
                                       </td>
                                     )}
-                                    <td style={{ border: '1px solid #ccc', padding: 4, fontWeight: 'bold' }}>{it.periodo}</td>
-                                    <td style={{ border: '1px solid #ccc', padding: 4, fontSize: 13 }}>
+                                    <td style={{ border: '1px solid #cbd5e1', padding: '8px 10px', fontWeight: 'bold' }}>
+                                      <span style={{ fontSize: '13px', color: '#1e293b' }}>{it.periodo}</span>
+                                    </td>
+                                    <td style={{ border: '1px solid #cbd5e1', padding: '8px 10px', fontSize: 13 }}>
                                       {it.facilitadorNombre || 'Sin facilitador'}
                                     </td>
-                                    <td style={{ border: '1px solid #ccc', padding: 4 }}>
+                                    <td style={{ border: '1px solid #cbd5e1', padding: '8px 10px' }}>
+                                      {summary.hasHabilidades ? (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                                          <span style={{
+                                            background: '#dcfce7',
+                                            color: '#15803d',
+                                            border: '1px solid #bbf7d0',
+                                            padding: '2px 8px',
+                                            borderRadius: '6px',
+                                            fontSize: '11.5px',
+                                            fontWeight: 700,
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: 4,
+                                            width: 'fit-content'
+                                          }}>
+                                            <span>✓ {summary.talleresCount} talleres ({summary.skillsCount} evaluadas)</span>
+                                          </span>
+                                          {summary.talleresNombres.length > 0 && (
+                                            <span 
+                                              style={{ fontSize: '10.5px', color: '#64748b', lineHeight: 1.2, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                                              title={`Talleres evaluados:\n${summary.talleresNombres.join('\n')}`}
+                                            >
+                                              {summary.talleresNombres.slice(0, 3).join(', ')}{summary.talleresNombres.length > 3 ? ` (+${summary.talleresNombres.length - 3})` : ''}
+                                            </span>
+                                          )}
+                                        </div>
+                                      ) : (
+                                        <span style={{
+                                          background: '#fee2e2',
+                                          color: '#991b1b',
+                                          border: '1px solid #fca5a5',
+                                          padding: '3px 8px',
+                                          borderRadius: '6px',
+                                          fontSize: '11.5px',
+                                          fontWeight: 700,
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          gap: 4
+                                        }}>
+                                          <span>⚠️ Sin habilidades</span>
+                                        </span>
+                                      )}
+                                    </td>
+                                    <td style={{ border: '1px solid #cbd5e1', padding: '8px 10px' }}>
+                                      {summary.hasObservaciones ? (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                                          <span style={{
+                                            background: '#eff6ff',
+                                            color: '#1e40af',
+                                            border: '1px solid #bfdbfe',
+                                            padding: '2px 8px',
+                                            borderRadius: '6px',
+                                            fontSize: '11.5px',
+                                            fontWeight: 700,
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: 4,
+                                            width: 'fit-content'
+                                          }}>
+                                            <span>📝 Observaciones ({summary.observacionesLength} car.)</span>
+                                          </span>
+                                          <span 
+                                            style={{
+                                              fontSize: '11px',
+                                              color: '#475569',
+                                              fontStyle: 'italic',
+                                              lineHeight: 1.3,
+                                              display: '-webkit-box',
+                                              WebkitLineClamp: 2,
+                                              WebkitBoxOrient: 'vertical',
+                                              overflow: 'hidden',
+                                              textOverflow: 'ellipsis',
+                                              cursor: 'help'
+                                            }}
+                                            title={`Texto completo de observaciones:\n${summary.observacionesFull}`}
+                                          >
+                                            "{summary.observacionesPreview}"
+                                          </span>
+                                        </div>
+                                      ) : (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                          <span style={{
+                                            background: '#fef3c7',
+                                            color: '#92400e',
+                                            border: '1px solid #fde68a',
+                                            padding: '3px 8px',
+                                            borderRadius: '6px',
+                                            fontSize: '11.5px',
+                                            fontWeight: 700,
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: 4,
+                                            width: 'fit-content'
+                                          }}>
+                                            <span>⚠️ Sin observaciones (vacío)</span>
+                                          </span>
+                                          <span style={{ fontSize: '10px', color: '#b45309' }}>
+                                            Punto 3 del mes sin redactar
+                                          </span>
+                                        </div>
+                                      )}
+                                    </td>
+                                    <td style={{ border: '1px solid #cbd5e1', padding: '8px 10px', textAlign: 'center' }}>
                                       <span className={`ga-badge ${it.status==='APROBADO'?'approved':it.status==='EN_REVISION'?'review':'draft'}`}>{it.status || 'BORRADOR'}</span>
                                     </td>
-                                    <td style={{ border: '1px solid #ccc', padding: 4, fontSize: 12, color: 'var(--muted)' }}>
+                                    <td style={{ border: '1px solid #cbd5e1', padding: '8px 10px', fontSize: 12, color: 'var(--muted)', textAlign: 'center' }}>
                                       {formatDateTime(it.updatedAt || it.createdAt)}
                                     </td>
-                                    <td style={{ border: '1px solid #ccc', padding: 4 }}>
+                                    <td style={{ border: '1px solid #cbd5e1', padding: '8px 10px' }}>
                                       <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center' }} onClick={(e) => e.stopPropagation()}>
                                         <a 
                                           href={`/form?formId=${id}`} 

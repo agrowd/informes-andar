@@ -6,6 +6,7 @@ import ImageUpload from '../_components/ImageUpload';
 import QualityOfLifeChart from '../_components/QualityOfLifeChart';
 import ExcelImportWizardModal from '../_components/ExcelImportWizardModal';
 import { integrantesCirculoTipos } from '@/lib/form/options';
+import { getFormSummary } from '@/lib/formSummary';
 
 type Young = {
   _id?: string;
@@ -44,6 +45,7 @@ export default function YoungsPage() {
   });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [selectedGroup, setSelectedGroup] = useState('TODOS');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
@@ -465,6 +467,26 @@ export default function YoungsPage() {
     loadYoungs();
     fetch('/api/users').then(r => r.json()).then(j => setFacilitadores(j.items || []));
     fetch('/api/talleres').then(r => r.json()).then(j => setTalleres(j.items || []));
+
+    // Leer parámetro ?search= o ?grupo= de la URL
+    if (typeof window !== 'undefined') {
+      const readUrlParams = () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const q = urlParams.get('search') || urlParams.get('grupo');
+        if (q) {
+          const trimmed = q.trim();
+          setSearch(trimmed);
+          setSelectedGroup(trimmed);
+        } else {
+          setSearch('');
+          setSelectedGroup('TODOS');
+        }
+      };
+
+      readUrlParams();
+      window.addEventListener('popstate', readUrlParams);
+      return () => window.removeEventListener('popstate', readUrlParams);
+    }
   }, []);
 
   const formatDate = (value?: string | null) => {
@@ -574,15 +596,55 @@ export default function YoungsPage() {
     }
   };
 
+  const groupCounts = useMemo(() => {
+    const counts: Record<string, number> = {
+      TODOS: items.length,
+      'Emprendedores': 0,
+      'Artesanos': 0,
+      'Buenos Mozos': 0,
+      'Atrapasueños': 0,
+      'Empoderadas': 0,
+      'Clave de Sol': 0,
+      'Promotores': 0
+    };
+    items.forEach(y => {
+      let t = y.taller;
+      if (t === 'Atrapa Sueños') t = 'Atrapasueños';
+      if (t && counts[t] !== undefined) {
+        counts[t]++;
+      }
+    });
+    return counts;
+  }, [items]);
+
   const filteredItems = useMemo(() => {
-    if (!search) return items;
-    const v = search.toLowerCase();
-    return items.filter(y => 
-      y.nombreCompleto?.toLowerCase().includes(v) || 
-      y.dni?.includes(v) ||
-      y.taller?.toLowerCase().includes(v)
-    );
-  }, [items, search]);
+    let result = items;
+    
+    // 1. Filtrado por Grupo Institucional
+    if (selectedGroup && selectedGroup !== 'TODOS') {
+      const gLower = selectedGroup.toLowerCase().trim();
+      result = result.filter(y => {
+        let t = (y.taller || '').toLowerCase();
+        if (t === 'atrapa sueños') t = 'atrapasueños';
+        return t === gLower || t.includes(gLower);
+      });
+    }
+
+    // 2. Filtrado por Texto (Nombre o DNI)
+    if (search && search.trim()) {
+      const term = search.toLowerCase().trim();
+      // Si la búsqueda no es idéntica al grupo seleccionado, filtra por nombre/DNI
+      if (term !== selectedGroup.toLowerCase().trim()) {
+        result = result.filter(y => 
+          y.nombreCompleto?.toLowerCase().includes(term) || 
+          y.dni?.includes(term) ||
+          (y.taller || '').toLowerCase().includes(term)
+        );
+      }
+    }
+
+    return result;
+  }, [items, search, selectedGroup]);
 
   const missingPcpData = useMemo(() => {
     if (!form.pcp?.anio) return null;
@@ -1440,9 +1502,74 @@ export default function YoungsPage() {
             {/* Sección de Cuadrículas Mensuales (Checklists) */}
             <div className="ga-card" style={{ padding: 30 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 10 }}>
-                <h3 style={{ margin: 0, color: '#1e3a8a', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span>📋</span> Cuadrícula Mensual / Formularios Mensuales (Checklists)
-                </h3>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <h3 style={{ margin: 0, color: '#1e3a8a', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span>📋</span> Cuadrícula Mensual / Formularios Mensuales (Checklists)
+                  </h3>
+                  {monthlyForms.length > 0 && (() => {
+                    const summaries = monthlyForms.map(d => getFormSummary(d));
+                    const totalDrafts = monthlyForms.length;
+                    const withSkillsCount = summaries.filter(s => s.hasHabilidades).length;
+                    const withObsCount = summaries.filter(s => s.hasObservaciones).length;
+                    const allSkillsOk = totalDrafts > 0 && withSkillsCount === totalDrafts;
+                    const allObsOk = totalDrafts > 0 && withObsCount === totalDrafts;
+
+                    return (
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                        {allSkillsOk ? (
+                          <span style={{ 
+                            background: '#dcfce7', 
+                            color: '#15803d', 
+                            padding: '3px 10px', 
+                            borderRadius: '12px', 
+                            fontSize: '11.5px', 
+                            fontWeight: 700,
+                            border: '1px solid #bbf7d0'
+                          }} title={`Todas las ${totalDrafts} cuadrículas tienen habilidades de talleres evaluadas`}>
+                            ✓ Habilidades cargadas ({withSkillsCount}/{totalDrafts})
+                          </span>
+                        ) : (
+                          <span style={{ 
+                            background: '#fee2e2', 
+                            color: '#991b1b', 
+                            padding: '3px 10px', 
+                            borderRadius: '12px', 
+                            fontSize: '11.5px', 
+                            fontWeight: 700,
+                            border: '1px solid #fca5a5'
+                          }} title={`${totalDrafts - withSkillsCount} cuadrícula(s) sin habilidades de talleres cargadas`}>
+                            ⚠️ Faltan habilidades ({withSkillsCount}/{totalDrafts})
+                          </span>
+                        )}
+                        {allObsOk ? (
+                          <span style={{ 
+                            background: '#eff6ff', 
+                            color: '#1e40af', 
+                            padding: '3px 10px', 
+                            borderRadius: '12px', 
+                            fontSize: '11.5px', 
+                            fontWeight: 700,
+                            border: '1px solid #bfdbfe'
+                          }} title={`Todas las ${totalDrafts} cuadrículas tienen '3. Observaciones y detalles del mes' cargadas`}>
+                            📝 Observaciones cargadas ({withObsCount}/{totalDrafts})
+                          </span>
+                        ) : (
+                          <span style={{ 
+                            background: '#fef3c7', 
+                            color: '#92400e', 
+                            padding: '3px 10px', 
+                            borderRadius: '12px', 
+                            fontSize: '11.5px', 
+                            fontWeight: 700,
+                            border: '1px solid #fde68a'
+                          }} title={`${totalDrafts - withObsCount} cuadrícula(s) sin '3. Observaciones y detalles del mes'`}>
+                            ⚠️ Sin observaciones ({totalDrafts - withObsCount} faltan)
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </div>
                 <div style={{ display: 'flex', gap: 10 }}>
                   <button 
                     className={`ga-btn ${selectionMode ? 'accent' : 'secondary'}`}
@@ -1489,12 +1616,14 @@ export default function YoungsPage() {
                 <div className="ga-table-mobile-wrap">
                   <table className="ga-table">
                     <thead>
-                      <tr>
+                      <tr style={{ background: '#f8fafc' }}>
                         {selectionMode && <th style={{ width: 40, textAlign: 'center' }}></th>}
-                        <th>Período</th>
-                        <th>Facilitador</th>
-                        <th>Estado</th>
-                        <th>Última actualización</th>
+                        <th style={{ minWidth: 90 }}>Período</th>
+                        <th style={{ minWidth: 130 }}>Facilitador</th>
+                        <th style={{ minWidth: 200 }}>Habilidades de Talleres</th>
+                        <th style={{ minWidth: 260 }}>3. Observaciones del Mes</th>
+                        <th style={{ width: 110, textAlign: 'center' }}>Estado</th>
+                        <th style={{ width: 130, textAlign: 'center' }}>Última actualización</th>
                         <th style={{ textAlign: 'center', width: 250 }}>Acciones</th>
                       </tr>
                     </thead>
@@ -1502,6 +1631,8 @@ export default function YoungsPage() {
                       {monthlyForms.map(it => {
                         const id = it._id || it.id;
                         const isSelected = selectedFormIds.has(id);
+                        const summary = getFormSummary(it);
+
                         return (
                           <tr 
                             key={id}
@@ -1523,7 +1654,7 @@ export default function YoungsPage() {
                               <td style={{ textAlign: 'center' }} onClick={e => e.stopPropagation()}>
                                 <input 
                                   type="checkbox" 
-                                  checked={isSelected}
+                                  checked={isSelected} 
                                   onChange={() => {
                                     setSelectedFormIds(prev => {
                                       const next = new Set(prev);
@@ -1539,11 +1670,114 @@ export default function YoungsPage() {
                             <td style={{ fontWeight: 'bold' }}>{it.periodo}</td>
                             <td style={{ fontSize: 13 }}>{it.facilitadorNombre || 'Sin facilitador'}</td>
                             <td>
+                              {summary.hasHabilidades ? (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                                  <span style={{
+                                    background: '#dcfce7',
+                                    color: '#15803d',
+                                    border: '1px solid #bbf7d0',
+                                    padding: '2px 8px',
+                                    borderRadius: '6px',
+                                    fontSize: '11.5px',
+                                    fontWeight: 700,
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 4,
+                                    width: 'fit-content'
+                                  }}>
+                                    <span>✓ {summary.talleresCount} talleres ({summary.skillsCount} evaluadas)</span>
+                                  </span>
+                                  {summary.talleresNombres.length > 0 && (
+                                    <span 
+                                      style={{ fontSize: '10.5px', color: '#64748b', lineHeight: 1.2, maxWidth: 210, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                                      title={`Talleres evaluados:\n${summary.talleresNombres.join('\n')}`}
+                                    >
+                                      {summary.talleresNombres.slice(0, 3).join(', ')}{summary.talleresNombres.length > 3 ? ` (+${summary.talleresNombres.length - 3})` : ''}
+                                    </span>
+                                  )}
+                                </div>
+                              ) : (
+                                <span style={{
+                                  background: '#fee2e2',
+                                  color: '#991b1b',
+                                  border: '1px solid #fca5a5',
+                                  padding: '3px 8px',
+                                  borderRadius: '6px',
+                                  fontSize: '11.5px',
+                                  fontWeight: 700,
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 4
+                                }}>
+                                  <span>⚠️ Sin habilidades</span>
+                                </span>
+                              )}
+                            </td>
+                            <td>
+                              {summary.hasObservaciones ? (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                                  <span style={{
+                                    background: '#eff6ff',
+                                    color: '#1e40af',
+                                    border: '1px solid #bfdbfe',
+                                    padding: '2px 8px',
+                                    borderRadius: '6px',
+                                    fontSize: '11.5px',
+                                    fontWeight: 700,
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 4,
+                                    width: 'fit-content'
+                                  }}>
+                                    <span>📝 Observaciones ({summary.observacionesLength} car.)</span>
+                                  </span>
+                                  <span 
+                                    style={{
+                                      fontSize: '11px',
+                                      color: '#475569',
+                                      fontStyle: 'italic',
+                                      lineHeight: 1.3,
+                                      display: '-webkit-box',
+                                      WebkitLineClamp: 2,
+                                      WebkitBoxOrient: 'vertical',
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                      cursor: 'help'
+                                    }}
+                                    title={`Texto completo de observaciones:\n${summary.observacionesFull}`}
+                                  >
+                                    "{summary.observacionesPreview}"
+                                  </span>
+                                </div>
+                              ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                  <span style={{
+                                    background: '#fef3c7',
+                                    color: '#92400e',
+                                    border: '1px solid #fde68a',
+                                    padding: '3px 8px',
+                                    borderRadius: '6px',
+                                    fontSize: '11.5px',
+                                    fontWeight: 700,
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 4,
+                                    width: 'fit-content'
+                                  }}>
+                                    <span>⚠️ Sin observaciones (vacío)</span>
+                                  </span>
+                                  <span style={{ fontSize: '10px', color: '#b45309' }}>
+                                    Punto 3 del mes sin redactar
+                                  </span>
+                                </div>
+                              )}
+                            </td>
+                            <td style={{ textAlign: 'center' }}>
                               <span className={`ga-badge ${it.status === 'APROBADO' ? 'approved' : it.status === 'EN_REVISION' ? 'review' : 'draft'}`}>
                                 {it.status || 'BORRADOR'}
                               </span>
                             </td>
-                            <td style={{ fontSize: 12, color: 'var(--muted)' }}>
+                            <td style={{ fontSize: 12, color: 'var(--muted)', textAlign: 'center' }}>
                               {it.updatedAt ? new Date(it.updatedAt).toLocaleDateString('es-AR') : '—'}
                             </td>
                             <td onClick={e => e.stopPropagation()}>
@@ -1693,14 +1927,127 @@ export default function YoungsPage() {
         </div>
       </div>
 
-      <div className="ga-card" style={{ marginBottom: 30 }}>
-        <input 
-          className="ga-input" 
-          style={{ width: '100%', maxWidth: 600, fontSize: 16, padding: '12px 20px' }} 
-          placeholder="Buscar por nombre, DNI o grupo..." 
-          value={search} 
-          onChange={e => setSearch(e.target.value)} 
-        />
+      {/* Panel de Filtros por Grupo Institucional y Búsqueda */}
+      <div className="ga-card" style={{ marginBottom: 26, padding: '20px 24px', borderRadius: 14 }}>
+        {/* Pestañas / Pills de Grupos Oficiales */}
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#475569', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span>🏫</span> Filtrar por Grupo Institucional:
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {[
+              { id: 'TODOS', label: '🌐 Todos' },
+              { id: 'Emprendedores', label: 'Emprendedores' },
+              { id: 'Artesanos', label: 'Artesanos' },
+              { id: 'Buenos Mozos', label: 'Buenos Mozos' },
+              { id: 'Atrapasueños', label: 'Atrapasueños' },
+              { id: 'Empoderadas', label: 'Empoderadas' },
+              { id: 'Clave de Sol', label: 'Clave de Sol' },
+              { id: 'Promotores', label: 'Promotores' }
+            ].map(tab => {
+              const isActive = (tab.id === 'TODOS' && (!selectedGroup || selectedGroup === 'TODOS')) ||
+                selectedGroup.toLowerCase().trim() === tab.id.toLowerCase().trim();
+              const count = tab.id === 'TODOS' ? items.length : (groupCounts[tab.id] || 0);
+
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => {
+                    const nextGroup = tab.id;
+                    setSelectedGroup(nextGroup);
+                    if (nextGroup === 'TODOS') {
+                      setSearch('');
+                      if (typeof window !== 'undefined') {
+                        const url = new URL(window.location.href);
+                        url.searchParams.delete('search');
+                        url.searchParams.delete('grupo');
+                        window.history.replaceState({}, '', url.pathname);
+                      }
+                    } else {
+                      setSearch(nextGroup);
+                      if (typeof window !== 'undefined') {
+                        const url = new URL(window.location.href);
+                        url.searchParams.set('search', nextGroup);
+                        window.history.replaceState({}, '', url.toString());
+                      }
+                    }
+                  }}
+                  style={{
+                    padding: '6px 14px',
+                    borderRadius: 20,
+                    fontSize: 13,
+                    fontWeight: 700,
+                    border: isActive ? '2px solid #2563eb' : '1px solid #cbd5e1',
+                    background: isActive ? '#eff6ff' : '#ffffff',
+                    color: isActive ? '#1d4ed8' : '#64748b',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  <span>{tab.label}</span>
+                  <span style={{
+                    fontSize: 11,
+                    padding: '1px 7px',
+                    borderRadius: 10,
+                    background: isActive ? '#2563eb' : '#e2e8f0',
+                    color: isActive ? '#ffffff' : '#475569'
+                  }}>
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Búsqueda adicional por Nombre / DNI */}
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+          <input 
+            className="ga-input" 
+            style={{ width: '100%', maxWidth: 500, fontSize: 15, padding: '10px 16px' }} 
+            placeholder="Buscar por nombre, DNI o filtrar..." 
+            value={search} 
+            onChange={e => {
+              const val = e.target.value;
+              setSearch(val);
+              if (!val) {
+                setSelectedGroup('TODOS');
+                if (typeof window !== 'undefined') {
+                  const url = new URL(window.location.href);
+                  url.searchParams.delete('search');
+                  url.searchParams.delete('grupo');
+                  window.history.replaceState({}, '', url.pathname);
+                }
+              }
+            }} 
+          />
+          {(selectedGroup !== 'TODOS' || (search && search.trim().length > 0)) && (
+            <button
+              type="button"
+              className="ga-btn secondary"
+              style={{ padding: '8px 14px', fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 4 }}
+              onClick={() => {
+                setSearch('');
+                setSelectedGroup('TODOS');
+                if (typeof window !== 'undefined') {
+                  const url = new URL(window.location.href);
+                  url.searchParams.delete('search');
+                  url.searchParams.delete('grupo');
+                  window.history.replaceState({}, '', url.pathname);
+                }
+              }}
+            >
+              <span>✕</span> Mostrar todos los concurrentes
+            </button>
+          )}
+          <span style={{ fontSize: 13, color: '#64748b', fontWeight: 600, marginLeft: 'auto' }}>
+            Mostrando {filteredItems.length} de {items.length} concurrentes
+          </span>
+        </div>
       </div>
 
       <div className="ga-young-grid">
@@ -1709,40 +2056,6 @@ export default function YoungsPage() {
             {renderAvatar(y)}
             <div className="name">{y.nombreCompleto}</div>
             <div className="taller">{y.taller || 'SIN GRUPO'}</div>
-            <div className="dni">DNI: {y.dni || '—'}</div>
-            <div style={{ fontSize: 12, color: '#64748b', marginTop: 6, display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'center' }}>
-              <span>👤</span>
-              <span style={{ fontWeight: 500 }}>{getFacilitatorNames(y.assignedFacilitators)}</span>
-            </div>
-
-            {canManageAssignments && (
-              <button
-                type="button"
-                className="ga-btn secondary"
-                style={{
-                  marginTop: 12,
-                  fontSize: 12,
-                  padding: '5px 12px',
-                  borderRadius: 6,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 5,
-                  background: '#f8fafc',
-                  borderColor: '#cbd5e1',
-                  color: '#1e3a8a',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  zIndex: 2
-                }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  openQuickAssign(y);
-                }}
-                title="Reasignar grupo o facilitador responsable"
-              >
-                <span>⚙️</span> Asignar
-              </button>
-            )}
           </div>
         ))}
         {filteredItems.length === 0 && (
