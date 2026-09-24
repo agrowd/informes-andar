@@ -203,6 +203,13 @@ function isCellChecked(cell: ExcelJS.Cell | any): boolean {
 
 function cleanText(val: any): string {
   if (val === null || val === undefined) return '';
+  if (typeof val === 'object') {
+    if ('richText' in val && Array.isArray(val.richText)) {
+      return val.richText.map((t: any) => t.text).join('').trim().replace(/\s+/g, ' ');
+    }
+    if ('text' in val) return String(val.text).trim().replace(/\s+/g, ' ');
+    if ('result' in val) return String(val.result).trim().replace(/\s+/g, ' ');
+  }
   if (val instanceof Date) {
     const day = val.getDate();
     const month = val.getMonth() + 1;
@@ -213,7 +220,6 @@ function cleanText(val: any): string {
       if (year === 2022 || year === new Date().getFullYear()) {
         // En Excel, fracciones como "4/3" se auto-convierten a fechas.
         // Reconstruimos la fracción como "mes/día" (o "día/mes" según corresponda).
-        // Por ejemplo, "April 3rd" -> Month 4, Day 3 -> "4/3"
         return `${month}/${day}`;
       }
       return `${day}/${month}/${year}`;
@@ -221,6 +227,38 @@ function cleanText(val: any): string {
     return val.toLocaleDateString('es-AR');
   }
   return String(val).trim().replace(/\s+/g, ' ');
+}
+
+const KNOWN_WORKSHOPS = [
+  'HABILIDADES SOCIALES',
+  'ORDEN Y LIMPIEZA',
+  'DEPORTES',
+  'TALLER DE COCINA',
+  'TALLER DE PASTELERIA',
+  'TALLER DE PASTELERÍA',
+  'DERECHOS',
+  'BUENAS PRÁCTICAS DE MANUFACTURA',
+  'BUENAS PRACTICAS DE MANUFACTURA',
+  'TALLER DE CATERING',
+  'LIMPIEZA',
+  'AUXILIAR',
+  'ACTITUDES LABORALES',
+  'HIGIENE',
+  'ARTE RECICLADO',
+  'FOTOGRAFIA',
+  'FOTOGRAFÍA',
+  'DESARROLLO PERSONAL',
+  'HUERTA SUMEMOS VERDE',
+  'HABILIDADES DE INTERACCIÓN',
+  'BIENESTAR EMOCIONAL'
+];
+
+function isWorkshopHeader(txt: string): boolean {
+  if (!txt) return false;
+  const upper = txt.trim().toUpperCase();
+  if (upper.startsWith('TALLER:')) return true;
+  if (upper.startsWith('TALLER DE ')) return true;
+  return KNOWN_WORKSHOPS.some(kw => upper === kw || upper.startsWith(kw));
 }
 
 export async function POST(req: NextRequest) {
@@ -452,14 +490,14 @@ export async function POST(req: NextRequest) {
       // Buscar nombre de manera flexible en el PCP (filas 1 a 6, columnas 1 a 4)
       for (let r = 1; r <= 6; r++) {
         for (let c = 1; c <= 4; c++) {
-          const val = pcpSheet.getCell(r, c).value;
-          if (val && typeof val === 'string') {
-            const cleanVal = val.trim();
-            if (/nombre/i.test(cleanVal)) {
-              nombreCompleto = cleanVal
-                .replace(/nombre y apellido:\s*/i, '')
-                .replace(/nombre:\s*/i, '')
-                .trim();
+          const cleanVal = getCellText(pcpSheet.getCell(r, c)).trim();
+          if (cleanVal && /nombre/i.test(cleanVal) && !cleanVal.includes('[object Object]')) {
+            const parsed = cleanVal
+              .replace(/nombre y apellido:\s*/i, '')
+              .replace(/nombre:\s*/i, '')
+              .trim();
+            if (parsed.length > 2 && !parsed.includes('[object Object]')) {
+              nombreCompleto = parsed;
               break;
             }
           }
@@ -468,9 +506,12 @@ export async function POST(req: NextRequest) {
       }
       // Fallback a celda A3 si no se encontró por escaneo
       if (!nombreCompleto) {
-        const nameVal = pcpSheet.getCell('A3').value;
-        if (nameVal) {
-          nombreCompleto = String(nameVal).replace(/nombre y apellido:\s*/i, '').trim();
+        const nameVal = getCellText(pcpSheet.getCell('A3')).trim();
+        if (nameVal && !nameVal.includes('[object Object]')) {
+          const parsed = nameVal.replace(/nombre y apellido:\s*/i, '').replace(/nombre:\s*/i, '').trim();
+          if (parsed.length > 2 && !parsed.includes('[object Object]')) {
+            nombreCompleto = parsed;
+          }
         }
       }
 
@@ -544,7 +585,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Si aún no se encontró el nombre en el PCP, buscar en las solapas mensuales
-    if (!nombreCompleto) {
+    if (!nombreCompleto || nombreCompleto.includes('[object Object]')) {
       for (const sheet of workbook.worksheets) {
         if (pcpSheet && sheet.id === pcpSheet.id) continue;
         const sheetNameUpper = sheet.name.trim().toUpperCase();
@@ -559,36 +600,43 @@ export async function POST(req: NextRequest) {
 
         for (let r = 1; r <= 6; r++) {
           for (let c = 1; c <= 4; c++) {
-            const val = sheet.getCell(r, c).value;
-            if (val && typeof val === 'string') {
-              const cleanVal = val.trim();
-              if (/nombre/i.test(cleanVal)) {
-                nombreCompleto = cleanVal
-                  .replace(/nombre:\s*/i, '')
-                  .replace(/nombre y apellido:\s*/i, '')
-                  .trim();
+            const cleanVal = getCellText(sheet.getCell(r, c)).trim();
+            if (cleanVal && /nombre/i.test(cleanVal) && !cleanVal.includes('[object Object]')) {
+              const parsed = cleanVal
+                .replace(/nombre:\s*/i, '')
+                .replace(/nombre y apellido:\s*/i, '')
+                .trim();
+              if (parsed.length > 2 && !parsed.includes('[object Object]')) {
+                nombreCompleto = parsed;
                 break;
               }
             }
           }
-          if (nombreCompleto) break;
+          if (nombreCompleto && !nombreCompleto.includes('[object Object]')) break;
         }
-        if (nombreCompleto) break;
+        if (nombreCompleto && !nombreCompleto.includes('[object Object]')) break;
       }
     }
 
-    // Si no se extrajo el nombre pero se proporcionó manualYoungId, buscarlo en la BD
-    if (!nombreCompleto && manualYoungId) {
+    // Si se proporcionó manualYoungId, priorizar el nombre canónico de la BD
+    if (manualYoungId) {
       if (USE_POSTGRES && sql) {
         const yRes = await sql`SELECT nombre_completo, taller FROM youngs WHERE id = ${manualYoungId}`;
         if (yRes.rows.length > 0) {
           nombreCompleto = yRes.rows[0].nombre_completo;
           if (!mainTaller) mainTaller = yRes.rows[0].taller;
         }
+      } else if (process.env.MONGODB_URI) {
+        const { YoungModel } = await import('@/models/Young');
+        const yFound = await YoungModel.findById(manualYoungId);
+        if (yFound) {
+          nombreCompleto = yFound.nombreCompleto || '';
+          if (!mainTaller) mainTaller = yFound.taller || '';
+        }
       }
     }
 
-    if (!nombreCompleto) {
+    if (!nombreCompleto || nombreCompleto.includes('[object Object]')) {
       return NextResponse.json({ error: 'No se pudo extraer el nombre del joven de la solapa PCP ni de las solapas mensuales (ej: Celda A3 o A2)' }, { status: 400 });
     }
 
@@ -640,6 +688,8 @@ export async function POST(req: NextRequest) {
 
       const report: any = {
         periodo: parsedPeriod,
+        sheetName: sheet.name,
+        monthNum: monthNum,
         facilitadorNombre: '',
         taller: '',
         talleres: [],
@@ -679,8 +729,8 @@ export async function POST(req: NextRequest) {
         let tallerFoundInRow = '';
         for (let c = 1; c <= 4; c++) {
           const txt = getCellText(sheet.getCell(r, c)).trim();
-          if (txt.toUpperCase().includes('TALLER:')) {
-            tallerFoundInRow = txt.replace(/TALLER:\s*/i, '').trim();
+          if (isWorkshopHeader(txt)) {
+            tallerFoundInRow = txt.replace(/^TALLER:\s*/i, '').trim();
             break;
           }
         }
@@ -698,7 +748,7 @@ export async function POST(req: NextRequest) {
             !c1Upper.includes('FECHA') &&
             !c1Upper.includes('INFORME') &&
             (
-              (c1.includes('/') && /(DP|BM|AU|BE|DR|RI|IS|BF)/i.test(c1)) ||
+              (c1.includes('/') && /\/\s*(DP|BM|AU|BE|DR|RI|IS|BF)\b/i.test(c1)) ||
               c1Upper.startsWith('HABILIDADES DE INTERACCI') ||
               c1Upper.startsWith('DESARROLLO PERSONAL') ||
               c1Upper.startsWith('BIENESTAR EMOCIONAL')
@@ -752,7 +802,7 @@ export async function POST(req: NextRequest) {
             !itemName.toUpperCase().includes('PUEDE ENSEÑAR') &&
             !itemName.toUpperCase().includes('TALLER:') &&
             !itemName.toUpperCase().includes('OBSERVACI') &&
-            !itemName.includes('/')
+            !isWorkshopHeader(itemName)
           ) {
             let nivel = 0;
             const check1 = isCellChecked(sheet.getCell(r + 2, c)) || isCellChecked(sheet.getCell(r + 2, c + 1));
@@ -780,7 +830,7 @@ export async function POST(req: NextRequest) {
               nivel: nivel
             };
 
-            if (currentTaller) {
+            if (currentTaller && !currentTaller.items.some((it: any) => it.nombre.toLowerCase() === itemName.toLowerCase())) {
               currentTaller.items.push(item);
             }
           }
@@ -812,33 +862,75 @@ export async function POST(req: NextRequest) {
     const userId = session?.user?.id ? (USE_POSTGRES ? Number(session.user.id) : session.user.id) : null;
     
     if (USE_POSTGRES && sql) {
-      // Buscar si el joven existe
-      const existing = await sql`
-        SELECT id, pcp, foto, legajo, obra_social, dni, fecha_nacimiento, assigned_facilitators, taller 
-        FROM youngs WHERE nombre_completo ILIKE ${nombreCompleto} LIMIT 1
-      `;
+      let existingYoung: any = null;
+
+      // 1. Si se especificó explícitamente manualYoungId, priorizar este joven
+      if (manualYoungId) {
+        const manualRes = await sql`
+          SELECT id, nombre_completo, pcp, foto, legajo, obra_social, dni, fecha_nacimiento, assigned_facilitators, taller 
+          FROM youngs WHERE id = ${manualYoungId} LIMIT 1
+        `;
+        if (manualRes.rows.length > 0) {
+          existingYoung = manualRes.rows[0];
+          console.log(`[IMPORT-EXCEL] Asociando planilla directamente a joven ID ${existingYoung.id} (${existingYoung.nombre_completo})`);
+        }
+      }
+
+      // 2. Si no se especificó o no se encontró por ID, buscar por nombre exacto o token matching
+      if (!existingYoung && nombreCompleto && !nombreCompleto.includes('[object Object]')) {
+        const exactRes = await sql`
+          SELECT id, nombre_completo, pcp, foto, legajo, obra_social, dni, fecha_nacimiento, assigned_facilitators, taller 
+          FROM youngs WHERE nombre_completo ILIKE ${nombreCompleto} LIMIT 1
+        `;
+        if (exactRes.rows.length > 0) {
+          existingYoung = exactRes.rows[0];
+        } else {
+          // Token matching: separar palabras significativas
+          const tokens = nombreCompleto
+            .toLowerCase()
+            .replace(/[,;.\-]/g, ' ')
+            .split(/\s+/)
+            .filter(w => w.length > 2 && !['del', 'los', 'las', 'san', 'vanesa', 'irene', 'tamara'].includes(w));
+          
+          if (tokens.length >= 1) {
+            const allYoungs = await sql`
+              SELECT id, nombre_completo, pcp, foto, legajo, obra_social, dni, fecha_nacimiento, assigned_facilitators, taller 
+              FROM youngs
+            `;
+            for (const y of allYoungs.rows) {
+              const yNorm = (y.nombre_completo || '').toLowerCase();
+              const matchedTokens = tokens.filter(tok => yNorm.includes(tok));
+              if (matchedTokens.length >= 2 || (tokens.length === 1 && matchedTokens.length === 1)) {
+                existingYoung = y;
+                console.log(`[IMPORT-EXCEL] Match fuzzy de nombre: "${nombreCompleto}" -> "${y.nombre_completo}" (ID ${y.id})`);
+                break;
+              }
+            }
+          }
+        }
+      }
       
-      if (existing.rows.length > 0) {
-        const youngRow = existing.rows[0];
-        youngIdStr = String(youngRow.id);
+      if (existingYoung) {
+        youngIdStr = String(existingYoung.id);
+        nombreCompleto = existingYoung.nombre_completo; // Usar el nombre oficial de la BD
         
         // Mezclar PCP existente con el nuevo
-        const mergedPcp = { ...(youngRow.pcp || {}), ...pcpData };
+        const mergedPcp = { ...(existingYoung.pcp || {}), ...pcpData };
         
         // Mezclar facilitadores asignados
-        let facilitators = youngRow.assigned_facilitators || [];
+        let facilitators = existingYoung.assigned_facilitators || [];
         if (userId && !facilitators.includes(userId)) {
           facilitators = [...facilitators, userId];
         }
         const arrayString = facilitators.length > 0 ? `{${facilitators.join(',')}}` : '{}';
 
         // Mantener datos existentes si el Excel no los proveyó
-        const finalPhoto = fotoBase64 || youngRow.foto || null;
-        const finalLegajo = pcpLegajo || youngRow.legajo || null;
-        const finalObraSocial = pcpObraSocial || youngRow.obra_social || null;
-        const finalDni = pcpDni || youngRow.dni || null;
-        const finalBirth = pcpFechaNacimiento ? pcpFechaNacimiento.toISOString() : (youngRow.fecha_nacimiento || null);
-        const finalTaller = mainTaller || youngRow.taller || null;
+        const finalPhoto = fotoBase64 || existingYoung.foto || null;
+        const finalLegajo = pcpLegajo || existingYoung.legajo || null;
+        const finalObraSocial = pcpObraSocial || existingYoung.obra_social || null;
+        const finalDni = pcpDni || existingYoung.dni || null;
+        const finalBirth = pcpFechaNacimiento ? pcpFechaNacimiento.toISOString() : (existingYoung.fecha_nacimiento || null);
+        const finalTaller = mainTaller || existingYoung.taller || null;
 
         await sql`
           UPDATE youngs 
@@ -855,6 +947,11 @@ export async function POST(req: NextRequest) {
           WHERE id = ${parseInt(youngIdStr)}
         `;
       } else {
+        // Validar que el nombre no sea [object Object] ni vacío
+        if (!nombreCompleto || nombreCompleto.includes('[object Object]') || nombreCompleto.trim().length < 3) {
+          return NextResponse.json({ error: 'Nombre de concurrente inválido o no detectado en la planilla Excel' }, { status: 400 });
+        }
+
         // Crear nuevo
         const facilitators = userId ? [userId] : [];
         const arrayString = facilitators.length > 0 ? `{${facilitators.join(',')}}` : '{}';
@@ -880,10 +977,17 @@ export async function POST(req: NextRequest) {
       }
     } else if (process.env.MONGODB_URI) {
       const { YoungModel } = await import('@/models/Young');
-      const existing = await YoungModel.findOne({ nombreCompleto: { $regex: new RegExp('^' + nombreCompleto + '$', 'i') } });
+      let existing: any = null;
+      if (manualYoungId) {
+        existing = await YoungModel.findById(manualYoungId);
+      }
+      if (!existing && nombreCompleto && !nombreCompleto.includes('[object Object]')) {
+        existing = await YoungModel.findOne({ nombreCompleto: { $regex: new RegExp('^' + nombreCompleto + '$', 'i') } });
+      }
       
       if (existing) {
         youngIdStr = existing._id.toString();
+        nombreCompleto = existing.nombreCompleto;
         existing.pcp = { ...(existing.pcp || {}), ...pcpData };
         if (mainTaller) existing.taller = mainTaller;
         if (fotoBase64) existing.foto = fotoBase64;
@@ -894,12 +998,15 @@ export async function POST(req: NextRequest) {
         
         if (userId) {
           const facilitators = existing.assignedFacilitators || [];
-          if (!facilitators.map(f => f.toString()).includes(userId.toString())) {
+          if (!facilitators.map((f: any) => f.toString()).includes(userId.toString())) {
             existing.assignedFacilitators.push(userId);
           }
         }
         await existing.save();
       } else {
+        if (!nombreCompleto || nombreCompleto.includes('[object Object]') || nombreCompleto.trim().length < 3) {
+          return NextResponse.json({ error: 'Nombre de concurrente inválido o no detectado en la planilla Excel' }, { status: 400 });
+        }
         const facilitators = userId ? [userId] : [];
         const created = await YoungModel.create({
           nombreCompleto,
@@ -933,21 +1040,38 @@ export async function POST(req: NextRequest) {
       };
 
       if (USE_POSTGRES && sql) {
-        // Buscar borrador mensual existente
+        // Buscar borrador mensual existente por periodo exacto (ej: 2026-08), nombre de solapa legado (ej: AGOSTO) o mes numérico (ej: %-08)
+        const targetPeriodo = report.periodo;
+        const sheetUpper = (report.sheetName || '').trim().toUpperCase();
+        const monthPattern = report.monthNum ? `%${report.monthNum}` : null;
+
         const existing = await sql`
-          SELECT id FROM forms 
-          WHERE young_id = ${parseInt(youngIdStr)} AND periodo = ${report.periodo} 
-          LIMIT 1
+          SELECT id, periodo FROM forms 
+          WHERE young_id = ${parseInt(youngIdStr)} 
+          AND (
+            periodo = ${targetPeriodo}
+            OR (${sheetUpper} != '' AND UPPER(periodo) = ${sheetUpper})
+            OR (${monthPattern}::text IS NOT NULL AND periodo ILIKE ${monthPattern})
+          )
+          ORDER BY id DESC
         `;
 
         if (existing.rows.length > 0) {
           const formId = String(existing.rows[0].id);
           await sql`
             UPDATE forms 
-            SET data = ${JSON.stringify(formData)}::jsonb, updated_at = NOW()
+            SET periodo = ${report.periodo}, data = ${JSON.stringify(formData)}::jsonb, updated_at = NOW()
             WHERE id = ${parseInt(formId)}
           `;
           createdFormIds.push(formId);
+
+          // Si hubiera duplicados obsoletos para este mismo mes del mismo joven, eliminarlos para evitar colisiones
+          if (existing.rows.length > 1) {
+            const extraIds = existing.rows.slice(1).map(r => r.id);
+            const extraIdsArrayStr = `{${extraIds.join(',')}}`;
+            await sql`DELETE FROM forms WHERE id = ANY(${extraIdsArrayStr}::int4[])`;
+            console.log(`[IMPORT-EXCEL] Eliminados formularios duplicados obsoletos:`, extraIds);
+          }
         } else {
           const result = await sql`
             INSERT INTO forms (young_id, periodo, data, created_by, status, created_at, updated_at)

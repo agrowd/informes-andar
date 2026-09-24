@@ -208,3 +208,49 @@
 4. Se corrigieron los sanitizadores y directivas de lenguaje institucional para forzar **INCLUSIÓN** (D-70).
 5. Se validó la generación mediante test automatizado (`scratch/test_franco.mjs`), se compiló el proyecto, se desplegó al VPS de producción con reinicio de PM2 y se actualizó el informe de Franco Martinez en la base de datos.
 **Estado:** ✅ FIXED
+
+## ERR-30: Celdas RichText en celda de nombre de PCP causan creación de concurrente huérfano '[object Object]' y omisión de manualYoungId en import-excel (2026-09-23)
+**Síntoma:** Al subir el Excel del Bloque 4 (`2. Casonato, Brenda Janet.xlsx`), la carga finalizaba con éxito aparente en el modal pero el sistema seguía mostrando que faltaba subir el Bloque 4 (Agosto y Septiembre pendientes en Brenda Yanet Casonato, ID 40).
+**Root Cause:**
+1. En `src/app/api/youngs/import-excel/route.ts`, la celda A3 de la solapa `PCP` contenía formato `richText`. El código hacía `typeof val === 'string'` que daba `false`, y caía a `String(nameVal)` retornando `"[object Object]"`.
+2. El importador ignoraba el `manualYoungId` enviado desde el modal y buscaba un concurrente llamado `[object Object]`. Al no existir, creaba un nuevo registro de joven huérfano (ID 84) con nombre `[object Object]` y le asociaba a este los 5 formularios mensuales.
+3. En las hojas de AGOSTO y SEPTIEMBRE, los títulos de los talleres carecían del prefijo `TALLER:` y la regex de dimensiones `/BE/i` hacía falso positivo con la palabra "caBEllo" en la fila "Cabello corto/atado", absorbiendo todo el mes bajo un único taller erróneo.
+**Solución:**
+1. Se dio prioridad absoluta a `manualYoungId` (D-79). Si viene presente desde el modal, el backend lo asocia directamente a ese joven existente en PostgreSQL y utiliza su nombre canónico.
+2. Se implementó `getCellText()` en la extracción del nombre del joven y en `cleanText` para extraer recursivamente el texto de celdas `richText` y descartar cadenas inválidas como `"[object Object]"`.
+3. Se agregaron límites de palabra estrictos `/\/\s*(DP|BM|AU|BE|DR|RI|IS|BF)\b/i` y catálogo canónico `KNOWN_WORKSHOPS` para evitar falsos positivos con palabras como "cabello".
+4. Se eliminó el concurrente huérfano ID 84 y se reimportó la planilla completa para Brenda Yanet Casonato (ID 40), alcanzando el 100% de completitud (4/4 bloques listos).
+5. Se implementó la extracción automática de sueños desde el texto del Bloque 3 (Trimestral 2) si falta en el PCP (`extractDreamFromReport`), inyectándolo en el informe final y persistiéndolo en `youngs.pcp`.
+**Estado:** ✅ FIXED
+
+## ERR-31: Formulario residual vacío con periodo 'AGOSTO' enmascara formulario canónico '2026-08' en Bloque 4 (2026-09-24)
+**Síntoma:** Al previsualizar el Bloque 4 de Analía Celis (ID 3), el mes de agosto figuraba como "Sin observaciones narrativas cargadas para este mes" y la progresión mostraba 3 meses en orden anómalo (`Agosto ➔ Septiembre ➔ AGOSTO`), a pesar de que el archivo Excel de Descargas tenía 3,645 caracteres de observaciones en Agosto.
+**Root Cause:**
+1. En PostgreSQL existía un borrador histórico huérfano (Form #76) creado el 25/08 con `periodo = 'AGOSTO'` y `observaciones = ""` (0 caracteres).
+2. Existía también el formulario canónico importado (Form #302) con `periodo = '2026-08'` y observaciones completas (3,645 caracteres).
+3. La consulta SQL `WHERE periodo ILIKE '%08%' OR periodo ILIKE '%agosto%' ORDER BY periodo ASC, id ASC` traía ambos formularios. Por orden alfabético (`'2026-08' < '2026-09' < 'AGOSTO'`), el formulario vacío #76 quedaba al final ocupando la posición del 3er mes y enmascarando los datos.
+4. El endpoint `import-excel/route.ts` actualizaba registros por `periodo = '2026-08'`, sin limpiar ni unificar registros que tuvieran el nombre literal `AGOSTO`.
+**Solución:**
+1. Se ejecutó una limpieza en la base de datos eliminando los formularios huérfanos/espurios (IDs 7, 8, 9, 22, 76, 77, 138).
+2. Se implementó la función universal `deduplicateFormsByMonth` en `block-preview/route.ts` y en `final/route.ts`, agrupando por mes calendario (4 a 12), priorizando el formulario con mayor cantidad de observaciones y ordenando cronológicamente de forma estricta.
+3. Se enriqueció `import-excel/route.ts` para normalizar el campo `periodo = report.periodo` y purgar de manera automática en cada re-importación cualquier formulario duplicado o residual del mismo mes.
+4. Se desplegó al VPS y se verificó en vivo que Analía Celis muestra en Bloque 4 exactamente 2 períodos (Agosto con 3,645 car. y Septiembre con 4,895 car.) con todos sus talleres y observaciones.
+**Estado:** ✅ FIXED
+
+## ERR-32: Error 'invalid input syntax for type boolean: "{}"' al importar planillas Excel mensuales (2026-09-24)
+**Síntoma:** Al intentar cargar un archivo Excel en el modal de importación (ej. `13. Giuliano, Daniela Elizabeth .xlsx` para Daniela Elizabeth Giuliano en Bloque 4), la interfaz arrojaba un cartel de advertencia en rojo: `invalid input syntax for type boolean: "{}"` y la carga abortaba con código HTTP 500.
+**Root Cause:**
+1. En `src/app/api/youngs/import-excel/route.ts`, la consulta de búsqueda de formularios existentes incluía interpolaciones condicionales que llamaban recursivamente a la función `sql`:
+   `OR (${legacySheetName ? sql`periodo = ${legacySheetName}` : sql`false`})`
+2. En `src/lib/db-postgres.ts`, `sql` es una función asíncrona (`async (strings, ...values)`). La invocación `sql`...`` retorna un objeto `Promise` no resuelto.
+3. El interpolador de `db-postgres.ts` extrajo ese objeto `Promise` como parámetro de consulta bound `$3`.
+4. El driver de PostgreSQL serializó el objeto a la cadena `"{}"`.
+5. Al estar dentro de una cláusula booleana `OR ($3)`, el motor PostgreSQL 15 intentó coercionar `"{}"` a tipo `boolean`, arrojando inmediatamente `invalid input syntax for type boolean: "{}"`.
+**Solución:**
+1. Se refactorizó la consulta en `import-excel/route.ts` eliminando las llamadas anidadas a `sql` y reemplazándolas por expresiones booleanas nativas y parametrizadas:
+   `OR (${sheetUpper} != '' AND UPPER(periodo) = ${sheetUpper}) OR (${monthPattern}::text IS NOT NULL AND periodo ILIKE ${monthPattern})`
+2. Se corrigió el formateo de `extraIds` para la purga de duplicados con formato de literal de array Postgres `'{id1,id2}'` con casteo `::int4[]`.
+3. Se verificó la consulta en PostgreSQL del VPS, se realizó la compilación de producción local y remota (0 errores) y se reinició PM2 en el servidor.
+**Estado:** ✅ FIXED
+
+

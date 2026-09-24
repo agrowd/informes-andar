@@ -326,3 +326,85 @@
      - Compilación `npm run build` local exitosa con 0 errores.
      - Despliegue de archivos al servidor VPS (`149.50.128.73:5782`), build remoto y reinicio de PM2 con código de salida 0 (`online`, PID 203583).
      - Verificado en producción `https://informes-andar.nextemarketing.com`.
+
+# Registro de Conversación - 2026-09-21 a 2026-09-23
+
+## Usuario:
+- Drag & drop para Excel en Bloque 4: "Agrega la opcion para en el cuarto bloque del final, el excel se pueda arrastrar, ya que creo que por la lentitud de la memoria del disco o por un bug(que me paso en otras plataformas) no me aparece en el seleccionador de archivos"
+- Validación y Previsualización de Bloques: "Verifica que la informacion para el final de abigail agustina malmoria este bien cada informacion que hay, si es de ella o no. O que si reconoce un nombre que se carga en el bloque de otra persona que no es, se le asigne a esa persona que es, ademas que te lo diga en un modal o en algun lado la aclaracion y que se pueda ver la informacion que hay en cada bloque como vista previa"
+- Evolución de Habilidades: "Que en la previsualizacion de los excels se pueda ver que habilidades detecto en cada periodo y cuanto avanzo en cada una etc etc, vos me entendes ya"
+- Erradicación de Etiquetas de Párrafo: "Ademas soluciona el problema que en el informe final sale con parrafo 1: parrafo 2: etc etc en algunas partes, no debe decir eso"
+- Subida de Excel en Bloque 4 y Sueño desde Bloque 3: "subo el excel del bloque 4, carga pero vuelve a aparecer como si no hubiese subido nada. Ademas agrega que si falta el sueño lo reconozca del bloque 3 que lo dice en el texto"
+
+## Antigravity:
+- **Arrastre de Archivos (Drag & Drop) y Previsualización de Bloques**:
+  - Se habilitó zona de arrastre y suelta en `UploadExcelModal.tsx` con soporte visual interactivo.
+  - Se implementó el modal `BlockPreviewModal.tsx` y el endpoint `/api/reports/final/block-preview` para auditar la información exacta cargada en cada uno de los 4 bloques antes de generar el informe final.
+- **Evolución Inter-Períodos de Habilidades**:
+  - Enriquecido el previsualizador con cálculo comparativo de habilidades rúbrica nivel 1 a 4, visualización de trayectorias, delta de progreso y pestaña interactiva con KPIs de avance y consolidación.
+- **Limpieza de Prefijos de Párrafo**:
+  - Se modificó el schema prompt en `finalReportGenerator.ts`, se incorporaron directivas prohibitivas y la función `stripParrafoPrefixes` en backend, generadores y visor web, purgando registros en PostgreSQL.
+- **Resolución de Subida en Bloque 4 (Caso Brenda Casonato)**:
+  - Se detectó que la celda A3 del PCP contenía formato `richText` que `String()` convertía a `"[object Object]"`, creando un joven corrupto ID 84 e ignorando el `manualYoungId`.
+  - Se priorizó de manera absoluta `manualYoungId` en `import-excel/route.ts` (D-79), se mejoró la lectura con `getCellText()` y se endureció la detección de talleres (`KNOWN_WORKSHOPS` y límites de regex).
+  - Se eliminó el registro ID 84 y se reimportaron Agosto y Septiembre en Brenda Yanet Casonato (ID 40) con 8 talleres y observaciones completas (4/4 bloques listos).
+- **Extracción Automática de Sueños desde Bloque 3**:
+  - Se implementó `extractDreamFromReport` en `finalReportGenerator.ts` y `/api/reports/final/route.ts` (D-80). Si el PCP carece de sueño, el sistema lo extrae de la Sección 1 o encabezado del Trimestral 2 (Bloque 3) y lo persiste permanentemente en `youngs.pcp`.
+- **Despliegue y Verificación en Producción**:
+  - Compilación local y remota exitosa, despliegue al VPS (`149.50.128.73:5782`), reinicio de PM2 y verificación de disponibilidad online del servicio.
+
+# Diagnóstico de Error de Inicio de Sesión (2026-09-23)
+## Usuario:
+- "Que pasa que estoy poniendo la contraseña bien y no me deja entrar? /api/auth/callback/credentials:1 Failed to load resource: the server responded with a status of 401 () Error en login: CredentialsSignin"
+
+## Antigravity:
+- **Causa Raíz Diagnosticada**:
+  - Se inspeccionaron los logs en vivo de PM2 en el VPS (`149.50.128.73`):
+    `NeonDbError: Server error (HTTP status 402): {"message":"Your account or project has exceeded the quota. Upgrade your plan to increase limits."}`
+  - La contraseña y usuario ingresados NO son erróneos. La base de datos Neon Postgres (`royal-hat-63200243`) alcanzó el límite de cuota mensual gratuita (Free Tier / Hobby), bloqueando todas las peticiones con código HTTP 402 (Payment Required).
+  - Al fallar la consulta `UserModel.findOne({ email })`, NextAuth retorna `CredentialsSignin` y muestra `Email o contraseña incorrectos`.
+
+## Usuario:
+- "Cambie el plan fijate ahora"
+
+## Antigravity:
+- **Ejecución y Verificación de Migración Total**:
+  - Se confirmó que Neon se desbloqueó tras el cambio de plan.
+  - Se creó la base `informes_andar_prod` con encoding UTF-8 en el PostgreSQL 15 local del VPS.
+  - Se ejecutó el volcado con Docker Postgres 17 migrando el 100% de la información: 277 formularios, 191 informes, 73 concurrentes, 11 usuarios (incluyendo `natoh`), 7 talleres y 219 logs.
+  - Se implementó el conector universal `src/lib/db-postgres.ts` sobre `pg.Pool` con tag `sql`.
+  - Se actualizó el VPS a `localhost:5432/informes_andar_prod`, se compiló en producción y se reinició PM2.
+  - Se probó el endpoint de login con HTTPS: status 200 OK con sesión activa. La latencia bajó de ~180 ms a <1 ms.
+
+# Registro de Conversación - 2026-09-24 (Resolución de Observaciones de Agosto en Bloque 4 para Analía Celis)
+## Usuario:
+- "En el el bloque 4 de analia celis, en descargas estan las observaciones de agosto, pero cuando lo cargo no lo detecta bien, no aparece, que es lo que esta pasando, resolvelo"
+
+## Antigravity:
+- **Diagnóstico de Causa Raíz**:
+  - En la base de datos PostgreSQL local del VPS existían dos registros para Agosto de Analía Celis (ID 3):
+    1. Formulario #76 con periodo literal `'AGOSTO'` y observaciones vacías (creado en agosto como borrador).
+    2. Formulario #302 con periodo canónico `'2026-08'` y 3,645 caracteres de observaciones completas de la facilitadora Juliana Arias (talleres, asistencia, vínculos, medicación).
+  - Al consultar el Bloque 4 con `WHERE periodo ILIKE '%08%' OR periodo ILIKE '%agosto%' ORDER BY periodo ASC, id ASC`, el orden alfabético (`'2026-08' < '2026-09' < 'AGOSTO'`) colocaba al formulario vacío #76 en la 3ra posición, ocultando las observaciones y alterando la progresión.
+  - Al reimportar el Excel, el importador actualizaba el Form #302 pero no eliminaba el Form #76 huérfano.
+- **Solución y Despliegue**:
+  1. Se eliminó el Form #76 y otros formularios duplicados/espurios de la base de datos.
+  2. Se programó la deduplicación canónica (`deduplicateFormsByMonth`) en `block-preview/route.ts` y en `final/route.ts` para agrupar por mes de calendario (04–12), priorizar el formulario con mayor contenido de observaciones y ordenar de forma cronológica.
+  3. Se mejoró `import-excel/route.ts` para que normalice los periodos y purgue automáticamente formularios duplicados del mismo mes en cada subida.
+  4. Se compiló el proyecto y se desplegó al VPS (`149.50.128.73`), reiniciando PM2 exitosamente.
+  5. Se verificó en vivo que el Bloque 4 de Analía Celis ahora muestra sus 2 meses exactos (Agosto con 3,645 car. y Septiembre con 4,895 car.) con todos sus talleres y observaciones visibles.
+
+# Registro de Conversación - 2026-09-24 (Resolución de Error 'invalid input syntax for type boolean: "{}"' en Importación Excel)
+## Usuario:
+- "Me dice esto cuando trato de cargar un excel, verifica" (con imagen del error `invalid input syntax for type boolean: "{}"` al cargar `13. Giuliano, Daniela Elizabeth .xlsx` en Bloque 4).
+
+## Antigravity:
+- **Diagnóstico de Causa Raíz**:
+  - En `src/app/api/youngs/import-excel/route.ts`, la consulta SQL para buscar formularios mensuales existentes llamaba anidadamente a `sql` dentro de una cláusula booleana: `OR (${legacySheetName ? sql`periodo = ...` : sql`false`})`.
+  - Como `sql` en `db-postgres.ts` es asíncrona, retornaba una `Promise` que `pg` serializaba a `"{}"`.
+  - Postgres esperaba un `boolean` dentro de `OR (...)` y fallaba con `invalid input syntax for type boolean: "{}"` (500).
+- **Solución y Despliegue**:
+  1. Se eliminaron las llamadas anidadas y se reemplazaron por expresiones SQL parametrizadas limpias y estándar.
+  2. Se aseguró el formateo correcto de arrays Postgres `'{id1,id2}'::int4[]`.
+  3. Se ejecutaron pruebas directamente contra la base de datos PostgreSQL local del VPS validando ejecución correcta.
+  4. Se compiló el proyecto y se desplegó al VPS de producción (`149.50.128.73`), reiniciando PM2 exitosamente (PID 387370).

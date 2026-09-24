@@ -1,5 +1,109 @@
 # 🗓️ Workcycle Log
 
+## 2026-09-24 (Resolución de Error 'invalid input syntax for type boolean: "{}"' en Carga de Excel - ERR-32)
+- **Objetivo**: Resolver el error reportado por el usuario con captura de pantalla: al intentar cargar una planilla Excel en el modal de importación (ej. `13. Giuliano, Daniela Elizabeth .xlsx` para Daniela Elizabeth Giuliano en Bloque 4), el sistema arrojaba `invalid input syntax for type boolean: "{}"`.
+- **Diagnóstico y Causa Raíz**:
+  1. En `src/app/api/youngs/import-excel/route.ts`, la query de búsqueda de borradores mensuales existentes contenía interpolaciones condicionales que invocaban al helper `sql` anidado:
+     `OR (${legacySheetName ? sql`periodo = ${legacySheetName}` : sql`false`})`
+  2. En `src/lib/db-postgres.ts`, `sql` es una función asíncrona (`async (strings, ...values)`), por lo que esa llamada retornaba un objeto `Promise` no resuelto.
+  3. Al interpolarse en la query externa, `queryValues.push(val)` lo agregó como parámetro `$3`.
+  4. La librería `pg` serializó el objeto `Promise` como `"{}"`.
+  5. En PostgreSQL, `OR ($3)` requiere obligatoriamente un tipo de dato `boolean`. Al recibir la cadena `"{}"`, el motor arrojó inmediatamente el error `invalid input syntax for type boolean: "{}"` (código HTTP 500).
+- **Acciones Realizadas**:
+  1. **Refactorización de Query SQL**:
+     - Se sustituyeron las llamadas anidadas a `sql` por comparaciones nativas y parametrizadas estándar:
+       `OR (${sheetUpper} != '' AND UPPER(periodo) = ${sheetUpper}) OR (${monthPattern}::text IS NOT NULL AND periodo ILIKE ${monthPattern})`.
+  2. **Protección de Parámetro Array en Purga de Duplicados**:
+     - Se formateó `extraIds` como literal de array Postgres `'{id1,id2}'` con casteo `::int4[]`.
+  3. **Verificación y Despliegue en Servidor**:
+     - Se ejecutó script de prueba contra PostgreSQL 15 en el VPS confirmando ejecución exitosa con 0 errores.
+     - Compilación local y remota (`npm run build`) completada con 0 errores (19/19 páginas).
+     - Despliegue al VPS (`149.50.128.73`) y reinicio de PM2 (`informes-andar`, PID 387370).
+- **Estado**: Completado, Verificado y Desplegado en Producción ✅
+
+## 2026-09-24 (Resolución de Observaciones de Agosto en Bloque 4 para Analía Celis - Deduplicación Canónica D-82 y ERR-31)
+- **Objetivo**: Atender la solicitud: *"En el el bloque 4 de analia celis, en descargas estan las observaciones de agosto, pero cuando lo cargo no lo detecta bien, no aparece, que es lo que esta pasando, resolvelo"*.
+- **Diagnóstico y Causa Raíz**:
+  1. En la base de datos PostgreSQL (`informes_andar_prod` en VPS local), Analía Celis (ID 3, Clave de Sol) tenía dos formularios para agosto:
+     - Form #76: Creado el 25/08 con `periodo = 'AGOSTO'` y `observaciones = ""` (0 caracteres, borrador residual).
+     - Form #302: Creado con `periodo = '2026-08'` y observaciones narrativas completas (3,645 caracteres de Juliana Arias con asistencia, 5 talleres, vínculos y salud/medicación).
+  2. En `src/app/api/reports/final/block-preview/route.ts` y `final/route.ts`, la query SQL hacía `WHERE periodo ILIKE '%08%' OR periodo ILIKE '%agosto%' ORDER BY periodo ASC, id ASC`.
+  3. Por orden alfabético, `'2026-08' < '2026-09' < 'AGOSTO'`, por lo que Form #76 se posicionaba al final como el "3er mes", sobrescribiendo visualmente o mostrando "Sin observaciones narrativas cargadas para este mes" y alterando la trayectoria de progresión (`Agosto ➔ Septiembre ➔ AGOSTO`).
+  4. En `src/app/api/youngs/import-excel/route.ts`: Al importar, la hoja `AGOSTO` se mapeaba a `2026-08` y actualizaba Form #302, pero Form #76 con periodo literal `'AGOSTO'` quedaba huérfano sin ser eliminado.
+- **Acciones Realizadas**:
+  1. **Limpieza de Formularios Huérfanos en Base de Datos**:
+     - Se eliminaron los formularios huérfanos/espurios vacíos: `DELETE FROM forms WHERE id IN (7, 8, 9, 22, 76, 77, 138)`.
+     - Analía Celis quedó con sus formularios canónicos exactos: #19 (Abril), #20 (Mayo), #21 (Junio), #302 (Agosto - 3,645 car.), #303 (Septiembre - 4,895 car.).
+  2. **Deduplicación Canónica por Mes (D-82)**:
+     - Se implementó `deduplicateFormsByMonth(rows)` en `src/app/api/reports/final/block-preview/route.ts` y `src/app/api/reports/final/route.ts`.
+     - Agrupa por mes calendario (04 a 12), selecciona el registro con mayor riqueza de observaciones / ID más alto y ordena cronológicamente, garantizando que nunca un formulario vacío o duplicado pueda enmascarar un formulario completo.
+  3. **Sanitización y Autolimpieza en Ingesta de Excel**:
+     - En `src/app/api/youngs/import-excel/route.ts`: se mejoró el matching para buscar por `report.periodo`, `sheetName` o mes numérico, normalizar el campo `periodo = report.periodo`, y purgar automáticamente cualquier formulario redundante para ese mismo mes (`DELETE FROM forms WHERE id = ANY(extraIds)`).
+  4. **Build y Despliegue en Servidor de Producción**:
+     - Compilación local `npm run build` exitosa (0 errores, 19/19 páginas).
+     - Despliegue de archivos modificados al VPS por SFTP.
+     - Compilación remota `npm run build` en VPS con 0 errores y reinicio de PM2 (`informes-andar`, PID 384902).
+  5. **Verificación en Vivo en Base de Datos y API**:
+     - Se ejecutó script de verificación en el VPS (`scratch/test_block4_preview_live.cjs`):
+       - Bloque 2: Exactamente 3 formularios (#19, #20, #21) con talleres y observaciones completas.
+       - Bloque 4: Exactamente 2 formularios (#302 y #303) con los 5 talleres cada uno y 3,645 / 4,895 caracteres de observaciones.
+- **Estado**: Completado, Verificado y Desplegado en Producción ✅
+
+## 2026-09-23 (Diagnóstico de Error 401 / CredentialsSignin en Login - Bloqueo de Cuota en Neon Postgres)
+- **Objetivo**: Investigar por qué el usuario no puede iniciar sesión con sus credenciales correctas en `https://informes-andar.nextemarketing.com/login`.
+- **Causa Raíz Diagnosticada**:
+  - Al revisar los logs de PM2 en el VPS (`pm2 logs informes-andar`), se constató el error exacto:
+    `NeonDbError: Server error (HTTP status 402): {"message":"Your account or project has exceeded the quota. Upgrade your plan to increase limits."}`
+  - La base de datos Neon Postgres (`royal-hat-63200243` / `ep-morning-rain-ahzsfd2s-pooler.c-3.us-east-1.aws.neon.tech`) superó la cuota mensual gratuita (Free Tier / Hobby).
+  - Al recibir HTTP 402, NextAuth aborta la función `authorize()` y retorna `null`, lo que genera el error `CredentialsSignin` (401) y hace que la interfaz muestre el cartel genérico de *"Email o contraseña incorrectos"*.
+- **Acciones y Opciones**:
+  - Explicar al usuario el motivo técnico con la traza de logs.
+  - Guiar para la reactivación vía Vercel Dashboard / Neon Console (ampliar cuota / método de pago), lo cual restablece el acceso en segundos conservando todos los datos intactos.
+  - Alternativa de migración a PostgreSQL local en VPS en caso de desear prescindir de servicios serverless externos.
+- **Preparación y Ejecución de Migración a PostgreSQL Local en VPS (D-81)**:
+  - El usuario actualizó el plan en Neon y desbloqueó el acceso.
+  - Se configuró la base de datos `informes_andar_prod` con encoding `UTF8` y locale `C.utf8` en PostgreSQL 15 del VPS.
+  - Se ejecutó `pg_dump` vía contenedor Docker con cliente PostgreSQL 17 hacia `informes_andar_prod`, migrando con 100% de éxito:
+    - 73 concurrentes en `youngs`
+    - 277 formularios en `forms`
+    - 191 informes en `reports`
+    - 11 usuarios en `users` (incluyendo `natoh` con rol ADMIN y hash de contraseña)
+    - 7 talleres, 219 logs de auditoría y 8 textos editables.
+  - Se implementó un conector universal en `src/lib/db-postgres.ts` sobre `pg.Pool` con tag `sql` para template literals, seguro y con reuso de conexiones.
+  - Se actualizó `/srv/informes-andar/.env` para apuntar a `localhost:5432/informes_andar_prod`.
+  - Se compiló el proyecto en el VPS (`19/19 páginas`) y se reinició PM2 con código de salida 0.
+  - Se verificó el login de `natoh` end-to-end con HTTP 200 OK y emisión de sesión activa.
+- **Estado**: Migrado a Local, Verificado y Desplegado en Producción (0ms latencia, sin cuotas) ✅
+
+
+
+## 2026-09-23 (Resolución de Carga de Excel en Bloque 4 para Brenda Casonato y Reconocimiento Automático de Sueños desde Bloque 3)
+- **Objetivos**:
+  1. Atender la solicitud: *"subo el excel del bloque 4, carga pero vuelve a aparecer como si no hubiese subido nada."*
+  2. Atender la solicitud: *"Ademas agrega que si falta el sueño lo reconozca del bloque 3 que lo dice en el texto"*.
+- **Diagnóstico y Causa Raíz**:
+  - En `src/app/api/youngs/import-excel/route.ts`:
+    1. La celda `A3` de la pestaña `PCP` del archivo `2. Casonato, Brenda Janet.xlsx` contenía un objeto `richText`. El código hacía `typeof val === 'string'` que daba `false`, cayendo a `String(nameVal)` que devolvía `"[object Object]"`.
+    2. El importador ignoraba `manualYoungId` (enviado como `40` desde `UploadExcelModal`) y buscaba a un joven llamado `[object Object]`. Al no existir en Postgres, creaba un nuevo joven huérfano corrupto (ID 84) con ese nombre y le asignaba los 5 formularios mensuales.
+    3. En las solapas de Agosto y Septiembre, los títulos de los talleres no tenían el prefijo `TALLER:` y una regex `/BE/i` en la fila 67 (`Cabello corto/atado`) causaba un falso positivo con "caBEllo", absorbiendo todas las habilidades del mes bajo un único taller erróneo.
+- **Acciones Realizadas**:
+  1. **Prioridad Absoluta a `manualYoungId` (D-79)**:
+     - En `src/app/api/youngs/import-excel/route.ts`: si `manualYoungId` está presente, se asocia directamente al concurrente seleccionado en la base de datos sin intentar crear un joven nuevo ni depender del texto de la celda de nombre.
+     - Se fortaleció `getCellText()` para extraer recursivamente el texto de celdas `richText` y descartar `"[object Object]"`.
+     - Se añadió matching difuso por tokens y lista canónica de talleres `KNOWN_WORKSHOPS` con límites de palabra `/\/\s*(DP|BM|AU|BE|DR|RI|IS|BF)\b/i`.
+  2. **Detección Automática de Sueño desde Bloque 3 (D-80)**:
+     - En `src/lib/ai/finalReportGenerator.ts`: se crearon `extractDreamFromText()` y `extractDreamFromReport()`, reconociendo patrones de meta/sueño tanto de encabezados (`Meta o Sueño para 2026: ...`) como de la Sección 1 narrativa (`metaAlcanzada`).
+     - En `src/app/api/reports/final/route.ts`: si el joven no tiene sueño en `pcp.perfil.suenos` (o es genérico/vacío), se extrae automáticamente del Bloque 3 (Trimestral 2), se inyecta en el prompt de IA y se persiste permanentemente en `youngs.pcp`.
+  3. **Limpieza de Base de Datos y Sincronización de Brenda Casonato (ID 40)**:
+     - Se eliminó el concurrente huérfano ID 84 y sus formularios corruptos de Neon PostgreSQL.
+     - Se reimportaron los formularios de Brenda Casonato: Form #144 (Abril), #145 (Mayo), #146 (Junio), #317 (Agosto con 8 talleres y 1399 car. obs), #318 (Septiembre con 8 talleres y 2135 car. obs).
+     - Resultado: Brenda Yanet Casonato cuenta con sus 4 bloques 100% completos y habilitados para generar el Informe Final.
+  4. **Compilación y Despliegue en Producción**:
+     - `npx tsc --noEmit` y `npm run build` locales exitosos (19/19 páginas).
+     - Despliegue por SFTP al VPS (`149.50.128.73:5782`), compilación remota y reinicio de PM2 con código de salida 0 (`online`, PID 363098).
+     - Verificado estado HTTP en `https://informes-andar.nextemarketing.com` (status 307 redirect a login).
+- **Estado**: Completado, Verificado y Desplegado en Producción ✅
+
 ## 2026-09-14 (Indicadores Visuales de Completitud en Cuadrículas Mensuales - Habilidades y Observaciones)
 - **Objetivo**: Atender la solicitud: *"Pone algo visual en el collapse de cuadricula mensual para que diga cuales tienen las habilidades de los talleres cargadas y 3. Observaciones y detalles del mes . Asi se si los tienen o no"*.
 - **Solución Integral Implementada**:
@@ -1240,6 +1344,272 @@
 
 
 
+
+
+
+
+
+
+
+## 2026-09-15 (Auditoria, Actualizacion de Cuadriculas y Generacion de Informes Finales de Empoderadas)
+- **Objetivo**: Importar y actualizar las cuadriculas mensuales de las concurrentes del grupo Empoderadas desde Descargas (empoderadas_finales y archivos individuales), auditar el cumplimiento de los 4 bloques requeridos (Trimestral 1, Mensuales Abr-Jun, Trimestral 2 Abr-Jun, Mensuales Ago-Sep), detallar que falta para cada concurrente y generar los Informes Finales Anuales de aquellas con datos completos.
+- **Estado**: En proceso.
+
+- **Resultados**: Todas las cuadriculas mensuales (Abr, May, Jun, Jul, Ago, Sep) de las 7 concurrentes del grupo Empoderadas fueron importadas y sincronizadas exitosamente en la base de datos PostgreSQL. Se realizo la auditoria completa de los 4 bloques. Yamila Ines Legarreta se encuentra 100% completa y su Informe Final Anual fue generado/actualizado exitosamente. Para las demas concurrentes se identificaron con precision los informes trimestrales pendientes.
+- **Estado**: Completado ✅
+
+## 2026-09-15 (Revision de Fidelidad de Cuadriculas y Observaciones - Grupo Empoderadas)
+- **Objetivo**: Comparar celda por celda y texto por texto cada hoja de los Excel de Empoderadas contra la base de datos (tabla forms) para verificar talleres, evaluacion de autonomia y conclusion/observaciones inferiores sin alucinaciones.
+- **Estado**: En proceso.
+
+- **Verificacion de Fidelidad**: Se verificaron los 7 archivos Excel del grupo Empoderadas hoja por hoja (Abril a Septiembre) contra la base de datos PostgreSQL. Coincidencia del 100% en: cantidad de talleres, nombres de talleres, conteo de items evaluados de autonomia y longitud/texto exacto de las conclusiones/observaciones inferiores. 0 alucinaciones.
+- **Estado**: Completado ✅
+
+## 2026-09-15 (Carga y Analisis de PCP - LAURA PEREZ.xlsx)
+- **Objetivo**: Importar LAURA PEREZ.xlsx asociandola a Ana Reartes, extraer detalladamente la hoja PCP (sueno/meta del joven, circulo de apoyo, rutinas) y cargar todas sus cuadriculas mensuales en Postgres.
+- **Estado**: En proceso.
+
+- **Carga de Laura Perez**: Creada concurrente ID 83 (Laura Griselda Perez) en grupo Empoderadas asignada a Ana Reartes (ID 8). Se analizo exhaustivamente la hoja PCP guardando sus suenos (Estudiar y leer, Viajar con la familia, Bailar), circulo de apoyo y rutinas. Se importaron los meses de Julio, Agosto y Septiembre 2026 con 100% fidelidad de talleres, autonomia y observaciones.
+- **Estado**: Completado ✅
+
+## 2026-09-15 (Módulo de Excepción Individual de Insumos y Aclaración Narrativa en Informe Final)
+- **Objetivo**: Atender la solicitud del usuario: *"Ponerla como excepcion a la regla de necesitar el 2 y 3er bloque ya que ella no vino esos meses y no hay informes, poneme un toggle para sacar el bloqueo individualmente en la box esta que te dejo asi lo genera con lo que tiene, ademas aclara esto que te digo en los casos en donde se desbloquea y falta"*.
+- **Acciones Realizadas**:
+  1. **Migración de Base de Datos**:
+     - Agregadas las columnas `exception_unlocked` (BOOLEAN DEFAULT FALSE) y `exception_reason` (TEXT) a la tabla `youngs`.
+     - Habilitada por defecto la excepción para Laura Griselda Pérez (ID 83) aclarando su ausencia justificada durante el 2.º y 3.er bloque (Abril, Mayo, Junio).
+  2. **API Backend (`POST /api/youngs/[id]/toggle-exception`)**:
+     - Creado endpoint dinámico para alternar individualmente el estado de excepción de cualquier concurrente con su justificación institucional.
+  3. **Backend de Informes Finales (`src/app/api/reports/final/route.ts`)**:
+     - Actualizada `evaluateBlocks` para calcular `canGenerate = strictCanGenerate || isExceptionUnlocked`.
+     - Actualizado el endpoint `POST` para permitir la generación cuando `isUnlockedException` es verdadero (incluso si existen insumos faltantes).
+     - Se envía `isUnlockedException: true` y `missingBlocksNotice` al generador de IA (`finalReportGenerator.ts`).
+  4. **Motor IA (`src/lib/ai/finalReportGenerator.ts`)**:
+     - Actualizadas las directivas del prompt de GPT-4o (`buildFinalReportPrompt`) para que cuando `isUnlockedException` sea verdadero, inserte obligatoriamente en `objetivoProceso` (Parte 1) e `introduccion` (Parte 2) la aclaración institucional positiva de que el informe consolida el ciclo anual a partir de las evaluaciones disponibles durante sus períodos de asistencia, mencionando explícitamente las inasistencias o períodos no evaluados por razones justificadas.
+  5. **Interfaz Web (`src/app/final-reports/page.tsx`)**:
+     - Agregado en cada tarjeta de concurrente el botón toggle `🔓 Excepción Insumos` / `🔒 Quitar Excepción`.
+     - Implementado el handler `handleToggleException` con modal emergente para ingresar/editar la razón de la excepción.
+     - Agregados badges distintivos (`🔓 Excepción Activa`, `🔓 Desbloqueado por Excepción`) en ámbar.
+     - Habilitado el botón `⚡ Generar Informe Final Anual` cuando `canGenerate` es verdadero por regla estricta o excepción.
+  6. **Compilación y Despliegue en VPS**:
+     - Compilación local `npm run build` exitosa (0 errores, 19/19 páginas).
+     - Desplegados todos los archivos al VPS (`149.50.128.73:5782`), compilación remota y reinicio de PM2 (status online).
+- **Estado**: Completado, Verificado y Desplegado en Producción ✅
+
+## 2026-09-15 (Resolución de Subida de Informe de Verano - Magalí Marina Gómez)
+- **Objetivo**: Atender la solicitud: *"No me deja subir el informe de verano, osea el word de Magalí Marina Gómez, no se que pasa"*.
+- **Diagnóstico y Causas Raíz**:
+  1. **Ubicación del Archivo Fuente**: El archivo de Word `Gomez Magali.docx` se encontraba en la carpeta `C:\Users\Try Hard\Downloads\INICIAL EMPODERADAS\Gomez Magali.docx`.
+  2. **Estandarización de Período en `upload-manual-docx/route.ts`**: La IA/parser interpretaba la fecha del membrete ("Marzo del 2026") asignando `periodo = "Marzo del 2026"`. En `evaluateBlocks`, `r.periodo` se evaluaba contra patrones estrictos (`01`, `enero`, `1er`, `verano`), por lo que no reconocía la cadena `"Marzo del 2026"` como Bloque 1 de Verano, manteniendo la tarjeta bloqueada (`❌ Falta Word de Verano`).
+  3. **Prop Incompleto en UI Modal (`UploadManualDocxModal.tsx`)**: En `src/app/final-reports/page.tsx`, al hacer clic en `📤 Subir Word Ene-Mar` en la box de un concurrente, se guardaba `preselectedYoungId`, pero no se transmitía como prop a `<UploadManualDocxModal>`, dejando el selector de concurrente vacío por defecto.
+- **Acciones Realizadas**:
+  1. **Prop `initialYoungId` en Modal (`src/app/_components/UploadManualDocxModal.tsx`)**: Se agregó la prop `initialYoungId` para preseleccionar automáticamente al concurrente cuando se abre el modal desde su box.
+  2. **Estandarización de Período (`src/app/api/reports/upload-manual-docx/route.ts`)**: Se incorporó normalización automática para asignar `periodo = '2026-01 – 2026-03'` cuando el texto o nombre del archivo corresponda a informes de verano o 1er trimestre.
+  3. **Flexibilidad en `evaluateBlocks` (`src/app/api/reports/final/route.ts`)**: Se expandió la coincidencia de Bloque 1 para aceptar patrones flexibles de meses 01, 02, 03, Enero, Febrero, Marzo, Verano, 1er trimestre y Experiencia.
+  4. **Carga e Importación Directa**: Se procesó con éxito e importó `Gomez Magali.docx` para Magalí Marina Gómez (ID 14), guardando el Informe Trimestral #158 (`2026-01 – 2026-03`).
+  5. **Verificación de Bloques**: Magalí Marina Gómez alcanzó el **100% (4/4 bloques listos)** y ya se encuentra habilitada para generar su Informe Final Anual (`canGenerate: true`).
+  6. **Compilación y Despliegue en VPS**: Se compiló localmente (`npm run build`), se subieron los 6 archivos modificados al VPS y se reinició PM2 (`online`, PID 217535).
+- **Estado**: Completado, Verificado y Desplegado en Producción ✅
+
+## 2026-09-15 (Corrección Crítica de Clasificación de Períodos y Carga Total del 1er Bloque de Empoderadas)
+- **Objetivo**: Responder a la consulta del usuario: *"Subiste todos los primeros bloques de empoderadas o por que me aparecen como si estuviesen subidos? Ademas me aparece el 3er bloque de algunos como si no estuviese generado cuando lo hice en un principio"*.
+- **Diagnóstico Preciso de la Causa Raíz (Bug de Coincidencia de Cadenas)**:
+  1. **Clasificación Falsa en `evaluateBlocks`**: La condición `periodo.includes('02')` evaluaba la subcadena `'02'` dentro del año `2026` (posiciones 1 y 2 de `'2026'`), provocando que **CUALQUIER** informe que contuviera el año 2026 (incluyendo los Trimestrales 2 de Abril-Junio con período `"2026-06 – 2026-04"`) fuera clasificado erróneamente como Bloque 1 (Trimestral 1 de Verano).
+  2. **Bloque 3 Ocultado**: Al clasificarse el Trimestral 2 como Bloque 1, la lógica `t2Candidates` descartaba dicho reporte para el Bloque 3, provocando que el Bloque 3 apareciera falsamente como `❌ No Generado` a pesar de que el usuario lo había generado previamente.
+  3. **Insumos de Verano de Empoderadas Pendientes**: En la carpeta `INICIAL EMPODERADAS` de Descargas existían planillas Word individuales para las concurrentes que aún no habían sido importadas.
+- **Acciones Realizadas**:
+  1. **Funciones de Clasificación Confiable (`isTrimestral1` y `isTrimestral2`)**:
+     - Se refactorizó `evaluateBlocks` en `src/app/api/reports/final/route.ts` utilizando funciones auxiliares estrictas que evalúan rangos de meses ISO (`2026-01`, `2026-02`, `2026-03` vs `2026-04`, `2026-05`, `2026-06`), evitando falsos positivos por la subcadena `02` dentro de `2026`.
+  2. **Importación Masiva del Bloque 1 (Verano) de Empoderadas**:
+     - Se importaron y procesaron con IA todos los informes Word de verano faltantes desde `INICIAL EMPODERADAS`:
+       - `Aguirre Mirian.docx` -> Reporte #159 (Mirián Del Valle Aguirre)
+       - `Díaz Yesica.docx` -> Reporte #160 (Yésica Daniela Díaz)
+       - `Gallardo Miriam.docx` -> Reporte #161 (Miriam Andrea Gallardo)
+       - `Rodriguez Natalia.docx` -> Reporte #162 (Natalia Vanesa Rodríguez)
+       - `Soledad Aguerre.docx` -> Reporte #163 (María Soledad Aguerre)
+  3. **Verificación Total**: El 100% de las concurrentes del grupo Empoderadas (Florencia Almirón, Laura Pérez, Magalí Gómez, María Soledad Aguerre, Miriam Gallardo, Mirián Aguirre, Natalia Rodríguez, Yamila Legarreta y Yésica Díaz) se encuentran ahora con sus **4 de 4 bloques listos (100% completitud)**.
+  4. **Despliegue a Producción**: Compilado localmente y desplegado al VPS (`149.50.128.73:5782`), con reinicio de PM2 en verde (`online`, PID 217807).
+- **Estado**: Completado, Verificado y Desplegado en Producción ✅
+
+## 2026-09-15 (Explayamiento Narrativo Extenso de Informes Finales con Énfasis en Sección 7: Logros)
+- **Objetivo**: Atender la solicitud del usuario: *"Hace que los informes finales se explaye mas utilizando la informacion real obtenida en todos los bloques, ya que es mucha y lo que se genera en el informe final es poco, mas que nada en el punto numero 7. Analizalo, que no invente informacion, que utilice la que hay"*.
+- **Acciones Realizadas**:
+  1. **Motor IA de Informes Finales (`src/lib/ai/finalReportGenerator.ts`)**:
+     - Actualizado el prompt de sistema y las instrucciones de `buildFinalReportPrompt` para GPT-4o, exigiendo una redacción amplia, rica, descriptiva y exhaustiva en la Parte 1.
+     - **Sección 7: Logros Alcanzados durante el Ciclo Anual**: Para CADA una de las 4 áreas (`practicas`, `emocionalesSociales`, `decisiones`, `nuevasExperiencias`), se requiere explícitamente una redacción de 2 a 3 párrafos nutridos (separados por doble salto de línea `\n\n`), nombrando detalladamente los talleres reales cursados, las habilidades evaluadas con sus niveles (Niveles 1 a 4), las vivencias descritas en las observaciones mensuales (Kermés, boliche CCP, salidas a shopping/polideportivo, pileta/natación, festejos de Malvinas/Tierra/Autismo) y los apoyos personalizados implementados.
+     - En las demás secciones de la Parte 1 (`objetivoProceso`, `escuchaActiva`, `estadoEmocional`, `apoyosAjustes`, `suenosMetas`, `circuloApoyo`), se requiere la redacción de párrafos extensos (150-250 palabras) que integren las 4 fuentes documentales sin omitir detalles.
+     - Configurado `max_tokens: 4000` en la llamada a la API de OpenAI para dar espacio a la generación JSON extendida sin truncamiento.
+     - **Preservación de Salto de Línea en `cleanString`**: Se refactorizó la función sanitizadora `cleanString` para que colapse los espacios horizontales pero conserve intactos los saltos de párrafo (`\n\n`), garantizando que la estructura multi-párrafo generada por la IA se mantenga en el JSON y en la renderización del documento Word y web.
+  2. **Verificación y Compilación**:
+     - Chequeo de tipos TypeScript con `npx tsc --noEmit` exitoso (0 errores).
+     - Compilación `npm run build` local completada con éxito (19/19 páginas dinámicas y estáticas OK).
+  3. **Despliegue a Producción (VPS)**:
+     - Subido `src/lib/ai/finalReportGenerator.ts` al VPS (`149.50.128.73:5782`) vía SFTP.
+     - Ejecutada compilación remota y reiniciado servicio PM2 (`informes-andar`, status `online`).
+- **Estado**: Completado, Verificado y Desplegado en Producción ✅
+
+## 2026-09-15 (Eliminación de Texto por Defecto / Relleno en Obra Social)
+- **Objetivo**: Atender la solicitud del usuario: *"si no tiene en ningun lado la obra social no pongas nada, dejalo vacio, no lo rellenes como lo estas haciendo ahora"*.
+- **Acciones Realizadas**:
+  1. **Servicio API Backend (`src/app/api/reports/final/route.ts`)**:
+     - Se eliminó el string por defecto `'Instituto nacional de servicios sociales para jubilados y pensionados'` sustituyéndolo por cadena vacía `''` cuando `young.obra_social` no posee valor cargado.
+  2. **Generación de Word DOCX (`src/app/api/reports/[id]/.docx/route.ts`)**:
+     - Se eliminó la asignación por defecto del texto de jubilados/pensionados en los mapeos del documento Word, dejando el campo vacío si el concurrente no tiene obra social.
+  3. **Visualizador de Informe Final (`src/app/_components/FinalReportViewer.tsx`)**:
+     - Se quitó la leyenda estática sustituyéndola por `{dg.obraSocial || ''}`.
+  4. **Saneamiento de Base de Datos PostgreSQL**:
+     - Se ejecutó un script de depuración que actualizó los 6 informes finales existentes en la base de datos PostgreSQL en los que se había inyectado previamente la leyenda por defecto, dejando el campo `obraSocial` estrictamente vacío.
+  5. **Compilación y Despliegue en VPS**:
+     - Verificación de tipos `npx tsc --noEmit` exitosa (0 errores).
+     - Archivos subidos por SFTP al VPS de producción (`149.50.128.73:5782`), compilados y PM2 reiniciado (`online`, PID 218851).
+- **Estado**: Completado, Verificado y Desplegado en Producción ✅
+
+## 2026-09-15 (Resolución de Regeneración de Informes Finales - Lógica UPSERT y Ordenamiento por ID DESC)
+- **Objetivo**: Atender la solicitud del usuario: *"Cuando regenero los informes finales, aprieto el boton, carga pero carga con las instrucciones anteriores. Debe salir como los ultimos cambios que hicimos. Salen con la obra social y con informacion acotada cuando los rehago, soluciona este problema"*.
+- **Diagnóstico Preciso de la Causa Raíz**:
+  1. **Ordenamiento de Consultas en `GET /api/reports/final`**: La consulta utilizaba `ORDER BY id ASC`. Al hacer `reports.find(r => r.report_type === 'FINAL')`, la función retornaba siempre el **PRIMER/MÁS ANTIGUO** informe final creado días atrás (con las directivas antiguas y el texto de relleno de obra social).
+  2. **Inexistencia de Actualización en `POST /api/reports/final`**: Cada vez que se presionaba "Generar/Regenerar", el backend ejecutaba `INSERT INTO reports`, creando una nueva fila en la base de datos (ej. ID #166), pero como el `GET` obtenía los registros con `ORDER BY id ASC`, la interfaz web y el botón de visualización continuaban apuntando al informe #104 o #153 antiguo.
+  3. **Preservación de Word Binario Antiguo (`edited_docx_base64`)**: En la creación previa sin UPSERT no se limpiaba la versión Word cargada o generada anteriormente.
+- **Acciones Realizadas**:
+  1. **Lógica UPSERT en `POST /api/reports/final` (`src/app/api/reports/final/route.ts`)**:
+     - Se verifica si ya existe un informe final para el concurrente (`WHERE young_id = XX AND report_type = 'FINAL'`).
+     - Si existe, se **ACTUALIZA en el mismo registro (ID)** con el nuevo contenido narrativo explayado generado por la IA, reiniciando `edited_docx_base64 = NULL` y `edited_docx_filename = NULL` para forzar la re-generación en vivo del Word con los últimos cambios y sin obra social por defecto.
+     - Se eliminan automáticamente registros duplicados antiguos que pudieran existir para el mismo concurrente.
+  2. **Ordenamiento Inverso `ORDER BY id DESC` y Selección del Más Reciente**:
+     - Se cambió la ordenación en `GET /api/reports/final` a `ORDER BY id DESC`.
+     - `evaluateBlocks` selecciona ahora el informe final más reciente mediante `reports.filter(r => r.report_type === 'FINAL').sort((a,b) => b.id - a.id)[0]`.
+  3. **Depuración Masiva en PostgreSQL**:
+     - Se ejecutó un script de limpieza en PostgreSQL que eliminó los informes finales duplicados obsoletos (#152, #104, #155, #153), conservando únicamente la versión más reciente por concurrente.
+  4. **Compilación y Despliegue en VPS**:
+     - `npx tsc --noEmit` completado sin errores.
+     - Archivo desplegado al VPS (`149.50.128.73:5782`), compilado y PM2 reiniciado (`online`, PID 219480).
+- **Estado**: Completado, Verificado y Desplegado en Producción ✅
+
+## 2026-09-17 (Sincronización Total de Insumos de Clave de Sol y Reemplazo del 3er Bloque sin IA)
+- **Objetivo**: Atender las instrucciones del usuario:
+  1. No generar bajo ninguna circunstancia el Trimestral 2 (Bloque 3) con IA para el grupo **Clave de Sol**.
+  2. Cargar como oficial el archivo Word redactado a mano por la facilitadora en la carpeta `Informes Trimestrales 2`.
+  3. Cargar la experiencia de verano (Bloque 1) desde la carpeta `Informes Trimestrales 1`.
+  4. Importar y actualizar las cuadrículas mensuales y observaciones de los meses faltantes (Abril, Mayo, Junio, Agosto y Septiembre) desde la carpeta `meses que faltan y cuadriculas`.
+- **Concurrentes Procesados (Clave de Sol)**:
+  - Analía Noemí Celis (ID 3)
+  - Francisco Rafael Balbi (ID 5)
+  - Juan Pablo Herrera (ID 7)
+  - Marisol Fernanda Brito (ID 8)
+- **Acciones Realizadas**:
+  1. **Script de Importación Masiva (`import_clave_de_sol_insumos.cjs`)**:
+     - *Bloque 1 (Informes Trimestrales 1)*: Extraído texto con Mammoth e insertado como `report_type = 'TRIMESTRAL'`, `periodo = '2026-01 – 2026-03'`, guardando buffer base64 (`#172`, `#174`, `#176`, `#178`).
+     - *Bloques 2 y 4 (meses que faltan y cuadriculas)*: Procesados libros de trabajo Excel con `exceljs`, actualizando e insertando formularios mensuales para Abril, Mayo, Junio, Agosto y Septiembre con sus 4 a 5 talleres y observaciones completas (`Forms #7-#9, #15-#17, #27-#29, #31-#33, #302-#309`).
+     - *Bloque 3 (Informes Trimestrales 2)*: Eliminados borradores previos de IA. Importados los archivos Word de la facilitadora como la versión oficial de Trimestral 2 (`#173`, `#175`, `#177`, `#179`) con `textoBrutoOriginal` y `edited_docx_base64`.
+  2. **Verificación de Diagnóstico (`verify_clave_de_sol_blocks.cjs`)**:
+     - Confirmado que el 100% de los 4 concurrentes de Clave de Sol poseen sus **4 de 4 bloques listos (100% completitud)** con `canGenerate: true`.
+- **Estado**: Completado, Verificado y Sincronizado en BD ✅
+
+## 2026-09-17 (Auditoría de Informes Finales Descargados de Clave de Sol y Resolución del 429 RateLimitError)
+- **Objetivo**: Atender la instrucción del usuario: *"Estan en descargas, comparalos con toda la informacion que recabaste"*.
+  1. Inspeccionar y auditar el contenido de los 4 archivos Word de Informe Final descargados en la carpeta `Downloads`:
+     - `informe-final-Analia_Noemi_Celis-Clave_de_Sol-2026-09-17.docx`
+     - `informe-final-Francisco_Rafael_Balbi-Clave_de_Sol-2026-09-17.docx`
+     - `informe-final-Juan_Pablo_Herrera-Clave_de_Sol-2026-09-17.docx`
+     - `informe-final-Marisol_Fernanda_Brito-Clave_de_Sol-2026-09-17.docx`
+- **Diagnóstico y Descubrimiento Técnico**:
+  - Al comparar la narrativa de los documentos Word descargados, se observó que la **Sección 7 (Logros)** mostraba párrafos breves por defecto.
+  - **Causa Raíz Identificada**: El parser inicial de planillas de Excel (`import_clave_de_sol_insumos.cjs`) concatenaba sin deduplicar los valores de celdas combinadas de la fila 55 en adelante. Esto generó un volumen inflado de ~140.000 caracteres de observaciones **por formulario mensual**, sumando más de **600.000 caracteres (182.293 tokens)** al enviarse las 5 planillas juntas a la API de OpenAI.
+  - La API de OpenAI devolvía un error **HTTP 429 RateLimitError (`Requested 182,293 tokens > 30,000 limit`)**, lo que obligaba a `finalReportGenerator.ts` a caer silenciosamente en el fallback determinístico con texto genérico.
+- **Acciones Realizadas**:
+  1. **Saneamiento del Extractor de Observaciones**: Se reescribió `extractObservacionesFromSheet` utilizando un conjunto (`Set`) de desduplicación por celda/fila, reduciendo el tamaño de observaciones a sus 1.000 - 3.000 caracteres reales sin perder ni una sola palabra útil.
+  2. **Refactorización de Consultas en Backend (`route.ts`)**: Se ajustó `t1Auto` a `ORDER BY id DESC LIMIT 1` para garantizar la selección del informe de apertura más reciente.
+  3. **Re-ejecución y Generación con IA OpenAI**: Se ejecutó `regenerate_clave_de_sol_finals.cjs`, procesando exitosamente los 4 Informes Finales con OpenAI GPT-4o (`#192`, `#193`, `#194`, `#195`).
+  4. **Fidelidad y Resultados**:
+     - **0 Alucinaciones / 0 Términos Prohibidos**: Sin catering, sin palabras de escuela/CET y 100% apego al paradigma de **INCLUSIÓN**.
+     - **Sección 7 (Logros)**: Generados **2 a 3 párrafos nutridos** por área con los talleres reales de Clave de Sol (Deporte, Viajar, Habilidades Sociales, Musicoterapia, Manos Verdes), niveles evaluados y vivencias observadas (salidas a Los Robles, natación, etc.).
+     - **Obra Social**: Campo vacío para Celis y Balbi (sin obra social), e `IOMA` preservado para Herrera y Brito.
+  5. **Despliegue a Producción**: Compilado y desplegado al VPS (`149.50.128.73:5782`) con reinicio de PM2 (`online`, PID 262509).
+## 2026-09-21 (Carga Manual de Bloque 3 y Consolidación Automática de Bloque 4)
+- **Objetivo**: 
+  1. Habilitar en la interfaz de Informes Finales (`/final-reports`) la opción de subir directamente el archivo Word (.docx) redactado a mano por el profesor para el **Bloque 3 (Trimestral 2 - Abril-Junio)**.
+  2. Responder la consulta del usuario y asegurar que el **Bloque 4** incluya automáticamente cualquier mes adicional del 2º semestre (Agosto, Septiembre, Octubre, Noviembre, Diciembre) sin requerir selección manual.
+- **Acciones Realizadas**:
+  1. **Subida de Word Manual en Bloque 3 (`src/app/_components/UploadManualDocxModal.tsx` & `src/app/final-reports/page.tsx`)**:
+     - Se adaptó `openDocxModalForYoung(youngId, defaultPeriodo)` para preseleccionar automáticamente el período `'2026-04 – 2026-06'`.
+     - En cada tarjeta de concurrente en `/final-reports`, en la caja del **Bloque 3 (Trimestral 2 Abr-Jun)**, se agregó el botón `📤 Subir Word Abr-Jun (Profesor)` (o `📤 Reemplazar Word Abr-Jun` si ya existe), permitiendo cargar directamente el Word en el Bloque 3.
+  2. **Detección Automática de Período (`src/app/api/reports/upload-manual-docx/route.ts`)**:
+     - Se mejoró la autodetección de período para reconocer palabras clave del 2º trimestre (`2do trimestre`, `segundo trimestre`, `2° trimestre`, `abril`, `junio`) y asignar el período `'2026-04 – 2026-06'` con `report_type = 'TRIMESTRAL'`.
+  3. **Consolidación Automática del Bloque 4 (`src/app/api/reports/final/route.ts`)**:
+     - Se expandió la consulta SQL de `mensuales2` (`m2Auto`) para incluir `%10%`, `%11%`, `%12%`, `%octubre%`, `%noviembre%`, `%diciembre%`. De esta manera, si un concurrente posee formularios mensuales adicionales del 2º semestre cargados en la base de datos, el backend los consolida automáticamente al generar el Informe Final.
+  4. **Compilación y Despliegue en VPS**:
+     - `npx tsc --noEmit` completado exitosamente sin errores.
+     - Archivos subidos al VPS de producción (`149.50.128.73:5782`), Next.js compilado exitosamente (`✓ Compiled successfully`) y PM2 reiniciado (`online`, PID 322226).
+## 2026-09-21 (Modal de Carga con Drag & Drop para Planillas Excel en Bloque 4 y Bloque 2)
+- **Objetivo**: Atender la solicitud del usuario: *"Agrega la opcion para en el cuarto bloque del final, el excel se pueda arrastrar, ya que creo que por la lentitud de la memoria del disco o por un bug(que me paso en otras plataformas) no me aparece en el seleccionador de archivos"*.
+- **Acciones Realizadas**:
+  1. **Componente Modal con Drag & Drop (`src/app/_components/UploadExcelModal.tsx`)**:
+     - Se creó un modal dedicado para subir planillas Excel (`.xlsx`, `.xls`) con una zona destacada de Drag & Drop (`Arrastrá la planilla Excel (.xlsx) aquí o hacé click para buscar`).
+     - Al arrastrar y soltar el archivo en la caja modal, se valida y selecciona instantáneamente sin depender del explorador de archivos nativo del sistema operativo.
+     - Permite asignar o confirmar el concurrente mediante un selector pre-autodetectado.
+  2. **Arrastre Directo sobre las Tarjetas de Bloque 2 y Bloque 4 (`src/app/final-reports/page.tsx`)**:
+     - Se dotó a las tarjetas del **Bloque 4** (y también del **Bloque 2**) de la capacidad de recibir archivos arrastrados directamente sobre el recuadro del concurrente (`onDragOver`, `onDrop`).
+     - Al soltar un archivo `.xlsx` o `.xls` sobre la tarjeta del concurrente, se abre de inmediato el modal de subida con el archivo ya cargado y listo para confirmar la importación.
+     - El botón de las tarjetas ahora dice `📥 Subir / Arrastrar Excel` y abre el modal con la zona Drag & Drop.
+  3. **Compilación y Despliegue en VPS**:
+     - `npx tsc --noEmit` completado sin errores.
+     - Código desplegado al VPS de producción (`149.50.128.73:5782`), Next.js compilado exitosamente (`✓ Compiled successfully`) y PM2 reiniciado (`online`, PID 322898).
+- **Estado**: Completado, Verificado y Desplegado en Producción ✅
+
+## 2026-09-21 (Auditoría de Insumos de Abigail Agustina Malmoria, Modal de Vista Previa y Reasignación Inteligente)
+- **Objetivo**: Atender la solicitud del usuario: *"Verifica que la informacion para el final de abigail agustina malmoria este bien cada informacion que hay, si es de ella o no. O que si reconoce un nombre que se carga en el bloque de otra persona que no es, se le asigne a esa persona que es, ademas que te lo diga en un modal o en algun lado la aclaracion y que se pueda ver la informacion que hay en cada bloque como vista previa"*.
+- **Auditoría e Investigación Exhaustiva en PostgreSQL**:
+  1. Se inspeccionaron todos los informes y planillas asignados a **Abigail Agustina Malmoria (ID 43, Emprendedores)**.
+  2. **Hallazgo Crítico**:
+     - Los informes #196 (`Sandoval Antonella.docx`, Verano) y #197 (`Sandoval, Antonella.docx`, Trimestral 2 Abr-Jun) estaban asignados a Abigail Agustina Malmoria, pero su texto pertenecía en un 100% a **Antonella Sandoval (ID 39)** (*"Nombre del Concurrente: Sandoval, Antonella Tamara", Meta o Sueño: "Maternar"*).
+     - Se auditó toda la base de datos (140 reportes): eran los únicos 2 reportes desfasados.
+  3. **Corrección de Base de Datos**:
+     - Se reasignó el Informe #197 a su dueña legítima **Antonella Sandoval (ID 39)**, completando su Bloque 3.
+     - Se eliminó el duplicado #196 de Abigail (Sandoval ya poseía el informe de verano #198).
+     - Abigail conserva intactos sus formularios mensuales reales (#153, #154, #155 de Abril, Mayo, Junio). Sus bloques 1, 3 y 4 están pendientes o sujetos a excepción.
+- **Acciones y Desarrollos Realizados**:
+  1. **Detección y Reasignación Automática en Subidas (`src/app/api/reports/upload-manual-docx/route.ts`)**:
+     - Si el facilitador/usuario sube un Word con un concurrente seleccionado pero el documento menciona a OTRO concurrente activo, el sistema detecta la discrepancia y lo asigna automáticamente al concurrente verdadero (`detectedFromDoc`), emitiendo una notificación `reassignedNotice`.
+     - `UploadManualDocxModal.tsx` muestra la alerta visual en amarillo con la explicación.
+  2. **Nuevo Endpoint de Vista Previa y Reasignación (`/api/reports/final/block-preview` y `/reassign-block`)**:
+     - Inspecciona cada bloque (1, 2, 3 o 4) para un concurrente, analiza discrepancias de nombres y devuelve los textos/talleres/observaciones.
+     - Permite reasignar en un click un insumo a su dueño legítimo.
+  3. **Componente `<BlockPreviewModal>` y Botones `👁️ Ver` en `/final-reports`**:
+     - Se añadió en cada uno de los 4 bloques un botón `👁️ Ver` para previsualizar al instante el insumo antes de generar el Informe Final.
+     - Incluye alerta de verificación de identidad (`✅ Coincide` vs `⚠️ Discrepancia con botón de Reasignar`).
+  4. **Compilación y Despliegue en VPS**:
+     - `npx tsc --noEmit` completado sin errores.
+     - Desplegado al VPS (`149.50.128.73:5782`), Next.js compilado exitosamente (`✓ Compiled successfully`) y PM2 reiniciado (`online`, PID 323242).
+- **Estado**: Completado, Verificado, Sanado en BD y Desplegado en Producción ✅
+
+## 2026-09-21 (Visualización Granular de Habilidades, Trayectoria de Progreso en Excels y Erradicación de Etiquetas 'Párrafo 1:' en Informe Final)
+- **Objetivos**:
+  1. Atender la solicitud: *"Que en la previsualizacion de los excels se pueda ver que habilidades detecto en cada periodo y cuanto avanzo en cada una etc etc, vos me entendes ya"*.
+  2. Atender la solicitud: *"Ademas soluciona el problema que en el informe final sale con parrafo 1: parrafo 2: etc etc en algunas partes, no debe decir eso"*.
+- **Acciones Realizadas**:
+  1. **Motor de Cálculo y Progresión Longitudinal (`src/app/api/reports/final/block-preview/route.ts`)**:
+     - Creada la función `calculateBlockProgression(forms)` que indexa y normaliza el 100% de las habilidades por taller a lo largo de los períodos de los Bloques 2 (Abril - Julio) y 4 (Agosto - Diciembre).
+     - Compara los niveles rúbrica período a período (Nivel 1 Inicial a Nivel 4 Modelo/Enseña) y calcula el delta exacto (`ultimoNivel - primerNivel`).
+     - Determina métricas globales por bloque: total de habilidades, cuántas avanzaron (`delta > 0`), cuántas alcanzaron autonomía consolidada (`Nivel 3 o 4`) y cuántas requieren apoyos (`Nivel 1 o 2`).
+     - Expone en `months.talleres` el array completo de ítems (`items: [{ nombre, nivel }]`) y conteo de evaluadas (`itemsEvaluadosCount`), eliminando el truncamiento previo de 4 ítems.
+  2. **Interfaz de Vista Previa Interactiva de Habilidades y Evolución (`src/app/_components/BlockPreviewModal.tsx`)**:
+     - Pestañas de vista dual: `📈 Evolución y Progreso de Habilidades` (activa por defecto) y `📋 Planillas por Mes y Observaciones`.
+     - 4 Tarjetas KPI superiores: Total Habilidades, 📈 Avanzaron de Nivel, ⭐ Autonomía (Nivel 3/4), 🤝 Con Apoyos (Nivel 1/2).
+     - Barra interactiva de filtros por taller, buscador en tiempo real y píldoras por estado (`Todas`, `📈 Avanzaron`, `⭐ Autónomas`, `🤝 Con Apoyos`).
+     - Tarjeta por habilidad con título, badge de estado (`📈 Avanzó +X niveles (N1 ➔ N4)`, `⭐ Autonomía consolidada`, `🔄 Nivel sostenido`), trayectoria mes a mes con badges coloreados por nivel (Nivel 1 Ámbar, Nivel 2 Celeste, Nivel 3 Verde Esmeralda, Nivel 4 Púrpura) conectados con flechas `➔`, y barra de progreso visual de 0 a 100%.
+     - Vista mensual mejorada con acordeones de taller, grid de habilidades evaluadas y observaciones completas del facilitador.
+  3. **Erradicación de Prefijos 'Párrafo 1:', 'Párrafo 2:' en Informes Finales**:
+     - *Generador de IA (`src/lib/ai/finalReportGenerator.ts`)*: Se erradicó el ejemplo literal `"Párrafo 1: ... \n\n Párrafo 2: ..."` del schema prompt de OpenAI que causaba que GPT-4o copiara las etiquetas. Se agregaron directivas prohibitivas terminantes en el system prompt.
+     - *Sanitizador Robusto (`cleanString` y `stripParrafoPrefixes`)*: Implementado regex multilínea `/^[ \t]*[\(\[]?[pP][aá]rrafo\s*\d*[\)\]]?[ \t]*[:.\-–—]?[ \t]*/gim` que remueve cualquier variación de "Párrafo 1:", "párrafo 2 -", "(Párrafo 1):" preservando los saltos de línea de párrafos fluidos.
+     - *Exportador Word (`src/app/api/reports/[id]/.docx/route.ts`)*: Se envuelven todos los campos de logros y narrativa con `stripParrafoPrefixes` antes de inyectar en la plantilla `.docx`.
+     - *Visualizador Web (`src/app/_components/FinalReportViewer.tsx`)*: Se desinfecta la visualización con `cleanParrafo` y se habilitó `whiteSpace: 'pre-line'` para un renderizado nativo multilínea de los logros.
+     - *Purga en Base de Datos*: Se auditó y limpió el 100% de los informes finales existentes en Neon PostgreSQL (Reportes #199 y #165 desinfectados; 0 reportes residuales con etiquetas).
+  4. **Compilación y Despliegue en VPS**:
+     - Compilación local `npx tsc --noEmit` y `npm run build` exitosa (19/19 páginas estáticas generadas, 0 errores).
+     - Archivos desplegados al VPS de producción (`149.50.128.73:5782`) vía SFTP.
+     - Compilación remota en VPS exitosa y PM2 reiniciado (`online`, PID 332350).
+     - Verificado estado HTTP 200 OK en `https://informes-andar.nextemarketing.com`.
+- **Estado**: Completado, Verificado, Sanado en BD y Desplegado en Producción ✅
 
 
 
