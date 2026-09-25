@@ -1,5 +1,28 @@
 # 🗓️ Workcycle Log
 
+## 2026-09-25 (Resolución de Carga de Bloque 1 Word de Verano en Román Pontecorvo - D-83 y ERR-33)
+- **Objetivo**: Resolver la solicitud: *"Estoy intentando subir el primer bloque en pontecorvo y no me deja, fijate que esta en descargas. Cuando lo subo carga la pagina pero no se actualiza el bloque, no se que es lo que pasa"*.
+- **Diagnóstico y Causa Raíz**:
+  1. En `C:\Users\Try Hard\Downloads\8-Roman Pontecorvo .docx`, el informe pertenecía a Román Matías Pontecorvo (ID 33).
+  2. Al subirlo, el endpoint `POST /api/reports/upload-manual-docx` procesó el archivo con OpenAI `gpt-4o-mini`.
+  3. La IA leyó correctamente el nombre (`youngNombre: "Roman Matias Pontecorvo"`), pero sufrió una alucinación en el ID (`matchedYoungId: 34`), asociándolo a Daniel Marcelo Alegre (ID 34).
+  4. La lógica de reasignación automática (`if (detectedFromDoc && selectedYoung && detectedFromDoc.id !== selectedYoung.id)`) confió ciegamente en `aiResult.matchedYoungId` sin verificar que Daniel Marcelo Alegre tenía 0 tokens de coincidencia con el documento, reasignando el informe de Pontecorvo a Daniel Marcelo Alegre (creando los Reportes #239 y #240 bajo ID 34).
+  5. La página se recargaba con éxito, pero la tarjeta de Román Pontecorvo (ID 33) seguía mostrando `Falta Word de Verano` porque el informe quedó vinculado a otro joven.
+- **Acciones Realizadas**:
+  1. **Reasignación y Limpieza en Base de Datos**:
+     - Se reasignó el Reporte #240 a Román Matías Pontecorvo (young_id = 33) actualizando sus metadatos a 'Buenos Mozos'.
+     - Se eliminó el reporte duplicado #239 y su log de auditoría.
+     - Se verificó que Román Pontecorvo ahora tiene el Bloque 1 (Trimestral 1) en estado `✅ Informe #240 (2026-01 – 2026-03)` con su archivo `8-Roman Pontecorvo .docx`.
+  2. **Blindaje de la Ingesta de Word Manual (D-83)**:
+     - En `src/app/api/reports/upload-manual-docx/route.ts`:
+       - Si el joven seleccionado (`manualYoungId`) tiene tokens en el documento, se prohíbe reasignar.
+       - Se prioriza la coincidencia determinística y por nombre de IA (`aiResult.youngNombre`) por encima de IDs numéricos.
+       - Se descartan de inmediato IDs devueltos por IA que no tengan tokens presentes en el documento.
+  3. **Compilación y Despliegue en Servidor**:
+     - Compilación y pruebas locales y remotas exitosas (0 errores).
+     - Despliegue al VPS (`149.50.128.73`) y reinicio de PM2 (`informes-andar`, PID 405262).
+- **Estado**: Completado, Verificado y Desplegado en Producción ✅
+
 ## 2026-09-24 (Resolución de Error 'invalid input syntax for type boolean: "{}"' en Carga de Excel - ERR-32)
 - **Objetivo**: Resolver el error reportado por el usuario con captura de pantalla: al intentar cargar una planilla Excel en el modal de importación (ej. `13. Giuliano, Daniela Elizabeth .xlsx` para Daniela Elizabeth Giuliano en Bloque 4), el sistema arrojaba `invalid input syntax for type boolean: "{}"`.
 - **Diagnóstico y Causa Raíz**:

@@ -324,42 +324,90 @@ export async function POST(req: NextRequest) {
       console.error('Fallo en parseDocxWithAI:', aiErr);
     }
 
-    // 2. Resolver Concurrente
-    let matchedYoung: any = null;
-    if (manualYoungId) {
-      matchedYoung = allYoungs.find(y => y.id === manualYoungId) || null;
-    } else if (aiResult && aiResult.matchedYoungId) {
-      matchedYoung = allYoungs.find(y => y.id === aiResult.matchedYoungId) || null;
-    }
+    // 2. Resolver Concurrente (Detección en texto vs Manual)
+    const normHeaderText = normalize(`${file.name} ${extractedText.substring(0, 3000)}`);
+    
+    // A) Búsqueda determinística rigurosa en el encabezado del documento
+    let deterministicMatch: any = null;
+    let bestScore = 0;
+    for (const y of allYoungs) {
+      const yNorm = normalize(y.nombre_completo);
+      const tokens = yNorm.split(/\s+/).filter(t => t.length > 2);
 
-    // Fallback de coincidencia de concurrente si la IA no dio match
-    if (!matchedYoung) {
-      const normHeaderText = normalize(extractedText.substring(0, 3000));
-      let bestScore = 0;
-      let candidate: any = null;
-
-      for (const y of allYoungs) {
-        const yNorm = normalize(y.nombre_completo);
-        const tokens = yNorm.split(/\s+/).filter(t => t.length > 2);
-
-        if (normHeaderText.includes(yNorm)) {
-          candidate = y;
-          bestScore = 100;
-          break;
-        }
-
-        const matchingTokens = tokens.filter(tok => normHeaderText.includes(tok));
-        if (tokens.length > 0 && matchingTokens.length === tokens.length) {
-          candidate = y;
-          bestScore = 90;
-          break;
-        } else if (matchingTokens.length >= 2 && matchingTokens.length > bestScore) {
-          bestScore = matchingTokens.length;
-          candidate = y;
-        }
+      if (normHeaderText.includes(yNorm)) {
+        deterministicMatch = y;
+        bestScore = 100;
+        break;
       }
 
-      if (candidate) matchedYoung = candidate;
+      const matchingTokens = tokens.filter(tok => normHeaderText.includes(tok));
+      if (tokens.length > 0 && matchingTokens.length === tokens.length && bestScore < 90) {
+        deterministicMatch = y;
+        bestScore = 90;
+      } else if (matchingTokens.length >= 2 && matchingTokens.length > bestScore) {
+        bestScore = matchingTokens.length;
+        deterministicMatch = y;
+      }
+    }
+
+    // B) Cruzar con el nombre de concurrente extraído por la IA (aiResult.youngNombre)
+    let aiNameMatch: any = null;
+    if (aiResult?.youngNombre) {
+      const normAiName = normalize(aiResult.youngNombre);
+      aiNameMatch = allYoungs.find(y => normalize(y.nombre_completo) === normAiName) || null;
+      if (!aiNameMatch) {
+        const aiTokens = normAiName.split(/\s+/).filter(t => t.length > 2);
+        aiNameMatch = allYoungs.find(y => {
+          const yTokens = normalize(y.nombre_completo).split(/\s+/).filter(t => t.length > 2);
+          const matchCount = aiTokens.filter(t => yTokens.includes(t)).length;
+          return matchCount >= Math.min(2, aiTokens.length);
+        }) || null;
+      }
+    }
+
+    // C) Validar el ID retornado por la IA (aiResult.matchedYoungId) contra el texto real
+    let aiIdMatch: any = null;
+    if (aiResult?.matchedYoungId) {
+      const candidate = allYoungs.find(y => y.id === aiResult.matchedYoungId) || null;
+      if (candidate) {
+        const candTokens = normalize(candidate.nombre_completo).split(/\s+/).filter(t => t.length > 2);
+        const candOverlap = candTokens.filter(t => normHeaderText.includes(t)).length;
+        // Solo aceptar aiIdMatch si sus tokens realmente aparecen en el documento
+        if (candOverlap >= Math.min(2, candTokens.length) || normHeaderText.includes(normalize(candidate.nombre_completo))) {
+          aiIdMatch = candidate;
+        } else {
+          console.warn(`[UPLOAD-DOCX] Descartado matchedYoungId (${aiResult.matchedYoungId} - ${candidate.nombre_completo}) porque no aparece en el texto del documento.`);
+        }
+      }
+    }
+
+    // Priorizar coincidencia determinística y por nombre antes que el ID crudo de la IA
+    const detectedFromDoc = deterministicMatch || aiNameMatch || aiIdMatch || null;
+
+    let matchedYoung: any = null;
+    let reassignedNotice: string | null = null;
+
+    if (manualYoungId) {
+      const selectedYoung = allYoungs.find(y => y.id === manualYoungId) || null;
+      if (selectedYoung) {
+        const selectedNorm = normalize(selectedYoung.nombre_completo);
+        const selectedTokens = selectedNorm.split(/\s+/).filter(t => t.length > 2);
+        const selectedMatches = selectedTokens.filter(t => normHeaderText.includes(t));
+        const selectedIsInDoc = normHeaderText.includes(selectedNorm) || 
+          (selectedTokens.length > 0 && selectedMatches.length >= Math.min(2, selectedTokens.length));
+
+        // Solo reasignar si el joven seleccionado NO está presente en el documento Y se detectó a otro con certeza
+        if (!selectedIsInDoc && detectedFromDoc && detectedFromDoc.id !== selectedYoung.id) {
+          matchedYoung = detectedFromDoc;
+          reassignedNotice = `⚠️ Atención: Aunque tenías seleccionado a "${selectedYoung.nombre_completo}", el documento pertenece a "${detectedFromDoc.nombre_completo}" (${detectedFromDoc.taller}). El sistema lo asignó automáticamente a ${detectedFromDoc.nombre_completo} para evitar datos cruzados.`;
+        } else {
+          matchedYoung = selectedYoung;
+        }
+      } else {
+        matchedYoung = detectedFromDoc;
+      }
+    } else {
+      matchedYoung = detectedFromDoc;
     }
 
     if (!matchedYoung) {
@@ -399,7 +447,35 @@ export async function POST(req: NextRequest) {
     }
 
     // 4. Resolver Período
-    const periodo = manualPeriodo || aiResult?.periodo || detectPeriodDeterministic(extractedText, file.name);
+    let periodo = manualPeriodo || '';
+    if (!periodo) {
+      const detected = aiResult?.periodo || detectPeriodDeterministic(extractedText, file.name);
+      const normText = normalize(`${file.name} ${extractedText.substring(0, 3000)} ${detected}`);
+      
+      if (
+        normText.includes('2do trimestre') ||
+        normText.includes('segundo trimestre') ||
+        normText.includes('2° trimestre') ||
+        normText.includes('2°trimestre') ||
+        normText.includes('abril-junio') ||
+        normText.includes('abril a junio') ||
+        normText.includes('trimestral 2')
+      ) {
+        periodo = '2026-04 – 2026-06';
+      } else if (
+        normText.includes('verano') ||
+        normText.includes('experiencia sin limites') ||
+        normText.includes('marzo del 2026') ||
+        normText.includes('marzo 2026') ||
+        normText.includes('1er trimestre') ||
+        normText.includes('primer trimestre') ||
+        normText.includes('enero')
+      ) {
+        periodo = '2026-01 – 2026-03';
+      } else {
+        periodo = detected;
+      }
+    }
 
     // 5. Resolver Secciones (IA o fallback determinístico)
     let secciones = aiResult?.secciones || {};
@@ -493,7 +569,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({
         ok: true,
         reportId: newReport.id,
-        message: 'Informe trimestral interpretado con IA y cargado exitosamente desde Word (.docx)',
+        message: reassignedNotice || 'Informe trimestral interpretado con IA y cargado exitosamente desde Word (.docx)',
+        reassignedNotice,
         report: {
           id: String(newReport.id),
           youngId: String(matchedYoung.id),
@@ -504,7 +581,8 @@ export async function POST(req: NextRequest) {
           reportType: 'TRIMESTRAL',
           seccionesCount: Object.values(secciones).filter((v: any) => typeof v === 'string' && v.trim().length > 0).length,
           filename: file.name,
-          interpretacion: datosGenerales.metodoInterpretacion
+          interpretacion: datosGenerales.metodoInterpretacion,
+          reassignedNotice
         }
       }, { status: 201 });
     }

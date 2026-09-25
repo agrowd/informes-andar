@@ -408,3 +408,19 @@
   2. Se aseguró el formateo correcto de arrays Postgres `'{id1,id2}'::int4[]`.
   3. Se ejecutaron pruebas directamente contra la base de datos PostgreSQL local del VPS validando ejecución correcta.
   4. Se compiló el proyecto y se desplegó al VPS de producción (`149.50.128.73`), reiniciando PM2 exitosamente (PID 387370).
+
+# Registro de Conversación - 2026-09-25 (Resolución de Carga de Bloque 1 Word de Verano en Román Pontecorvo)
+## Usuario:
+- "Estoy intentando subir el primer bloque en pontecorvo y no me deja, fijate que esta en descrgas. Cuando lo subo carga la pagina pero no se actualiza el bloque, no se que es lo que pasa" (adjuntando captura de pantalla de la tarjeta de Román Pontecorvo con Bloque 1 en "Falta Word de Verano").
+
+## Antigravity:
+- **Diagnóstico de Causa Raíz**:
+  - En Descargas se encontró el archivo `8-Roman Pontecorvo .docx`.
+  - Al subirlo, el endpoint `POST /api/reports/upload-manual-docx` procesó el texto con `gpt-4o-mini`. La IA leyó el nombre `Roman Matias Pontecorvo`, pero alucinó el ID como `34` (correspondiente a Daniel Marcelo Alegre).
+  - La lógica de reasignación automática confió ciegamente en el ID de la IA y reasignó el informe de Román Pontecorvo (ID 33) a Daniel Marcelo Alegre (ID 34), creando dos informes duplicados (#239 y #240) bajo Alegre.
+  - La página se refrescaba pero Román Pontecorvo seguía figurando sin Bloque 1.
+- **Solución y Despliegue**:
+  1. Se reasignó el Reporte #240 a Román Matías Pontecorvo (young_id = 33) y se eliminó el duplicado #239.
+  2. Se blindó la resolución de concurrentes en `upload-manual-docx/route.ts` (D-83) para priorizar el nombre y la coincidencia determinística de tokens, descartar IDs alucinados por IA y prohibir reasignar cuando el joven seleccionado tiene presencia en el documento.
+  3. Se desplegó al VPS (`149.50.128.73`) con compilación exitosa y reinicio de PM2 (PID 405262).
+  4. Se verificó que Román Pontecorvo cuenta ahora con el Bloque 1 en verde (`✅ Informe #240 (2026-01 – 2026-03)`).

@@ -253,4 +253,20 @@
 3. Se verificó la consulta en PostgreSQL del VPS, se realizó la compilación de producción local y remota (0 errores) y se reinició PM2 en el servidor.
 **Estado:** ✅ FIXED
 
+## ERR-33: Falsa reasignación de informe Word de Verano de Román Pontecorvo a Daniel Alegre por alucinación de ID en OpenAI (2026-09-25)
+**Síntoma:** Al subir el informe de verano (`8-Roman Pontecorvo .docx`) en la tarjeta de Román Matías Pontecorvo (ID 33) en `/final-reports`, la página se recargaba pero el Bloque 1 seguía figurando en rojo como "Falta Word de Verano" sin actualizarse.
+**Root Cause:**
+1. En `src/app/api/reports/upload-manual-docx/route.ts`, el extractor con IA (`gpt-4o-mini`) leyó correctamente el nombre del joven (`youngNombre: "Roman Matias Pontecorvo"`), pero alucinar un `matchedYoungId: 34` (que corresponde a Daniel Marcelo Alegre) debido a la inherente debilidad de los LLMs al asociar IDs numéricos en catálogos extensos (75 concurrentes).
+2. El código confiaba ciegamente en `aiResult.matchedYoungId` sin verificar si dicho candidato coincidía con `aiResult.youngNombre` o si tenía presencia real en el texto del documento.
+3. Al existir la regla de reasignación automática (`if (detectedFromDoc && selectedYoung && detectedFromDoc.id !== selectedYoung.id)`), el backend creyó erróneamente que el usuario se había equivocado de concurrente y reasignó el informe de Román Pontecorvo a Daniel Marcelo Alegre (creando los reportes duplicados #239 y #240 bajo ID 34).
+**Solución:**
+1. Se reasignó el Reporte #240 a su legítimo concurrente Román Matías Pontecorvo (ID 33), actualizando su metadata institucional a 'Buenos Mozos', y se eliminó el duplicado #239.
+2. En `upload-manual-docx/route.ts`, se refactorizó la resolución de concurrentes (D-83):
+   - Si el joven seleccionado (`manualYoungId`) tiene tokens coincidentes en el documento, se respeta estrictamente y se anula cualquier reasignación.
+   - Se prioriza la coincidencia determinística por tokens y la búsqueda por nombre (`aiResult.youngNombre`) por sobre el ID numérico crudo de la IA.
+   - Se valida que cualquier ID devuelto por la IA tenga tokens presentes en el documento; de lo contrario se descarta de inmediato.
+3. Se verificó la lógica con test unitario en el VPS, se compiló el proyecto y se desplegó a producción con PM2 reiniciado.
+**Estado:** ✅ FIXED
+
+
 
