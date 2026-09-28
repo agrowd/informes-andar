@@ -103,3 +103,101 @@ export function formatDate(dateStr?: string | Date | null): string {
   }
 }
 
+export function sanitizeNarrativeLevels(text: string): string {
+  if (typeof text !== 'string') return '';
+  let s = text;
+
+  // 1. Variantes con "Ha alcanzado / Ha logrado / Ha obtenido" (conservar la mayúscula o estructura verbal)
+  s = s.replace(/\bHa\s+(?:alcanzado|logrado|obtenido)\s+(?:el|un)\s+Nivel\s*3\s+(?:en|para)\s+/g, 'Ha consolidado con autonomía y regularidad ');
+  s = s.replace(/\bha\s+(?:alcanzado|logrado|obtenido)\s+(?:el|un)\s+Nivel\s*3\s+(?:en|para)\s+/g, 'ha consolidado con autonomía y regularidad ');
+
+  s = s.replace(/\bHa\s+(?:alcanzado|logrado|obtenido)\s+(?:el|un)\s+Nivel\s*4\s+(?:en|para)\s+/g, 'Se ha desempeñado de forma plenamente independiente y autónoma en ');
+  s = s.replace(/\bha\s+(?:alcanzado|logrado|obtenido)\s+(?:el|un)\s+Nivel\s*4\s+(?:en|para)\s+/g, 'se ha desempeñado de forma plenamente independiente y autónoma en ');
+
+  s = s.replace(/\bHa\s+(?:alcanzado|logrado|obtenido)\s+(?:el|un)\s+Nivel\s*2\s+(?:en|para)\s+/g, 'Ha avanzado en su desarrollo con apoyos y orientación verbal en ');
+  s = s.replace(/\bha\s+(?:alcanzado|logrado|obtenido)\s+(?:el|un)\s+Nivel\s*2\s+(?:en|para)\s+/g, 'ha avanzado en su desarrollo con apoyos y orientación verbal en ');
+
+  s = s.replace(/\bHa\s+(?:alcanzado|logrado|obtenido)\s+(?:el|un)\s+Nivel\s*1\s+(?:en|para)\s+/g, 'Ha iniciado su acercamiento con apoyos continuos en ');
+  s = s.replace(/\bha\s+(?:alcanzado|logrado|obtenido)\s+(?:el|un)\s+Nivel\s*1\s+(?:en|para)\s+/g, 'ha iniciado su acercamiento con apoyos continuos en ');
+
+  // 2. Variantes en gerundio / pretérito: "alcanzando el Nivel 3 en..." / "alcanzó el Nivel 3 en..."
+  s = s.replace(/\b(alcanzando|logrando|obteniendo)\s+(?:el|un)\s+Nivel\s*3\s+(?:en|para)\s+/gi, 'consolidando con autonomía y regularidad ');
+  s = s.replace(/\b(alcanzando|logrando|obteniendo)\s+(?:el|un)\s+Nivel\s*4\s+(?:en|para)\s+/gi, 'desempeñándose de forma plenamente independiente y autónoma en ');
+  s = s.replace(/\b(alcanzando|logrando|obteniendo)\s+(?:el|un)\s+Nivel\s*2\s+(?:en|para)\s+/gi, 'avanzando en su desarrollo con apoyos verbales en ');
+  s = s.replace(/\b(alcanzando|logrando|obteniendo)\s+(?:el|un)\s+Nivel\s*1\s+(?:en|para)\s+/gi, 'iniciando su participación con apoyos continuos en ');
+
+  s = s.replace(/\b(alcanz[oó]|logr[oó]|obtuvo)\s+(?:el|un)\s+Nivel\s*3\s+(?:en|para)\s+/gi, 'consolidó con autonomía y regularidad ');
+  s = s.replace(/\b(alcanz[oó]|logr[oó]|obtuvo)\s+(?:el|un)\s+Nivel\s*4\s+(?:en|para)\s+/gi, 'se desempeñó de forma independiente en ');
+  s = s.replace(/\b(alcanz[oó]|logr[oó]|obtuvo)\s+(?:el|un)\s+Nivel\s*2\s+(?:en|para)\s+/gi, 'avanzó con apoyos verbales en ');
+  s = s.replace(/\b(alcanz[oó]|logr[oó]|obtuvo)\s+(?:el|un)\s+Nivel\s*1\s+(?:en|para)\s+/gi, 'inició con apoyos paso a paso su labor en ');
+
+  // 3. Variantes con rangos o plurales: "alcanzando niveles 2 y 3 en...", "niveles de desempeño entre 2 y 3 en..."
+  s = s.replace(/(?:alcanzando|logrando|mostrando)\s+niveles?\s+(?:de\s+desempe[ñn]o\s+)?(?:entre\s+)?[12]\s*y\s*[234]\s+(?:en|para)\s+/gi, 'afianzando progresivamente sus habilidades con creciente autonomía y apoyos en ');
+  s = s.replace(/niveles?\s+(?:de\s+desempe[ñn]o\s+)?(?:entre\s+)?[12]\s*y\s*[234]/gi, 'un proceso de desarrollo favorable con apoyos');
+
+  // 4. Evaluadas / evaluado en un Nivel X
+  s = s.replace(/ha\s+sido\s+evaluad[oa]\s+en\s+(?:el|un)\s+Nivel\s*3/gi, 'se encuentra afianzada con adecuada autonomía');
+  s = s.replace(/han\s+sido\s+evaluad[oa]s\s+en\s+(?:el|un)\s+Nivel\s*3/gi, 'se encuentran consolidadas con adecuada autonomía');
+  s = s.replace(/ha\s+sido\s+evaluad[oa]\s+en\s+(?:el|un)\s+Nivel\s*4/gi, 'se encuentra consolidada de manera plenamente autónoma e independiente');
+  s = s.replace(/han\s+sido\s+evaluad[oa]s\s+en\s+(?:el|un)\s+Nivel\s*4/gi, 'se encuentran afianzadas de manera independiente y destacada');
+  s = s.replace(/ha\s+sido\s+evaluad[oa]\s+en\s+(?:el|un)\s+Nivel\s*2/gi, 'se encuentra en pleno proceso de desarrollo con apoyos y orientación verbal');
+  s = s.replace(/han\s+sido\s+evaluad[oa]s\s+en\s+(?:el|un)\s+Nivel\s*2/gi, 'se encuentran en proceso de desarrollo activo con apoyos verbales');
+  s = s.replace(/ha\s+sido\s+evaluad[oa]\s+en\s+(?:el|un)\s+Nivel\s*1/gi, 'se encuentra en etapa inicial de adquisición con apoyos guiados');
+  s = s.replace(/han\s+sido\s+evaluad[oa]s\s+en\s+(?:el|un)\s+Nivel\s*1/gi, 'se encuentran en etapa inicial de aprendizaje con asistencia continua');
+
+  // 5. "en el Nivel X" o "en un Nivel X"
+  s = s.replace(/en\s+(?:el|un)\s+Nivel\s*4/gi, 'de manera plenamente autónoma e independiente');
+  s = s.replace(/en\s+(?:el|un)\s+Nivel\s*3/gi, 'con desempeño consolidado y autónomo');
+  s = s.replace(/en\s+(?:el|un)\s+Nivel\s*2/gi, 'en proceso de desarrollo con apoyos y orientación');
+  s = s.replace(/en\s+(?:el|un)\s+Nivel\s*1/gi, 'en etapa inicial con apoyos paso a paso');
+
+  // 6. "alcanzando niveles avanzados en"
+  s = s.replace(/alcanzando\s+niveles\s+avanzados\s+en/gi, 'alcanzando una notable destreza y autonomía en');
+  s = s.replace(/niveles\s+avanzados\s+en/gi, 'notable destreza y solvencia en');
+
+  // 7. Frases con "nivel de autonomía" -> "autonomía"
+  s = s.replace(/un\s+nivel\s+de\s+autonom[ií]a\s+significativo/gi, 'una autonomía significativa');
+  s = s.replace(/su\s+nivel\s+de\s+autonom[ií]a/gi, 'su autonomía');
+  s = s.replace(/adecuados\s+niveles\s+de\s+autonom[ií]a/gi, 'adecuada autonomía');
+
+  // 8. Genéricos restantes de "Nivel [1-4]"
+  s = s.replace(/\(?\bNivel\s*4\b\)?/gi, 'desempeño independiente');
+  s = s.replace(/\(?\bNivel\s*3\b\)?/gi, 'desempeño consolidado y autónomo');
+  s = s.replace(/\(?\bNivel\s*2\b\)?/gi, 'desarrollo con apoyos');
+  s = s.replace(/\(?\bNivel\s*1\b\)?/gi, 'etapa inicial con apoyos');
+
+  // 9. Limpiar espacios dobles generados
+  s = s.replace(/[ \t]{2,}/g, ' ');
+
+  return s;
+}
+
+/**
+ * Identifica si un período corresponde al Trimestral 1 (Verano: Enero a Marzo)
+ * Evita falsos positivos con el año 2026 (%02%).
+ */
+export function isTrimestral1(periodo: string): boolean {
+  if (!periodo) return false;
+  const p = periodo.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  if (p.includes('2026-01') || p.includes('2026-02') || p.includes('2026-03')) return true;
+  if (p.includes('-01') || p.includes('-02') || p.includes('-03')) return true;
+  if (p.includes('01 – 03') || p.includes('01-03') || p.includes('01 a 03') || p.includes('01 al 03')) return true;
+  if (p.includes('enero') || p.includes('febrero') || p.includes('marzo') || p.includes('verano') || p.includes('1er') || p.includes('primer')) return true;
+  return false;
+}
+
+/**
+ * Identifica si un período corresponde al Trimestral 2 (Primer Semestre: Abril a Junio)
+ */
+export function isTrimestral2(periodo: string): boolean {
+  if (!periodo) return false;
+  const p = periodo.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  if (p.includes('2026-04') || p.includes('2026-05') || p.includes('2026-06')) return true;
+  if (p.includes('-04') || p.includes('-05') || p.includes('-06')) return true;
+  if (p.includes('04 – 06') || p.includes('04-06') || p.includes('06 – 04') || p.includes('04 a 06') || p.includes('04 al 06')) return true;
+  if (p.includes('abril') || p.includes('mayo') || p.includes('junio') || p.includes('2do') || p.includes('segundo')) return true;
+  return false;
+}
+
+
+

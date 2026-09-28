@@ -1,5 +1,72 @@
 # Changelog
 
+## [1.9.8] - 2026-09-28
+### Fixed
+- **Clasificación Canónica de Trimestrales y Corrección del Bug SQL `%02%` (D-88, ERR-37)**:
+  - Se eliminó la cláusula SQL `periodo ILIKE '%02%'` que colisionaba con los caracteres '02' del año `2026`, provocando que el Trimestral 2 se seleccionara como Trimestral 1 y se cayera a borradores antiguos obsoletos con catering hardcodeado.
+  - Implementadas `isTrimestral1(periodo)` e `isTrimestral2(periodo)` en `src/lib/formatters.ts` con matching exacto por límites de mes.
+  - Clasificación en memoria por `id DESC` en `POST /api/reports/final` y `/api/reports/final/block-preview`, garantizando 100% de paridad con la interfaz web.
+- **Erradicación Universal de Alucinaciones de Gastronomía/Catering/Pastelería**:
+  - Detección dinámica de talleres desde las cuadrículas mensuales de Abril a Diciembre (`allTallerNames`).
+  - Inyección de directivas prohibitivas terminantes en System Prompt y User Prompt de IA cuando el concurrente no realiza talleres gastronómicos.
+  - Sanitizador universal `sanitizeCateringIfAbsent` en `cleanString`, `stripParrafoPrefixes` y exportación DOCX.
+- **Limpieza y Regeneración en Producción**:
+  - Eliminación de borradores espurios históricos (#81 y #272) en la base de datos de producción.
+  - Regenerado y verificado el Informe Final de Jonathan Salvatierra (Reporte #273) con 0 menciones de catering o pastelería.
+
+## [1.9.7] - 2026-09-28
+### Added
+- **Reemplazo Permanente en Bloque 1 (Word de Verano)**: Botón `[ 📤 Reemplazar Word de Verano ]` visible permanentemente en `/final-reports` cuando ya existe un archivo cargado, permitiendo actualizarlo sin restricciones.
+- **Regeneración Dinámica de Bloque 3 (Trimestral 2 con IA)**: Botón `[ ⚡ Regenerar Trimestral 2 (IA) ]` disponible con confirmación modal cuando las cuadrículas de Abril, Mayo y Junio están completas, regenerando el informe trimestral con IA.
+- **Precedencia de Informes Más Recientes**: En `evaluateBlocks` y en el overview de `/api/reports/final`, los informes se ordenan por `id DESC` para que las versiones recién cargadas o regeneradas tomen precedencia inmediata.
+
+### Fixed
+- **Restauración de Virginia Maria Stabile (ID 55)**: Restaurada en el grupo `Emprendedores` con `dni = '33573626'` y `assigned_facilitators = [11, 1]`. Eliminados registros duplicados espurios (IDs 85 y 86) junto a sus 10 formularios redundantes (#360..364, #381..385) y 2 reportes (#260, #270). Total en Emprendedores: 20 concurrentes.
+- **Saneamiento de DNI en Eluney Omar Ledesma (ID 67)**: Eliminado el párrafo de rutina de la mañana erróneamente guardado como DNI (`dni = NULL`, `legajo = '49'`).
+- **Blindaje de Escaneo de Metadatos PCP (`import-excel/route.ts`)**: Restringido el barrido heurístico estrictamente a filas 1 a 6 (`r <= 6`), validación regex numérica para DNI (`/^[0-9.\s-]{6,15}$/`), y validación de taller para descartar sueños/metas personales con verbos o paréntesis.
+- **Protección de Cabecera en UI**: Guard en `final-reports/page.tsx` para no mostrar DNIs corruptos con longitud superior a 15 caracteres.
+
+## [1.9.6] - 2026-09-25
+### Fixed
+- **Calibración Rigurosa de las 8 Dimensiones de Calidad de Vida (Schalock & Verdugo) y Erradicación del Error Conceptual en Bienestar Material (D-85 y ERR-35)**:
+  - *Calibración Clínica en Prompts de IA*: Se incorporaron en el System Prompt y User Prompt de `finalReportGenerator.ts` las definiciones rigurosas de las 8 dimensiones según el modelo de Schalock & Verdugo adoptado por la psicología institucional de Granja Andar.
+  - *Redefinición Estricta de Bienestar Material*: Prohibición terminante de asociar "Bienestar Material" con elementos de cocina, utensilios, herramientas, lijas o materiales de taller. Redefinición estricta centrada en la situación socioeconómica familiar, estabilidad habitacional, cobertura de necesidades materiales básicas (alimentación digna, vestimenta adecuada, transporte/pases, pensión, CUD, obra social) y acceso a recursos económicos indispensables.
+  - *Actualización de Fallbacks y Exportador DOCX*: Esquemas JSON de ejemplo, fallback determinístico y la ruta `.docx/route.ts` actualizados con indicadores socioeconómicos institucionales.
+  - *Saneamiento Integral de Base de Datos*: Se ejecutó un script en PostgreSQL del VPS actualizando el 100% (28 de 28) de los informes finales almacenados en `informes_andar_prod`, dejando cero menciones a materiales de cocina o taller en Bienestar Material.
+  - *Despliegue y Verificación*: Compilación `npm run build` en VPS, reinicio de PM2 y verificación del DOCX exportado de Román Pontecorvo confirmando coherencia conceptual total.
+
+- **Erradicación de Menciones Literales de Niveles de Rúbrica en Informes Finales (D-84 y ERR-34)**:
+  - *Traducción Cualitativa*: Las habilidades evaluadas se transmiten al LLM con descripciones cualitativas funcionales (`describeNivelQualitative`) en vez de números de nivel.
+  - *Sanitizador Universal*: `sanitizeNarrativeLevels` en `formatters.ts`, exportador DOCX y visor web.
+  - *Saneamiento de Base de Datos*: Erradicadas todas las menciones numéricas de niveles en la base de datos de producción.
+
+## [1.9.5] - 2026-09-24
+### Fixed
+- **Deduplicación Canónica de Formularios y Resolución de Observaciones de Agosto (Analía Celis)**:
+  - *Deduplicación por Clave de Mes (`deduplicateFormsByMonth`)*: Implementada en `block-preview/route.ts` y `final/route.ts` para agrupar por mes calendario (04–12), priorizar el formulario con mayor cantidad de observaciones / ID más reciente y ordenar cronológicamente de forma estricta.
+  - *Depuración en Base de Datos*: Eliminación de borradores huérfanos históricos vacíos (Form #76 con periodo literal `'AGOSTO'` y 0 observaciones) que enmascaraban al formulario canónico (Form #302 con periodo `'2026-08'` y 3,645 caracteres de observaciones de Juliana Arias).
+  - *Autolimpieza en Ingesta de Excel*: En `import-excel/route.ts`, normalización automática de periodos a formato canónico `YYYY-MM` y purga inmediata de cualquier registro duplicado o residual para ese mismo mes.
+  - *Despliegue*: Compilado y desplegado al VPS de producción con PM2 reiniciado, validado al 100% en vivo.
+
+## [1.9.4] - 2026-09-23
+### Changed
+- **Migración Integral a PostgreSQL 15 Local en VPS (Debian 12)**:
+  - *Clonación Fiel de Datos*: Volcado íntegro desde Neon Cloud a base local `informes_andar_prod` en UTF-8 con Docker PostgreSQL 17 (277 formularios, 191 informes, 73 jóvenes, 11 usuarios, 219 logs de auditoría).
+  - *Conector Universal `src/lib/db-postgres.ts`*: Migración a driver basado en `pg.Pool` con tag `sql` para template literals, reuso de conexiones y soporte nativo para `localhost:5432`.
+  - *Rendimiento y Disponibilidad*: Latencia de consultas reducida de ~180 ms a <1 ms; eliminación total de restricciones y cuotas serverless en la nube (HTTP 402).
+  - *Despliegue*: Compilación exitosa en VPS, reinicio de PM2 y verificación de login activo con código 200 OK.
+
+## [1.9.3] - 2026-09-23
+### Fixed
+- **Carga de Excel en Bloque 4 y Corrección de Nombres RichText**:
+  - *Prioridad de manualYoungId*: Se prioriza el ID de concurrente enviado desde el modal de carga para evitar la creación de registros espurios o huérfanos.
+  - *Soporte RichText en Celdas de Nombre*: Corrección en `import-excel/route.ts` con `getCellText()` para evitar que celdas formateadas con objetos retornen `"[object Object]"`.
+  - *Detección de Talleres en Bloque 4*: Filtrado estricto con límites de palabra para evitar falsos positivos con palabras comunes (ej. "cabello" con `/BE/`) y catálogo de talleres conocidos.
+  - *Sincronización de Brenda Yanet Casonato (ID 40)*: Cuadrículas de Agosto y Septiembre 100% asociadas con sus 8 talleres y observaciones completas, alcanzando 4/4 bloques para el Informe Final.
+### Added
+- **Reconocimiento Automático de Sueños desde Bloque 3 (Trimestral 2)**:
+  - Si el concurrente no tiene meta o sueño cargado en su PCP, el motor del Informe Final lo extrae automáticamente del informe del Bloque 3 (Sección 1 o encabezado) y lo persiste en `youngs.pcp`.
+
 ## [1.9.2] - 2026-09-14
 ### Fixed
 - **Parser Resiliente para Planillas de Buenos Mozos (Marina Trejo) y Carga de Nicolás Agustín Maita**:

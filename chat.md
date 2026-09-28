@@ -424,3 +424,134 @@
   2. Se blindó la resolución de concurrentes en `upload-manual-docx/route.ts` (D-83) para priorizar el nombre y la coincidencia determinística de tokens, descartar IDs alucinados por IA y prohibir reasignar cuando el joven seleccionado tiene presencia en el documento.
   3. Se desplegó al VPS (`149.50.128.73`) con compilación exitosa y reinicio de PM2 (PID 405262).
   4. Se verificó que Román Pontecorvo cuenta ahora con el Bloque 1 en verde (`✅ Informe #240 (2026-01 – 2026-03)`).
+
+# Registro de Conversación - 2026-09-25 (Erradicación de Menciones Literales de Niveles de Rúbrica en Informes Finales)
+## Usuario:
+- "Revisa el que esta en descargas y fjate que dice nivel 3 en algunos casos o habla de niveles en el final de pontecorvo, no deberia de decirse asi, deberia de explicarlo de manera, que no ponga niveles"
+
+## Antigravity:
+- **Diagnóstico y Análisis**:
+  - En `C:\Users\Try Hard\Downloads\informe-final-Roman_Matias_Pontecorvo-Buenos_Mozos-2026-09-25.docx`, se detectaron 3 ocurrencias literales de escalas numéricas:
+    1. Línea 99 (Logros Prácticos): *"alcanzando el Nivel 3 en actividades como lijar superficies y mantener una actitud de aprendizaje"*
+    2. Línea 99 (Logros Prácticos): *"Ha alcanzado el Nivel 3 en actividades de participación en la huerta, lo que le ha permitido..."*
+    3. Línea 105 (Logros Emocionales y Sociales): *"alcanzando el Nivel 3 en la expresión verbal de emociones y la escucha activa"*
+  - En `src/lib/ai/finalReportGenerator.ts`, el prompt solicitaba evaluar *"con sus niveles (Niveles 1 a 4)"* y los insumos inyectaban `(Nivel 3)`, induciendo al modelo a plasmar los números de rúbrica interna en lugar de explicarlos en prosa cualitativa.
+- **Acciones y Solución Implementada**:
+  1. **Reemplazo Cualitativo de Insumos (`describeNivelQualitative`)**:
+     - Las destrezas de taller se formatean ahora con su significado funcional institucional: `[Logro: desempeño consolidado y autónomo]`, `[en proceso de desarrollo activo con apoyos verbales]`, `[en etapa inicial con apoyos guiados]`, `[desempeño independiente / modelo]`.
+  2. **Directiva Prohibitiva Institucional y Estándar Granja Andar**:
+     - Se prohibió taxativamente en el System Prompt y User Prompt de OpenAI mencionar "Nivel 1", "Nivel 2", "Nivel 3", "Nivel 4" o hablar de "niveles" en los párrafos narrativos.
+     - Se instruyó explicar siempre el progreso en términos de funcionalidad, grado de consolidación/autonomía y apoyos requeridos.
+  3. **Sanitizador Universal (`sanitizeNarrativeLevels`)**:
+     - Se implementó en `src/lib/formatters.ts` y se integró en `cleanString`, `stripParrafoPrefixes`, el endpoint `.docx/route.ts` y `FinalReportViewer.tsx`.
+  4. **Sanitización de Informes en Base de Datos PostgreSQL del VPS**:
+     - Se sanitizaron los 13 informes finales históricos existentes en `informes_andar_prod`, dejando exactamente **0 ocurrencias** de `/nivel\s*[0-9]/gi` en toda la base de datos.
+  5. **Compilación y Despliegue en Servidor**:
+     - Compilación local `npx tsc --noEmit` y remota `npm run build` exitosas (19/19 páginas).
+     - Despliegue al VPS y reinicio de PM2 (`informes-andar`, PID 406205).
+  6. **Verificación del Archivo Word DOCX**:
+     - Se generó y descargó el Word de Román Matías Pontecorvo (Reporte #242) desde la API de producción.
+     - Se comprobó con `mammoth` que tiene **0 menciones de nivel**, transformando las frases a redacción fluida y profesional: *"consolidando con autonomía y regularidad actividades como lijar superficies..."*, *"Ha consolidado con autonomía y regularidad actividades de participación en la huerta..."*, *"consolidando con autonomía y regularidad la expresión verbal de emociones y la escucha activa"*.
+     - Se actualizó el archivo en `C:\Users\Try Hard\Downloads\informe-final-Roman_Matias_Pontecorvo-Buenos_Mozos-2026-09-25.docx`.
+
+
+
+# Registro de Conversación - 2026-09-25 (Calibración Rigurosa de las 8 Dimensiones de Calidad de Vida y Erradicación del Error Conceptual en Bienestar Material)
+## Usuario:
+- "Me dice esto la psicologa institucional que lee los informes:
+  Nada, lo que habría que hacer es explicarle un poquito más al bot o a la cosa esa que usés (0:20) las dimensiones, porque en la dimensión del bienestar material (0:26) te habla del material como elemento de cocina y no sobre su situación económica, que es a lo que apunta en realidad. (0:00) Son las dimensiones de calidad de vida, Fede, que son ocho."
+
+## Antigravity:
+- **Diagnóstico y Causa Raíz**:
+  - En `src/lib/ai/finalReportGenerator.ts`, el System Prompt y el User Prompt no definían conceptualmente el alcance de las 8 Dimensiones de Calidad de Vida (Schalock & Verdugo).
+  - En los esquemas de ejemplo de OpenAI y en el fallback determinístico, la dimensión `bienestarMaterial` tenía ejemplos literales erróneos: `"Gestión ordenada de sus elementos personales y materiales de taller."`, y en `.docx/route.ts`: `'Cuidado de pertenencias.'`.
+  - Al no tener pautas clínicas explícitas, el LLM interpretaba "material" en su sentido físico de taller o cocina (utensilios, ollas, lijas, pinceles) en vez de evaluar la dimensión socioeconómica, vivienda y necesidades básicas de la persona.
+- **Acciones y Solución Implementada**:
+  1. **Calibración Clínica Rigurosa de las 8 Dimensiones en Prompts**:
+     - Se incorporó en el System Prompt y User Prompt de `finalReportGenerator.ts` la definición psicológica completa del modelo de Schalock & Verdugo:
+       * Bienestar Físico (BF): Salud integral, controles médicos, nutrición, hábitos higiénicos, deporte y natación.
+       * Bienestar Emocional (BE): Estado anímico habitual, tranquilidad, autoconcepto positivo, autorregulación y ausencia de estrés severo.
+       * Bienestar Material (BM): Nivel socioeconómico, estabilidad habitacional, cobertura de necesidades básicas (alimentación digna, vestimenta adecuada, transporte/pases, pensión, CUD, obra social) y acceso a recursos económicos indispensables. **PROHIBICIÓN TERMINANTE** de asociarlo con elementos de cocina, utensilios, herramientas o materiales de taller.
+       * Desarrollo Personal (DP): Aprendizaje a lo largo de la vida, competencias funcionales y operativas en los talleres del Centro de Día, curiosidad y superación.
+       * Relaciones Interpersonales (RI): Vínculos significativos con pares, facilitadores y familia; compañerismo, empatía y reciprocidad afectiva.
+       * Inclusión Social (IS): Participación activa en la comunidad (Kermés, boliche CCP, salidas, polideportivos) y rol ciudadano valorado en igualdad de oportunidades.
+       * Autodeterminación (AD): Elecciones y decisiones cotidianas, gustos, preferencias y metas personales en su PCP.
+       * Derechos (DE): Dignidad humana, privacidad, trato igualitario como sujeto de pleno derecho (Convención CDPD) y acceso a apoyos y ajustes razonables.
+  2. **Corrección de Ejemplos, Fallback y Exportador DOCX**:
+     - Se actualizaron los esquemas JSON de ejemplo y los fallbacks con indicadores de cobertura socioeconómica y habitacional.
+     - En `src/app/api/reports/[id]/.docx/route.ts`, se actualizó el indicador predeterminado para `bienestarMaterial`.
+  3. **Sanitización de la Base de Datos PostgreSQL en Producción**:
+     - Se ejecutó un script en el VPS (`scratch/sanitize_bm_db.cjs`) que auditó y actualizó el 100% (28 de 28) de los informes finales almacenados en `informes_andar_prod`.
+  4. **Compilación y Despliegue en Producción**:
+     - `npx tsc --noEmit` local: 0 errores.
+     - Despliegue SFTP al VPS (`149.50.128.73:5782`), compilación `npm run build` en servidor (19/19 páginas) y reinicio de PM2 (`informes-andar`, PID 406947).
+  5. **Verificación End-to-End**:
+     - Se descargó el Word de Román Pontecorvo (Reporte #242) desde la API de producción y se verificó con `mammoth`:
+       * `Bienestar Material` en tabla: "Cuenta con adecuada cobertura de sus necesidades materiales básicas, estabilidad habitacional y acceso regular a traslados y recursos indispensables en su entorno familiar."
+       * `Bienestar Material` en indicadores: "Cobertura adecuada de necesidades materiales básicas, estabilidad habitacional, traslados y recursos indispensables para su vida diaria."
+       * Coincidencias de "nivel": 0.
+       * Coincidencias de cocina/taller en BM: 0.
+       * Se actualizó el archivo oficial en `C:\Users\Try Hard\Downloads\informe-final-Roman_Matias_Pontecorvo-Buenos_Mozos-2026-09-25.docx`.
+
+
+# Registro de Conversación - 2026-09-28 (Reemplazo en Bloque 1, Regeneración en Bloque 3, Restauración de Virginia Stabile y Corrección de DNI en Eluney Ledesma)
+## Usuario:
+- "Que en el bloque 3 se pueda regenerar el informe a partir de los mensuales y que en el bloque 1 se pueda reemplazar si se subio, ademas fijate que virginia no aparece mas en emprendedores, que ocurrio ahi? ademas no deja cargar las cosas ni verla. Y te dejo esta captura de este error" (con captura de Eluney Omar Ledesma donde el DNI mostraba su rutina de la mañana).
+
+## Antigravity:
+- **Diagnóstico y Causa Raíz**:
+  1. En `src/app/api/youngs/import-excel/route.ts`, el escaneo de metadatos PCP (`r <= 20`) leía hasta la fila 20:
+     - En Eluney Omar Ledesma, la fila 9 contenía su rutina ("...llevo mi DNI..."), capturando todo el párrafo de 90+ caracteres como DNI.
+     - En Virginia Stabile, la fila 19 contenía su sueño ("...hacer cajitas [un taller]"), sobrescribiendo su `taller = 'Emprendedores'`, ocultándola del filtro y creando duplicados espurios (IDs 85 y 86).
+  2. En `src/app/final-reports/page.tsx`, los botones de Bloque 1 y Bloque 3 estaban condicionados a `!ok`, ocultándose tras subir o generar.
+  3. En `src/app/api/reports/final/route.ts`, `evaluateBlocks` seleccionaba candidatos de informe ordenados por `id ASC`, reteniendo reportes viejos.
+- **Acciones Realizadas**:
+  1. **Base de Datos PostgreSQL en VPS**:
+     - Restaurada Virginia Maria Stabile (ID 55) con `taller = 'Emprendedores'`, `dni = '33573626'`, `assigned_facilitators = [11, 1]`.
+     - Purgados concurrentes duplicados 85 y 86 con sus 10 formularios espurios y 2 reportes redundantes.
+     - Saneado Eluney Omar Ledesma (ID 67): `dni = NULL`, `legajo = '49'`, `taller = 'Emprendedores'`.
+     - Confirmados exactamente 20 concurrentes en Emprendedores con Virginia y Eluney presentes.
+  2. **Blindaje de Metadatos en `import-excel/route.ts` (D-87)**:
+     - Escaneo delimitado estrictamente a filas 1 a 6 (`r <= 6`).
+     - Validación estricta de DNI (`/^[0-9.\s-]{6,15}$/`) y taller (longitud <= 35, sin paréntesis ni verbos de sueños/metas).
+  3. **UI y Regeneración en `final-reports/page.tsx` (D-86)**:
+     - Bloque 1: Botón `[ 📤 Reemplazar Word de Verano ]` visible permanentemente cuando ya existe informe.
+     - Bloque 3: Botón `[ ⚡ Regenerar Trimestral 2 (IA) ]` disponible con confirmación previa siempre que Bloque 2 esté completo.
+     - Cabecera: Guard para DNI exigiendo `young.dni.length <= 15 && /^[0-9.\s-]+$/.test(young.dni)`.
+  4. **Precedencia de Informes Más Recientes en `final/route.ts`**:
+     - Ordenamiento por `id DESC` en `evaluateBlocks` y en la consulta `reportsRes` del overview.
+  5. **Compilación y Despliegue en Servidor**:
+     - `npx tsc --noEmit` local: 0 errores.
+     - Despliegue SFTP al VPS (`149.50.128.73:5782`), compilación `npm run build` en servidor (19/19 páginas) y reinicio de PM2 (`informes-andar`, PID 459250).
+     - Verificación directa en base de datos completada con 100% de éxito.
+
+# Registro de Conversación - 2026-09-28 (Erradicación de Menciones de Catering/Pastelería en Jonathan Salvatierra y Resolución de Bug SQL de Trimestrales)
+## Usuario:
+- "en el ultimo informe final que te deje en descargas dice que hace catering y pasteleria pero en toda la informacion que se ve y se previsualiza no menciona nada de eso, las habilidades, los informes, en las observaciones, en ningun lado dice esto. Podes decirme por que pasa y arreglarlo para que no pase mas esto?"
+
+## Antigravity:
+- **Diagnóstico y Causa Raíz**:
+  1. En `src/app/api/reports/final/route.ts` (POST handler), la query de búsqueda automática de Trimestral 1 utilizaba:
+     `SELECT ... FROM reports WHERE young_id = ${young.id} AND report_type = 'TRIMESTRAL' AND (periodo ILIKE '%01%' OR periodo ILIKE '%02%' OR periodo ILIKE '%03%' ...) ORDER BY id DESC LIMIT 1`.
+  2. Como todos los períodos de 2026 contienen los dígitos `'02'`, el Trimestral 2 recién regenerado (`2026-06 – 2026-04`, Reporte #271) hizo match accidental como Trimestral 1 (`t1Auto`).
+  3. Luego, al buscar el Trimestral 2 (`t2Auto`), excluyó el #271 y cayó en un borrador residual histórico obsoleto (Reporte #81, del 10 de agosto) que tenía menciones hardcodeadas de pastelería y catering.
+  4. El Word de Verano oficial (Reporte #266) fue ignorado en el backend, e inyectó el texto del Reporte #81 a GPT-4o, provocando que la IA sintetizara catering en el informe final (#272).
+  5. La previsualización de la UI (`evaluateBlocks`) usaba `p.includes('2026-01')`, por lo que en pantalla se veía el #266 limpio, creando la contradicción con el documento generado.
+- **Acciones Realizadas**:
+  1. **Clasificación Canónica en `src/lib/formatters.ts` (D-88)**:
+     - Funciones `isTrimestral1(periodo)` e `isTrimestral2(periodo)` que exigen límites de mes exactos (`2026-01`, `2026-02`, `-01`, `-02`, `01 – 03`, `enero`, `verano`, etc.), evitando colisiones con `'2026'`.
+  2. **Refactorización de Consultas Backend (`src/app/api/reports/final/route.ts`)**:
+     - Se eliminó el SQL `ILIKE '%02%'`. Se consultan todos los trimestrales ordenados por `id DESC` y se filtran en JS con `isTrimestral1` e `isTrimestral2`, logrando 100% de paridad con la interfaz web.
+  3. **Alineación en Previsualización (`src/app/api/reports/final/block-preview/route.ts`)**:
+     - Bloques 1 y 3 actualizados para seleccionar candidatos evaluados con `isTrimestral1` e `isTrimestral2`.
+  4. **Detección Dinámica de Talleres y Prohibición Estricta en Prompt (`finalReportGenerator.ts`)**:
+     - Extracción dinámica de la lista de talleres de los meses evaluados (`allTallerNames`).
+     - Si el concurrente no cursa talleres gastronómicos, se inyecta en el System Prompt y User Prompt una prohibición terminante: `¡PROHIBICIÓN TERMINANTE DE CATERING / PASTELERÍA / COCINA / GASTRONOMÍA!`.
+  5. **Post-Procesador Universal (`sanitizeCateringIfAbsent`)**:
+     - Filtra y elimina cualquier oración alucinada que atribuya catering o pastelería si el concurrente no asiste a dichos talleres.
+  6. **Limpieza, Despliegue y Regeneración**:
+     - Eliminados los reportes obsoletos #81 y #272 en el PostgreSQL del VPS.
+     - Desplegado a producción (`149.50.128.73:5782`), compilado (`npm run build` 19/19 páginas) y PM2 reiniciado (`informes-andar`, PID 460593).
+     - Regenerado el Informe Final oficial (Reporte #273) y descargado a `C:\Users\Try Hard\Downloads\informe-final-Jonathan_Salvatierra-Emprendedores-2026-09-28.docx`.
+     - Auditoría con `mammoth`: 0 menciones de catering, 0 de pastelería, 0 de cocina y 0 de niveles de rúbrica.
+

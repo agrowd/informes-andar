@@ -17,14 +17,14 @@ Sistema para la gestión de formularios e informes evolutivos de los concurrente
   - Playwright (HTML to PDF conversion)
   - Mammoth/Docx (Word manipulation)
 
-## 📂 Estructura de Carpetas
-- `src/app`: Rutas y componentes de Next.js
-- `src/app/_components`: Componentes compartidos
-- `src/app/api`: Endpoints de la API
-- `src/lib`: Utilidades, configuración de DB y esquemas
-- `scripts`: Scripts de mantenimiento y setup de DB
+## 📂 Estructura de Carpetas y Módulos
+- `src/app`: Rutas y vistas de Next.js (`/`, `/forms`, `/reports`, `/final-reports`, `/youngs`, `/talleres`, `/users`, `/audit`)
+- `src/app/_components`: Componentes compartidos y modales (asistente de importación, upload Word con IA, generación final)
+- `src/app/api`: Endpoints REST (`/api/reports/final`, `/api/reports/upload-manual-docx`, etc.)
+- `src/lib`: Utilidades, generadores con IA (`quarterlyGenerator.ts`, `finalReportGenerator.ts`), esquemas y DB
+- `scripts`: Scripts de mantenimiento y migraciones de DB
 - `tests`: Tests de contrato y funcionalidad (Vitest)
-- `docs`: Documentación de referencia y archivos Word
+- `docs`: Documentación de referencia y archivos institucionales Word/Excel
 
 ## 🚀 Comandos Principales
 - `npm run dev`: Inicia servidor en puerto 8000

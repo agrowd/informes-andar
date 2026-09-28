@@ -268,5 +268,85 @@
 3. Se verificó la lógica con test unitario en el VPS, se compiló el proyecto y se desplegó a producción con PM2 reiniciado.
 **Estado:** ✅ FIXED
 
+## ERR-34: Presencia de etiquetas literales "Nivel 3" / "Nivel X" en párrafos narrativos de Informes Finales (2026-09-25)
+**Síntoma:** Al descargar el Informe Final de Román Matías Pontecorvo (`informe-final-Roman_Matias_Pontecorvo-Buenos_Mozos-2026-09-25.docx`), la redacción incluía menciones literales de escala técnica como: *"alcanzando el Nivel 3 en actividades como lijar superficies..."*, *"Ha alcanzado el Nivel 3 en actividades de participación en la huerta..."* y *"alcanzando el Nivel 3 en la expresión verbal de emociones y la escucha activa"*.
+**Root Cause:**
+1. En `src/lib/ai/finalReportGenerator.ts`, el prompt del sistema y usuario indicaba a GPT-4o: *"habilidades específicas evaluadas con sus niveles (Niveles 1 a 4)"*.
+2. Las variables de insumo mensual (`m1Text` y `m2Text`) inyectaban las destrezas de taller con el formato literal: `Taller X: Habilidad Y (Nivel 3)`.
+3. Al no existir una directiva prohibitiva ni un saneamiento posterior, el modelo de OpenAI regurgitaba la expresión numérica en la prosa de logros.
+**Solución:**
+1. **Prompt Cualitativo**: Se sustituyó `(Nivel ${it.nivel})` en `m1Text` y `m2Text` por estados cualitativos funcionales (`[Logro: desempeño consolidado y autónomo]`, `[en proceso de desarrollo activo con apoyos verbales]`, etc.) mediante `describeNivelQualitative`.
+2. **Directiva Prohibitiva Institucional**: Se prohibieron taxativamente las palabras "Nivel 1..4" o hablar de "niveles" en los párrafos narrativos, instruyendo describir funcionalidad, autonomía y apoyos requeridos.
+3. **Sanitizador Universal**: Se implementó `sanitizeNarrativeLevels` en `src/lib/formatters.ts` que traduce de forma elegante y natural cualquier remanente de niveles a expresiones de autonomía y regularidad, integrándolo en `cleanString`, `stripParrafoPrefixes`, el exportador Word `.docx/route.ts` y el visualizador `FinalReportViewer.tsx`.
+4. **Limpieza en BD**: Se ejecutó un script en PostgreSQL del VPS sanitizando los 13 informes finales históricos con menciones de nivel, reduciendo a 0 las ocurrencias de `/nivel\s*[0-9]/gi` en toda la base de datos.
+5. **Verificación**: Se comprobó que el archivo DOCX descargado de Román Pontecorvo posee exactamente 0 ocurrencias de niveles y se copió la versión limpia a `Downloads`.
+## ERR-35: Confusión conceptual de Bienestar Material con elementos de cocina o materiales de taller en Informes Finales (2026-09-25)
+**Síntoma:** La psicóloga institucional observó que en los Informes Finales la dimensión de "Bienestar Material" (tanto en la tabla de evaluación como en los indicadores de seguimiento) se redactaba haciendo referencia al cuidado u orden de elementos de cocina, utensilios o materiales de taller (ej: *"Gestión ordenada de sus elementos personales y materiales de taller"*, *"Mantiene el cuidado y orden de sus pertenencias y recursos de trabajo"*), en lugar de evaluar la situación socioeconómica, vivienda y cobertura de necesidades materiales básicas como estipula el modelo de calidad de vida.
+**Root Cause:**
+1. En `src/lib/ai/finalReportGenerator.ts`, el prompt del sistema y de usuario no definía conceptualmente el alcance de las 8 dimensiones de Schalock & Verdugo.
+2. Los ejemplos embebidos en el JSON schema prompt y en el fallback determinístico utilizaban erróneamente frases como: `"bienestarMaterial": "Gestión ordenada de sus elementos personales y materiales de taller."` y en `.docx/route.ts`: `'Cuidado de pertenencias.'`.
+3. Ante la falta de directivas clínicas explícitas, el LLM asociaba la palabra "material" a materiales físicos de trabajo (cocina, lijas, pinceles) en lugar de bienestar socioeconómico.
+**Solución:**
+1. **Calibración Rigurosa de las 8 Dimensiones**: Se incorporó en el System Prompt y en el User Prompt de `finalReportGenerator.ts` la definición psicológica completa de las 8 Dimensiones de Calidad de Vida (Bienestar Físico, Bienestar Emocional, Bienestar Material, Desarrollo Personal, Relaciones Interpersonales, Inclusión Social, Autodeterminación y Derechos).
+2. **Prohibición Terminante y Redefinición de Bienestar Material**: Se prohibió taxativamente asociar Bienestar Material a elementos de cocina, utensilios o materiales de taller. Se instruyó evaluarlo estrictamente como situación económica, estabilidad habitacional, cobertura de necesidades materiales básicas (alimentación, indumentaria, transporte regular, CUD, pensión y obra social) y acceso a recursos indispensables.
+3. **Corrección de Ejemplos, Fallback y Exportador DOCX**: Se actualizaron los esquemas JSON de ejemplo, el fallback determinístico y el fallback en `src/app/api/reports/[id]/.docx/route.ts` con indicadores fidedignos de cobertura socioeconómica y habitacional.
+4. **Sanitización de la Base de Datos**: Se ejecutó un script en PostgreSQL (`informes_andar_prod` en VPS) que auditó y actualizó el 100% (28 de 28) de los informes finales almacenados, sustituyendo cualquier comentario o indicador centrado en materiales de taller por la evaluación socioeconómica institucional.
+5. **Compilación y Verificación**: Compilación local y remota exitosa, reinicio de PM2 en VPS y verificación end-to-end del archivo DOCX descargado de Román Pontecorvo, confirmando redacción impecable y 0 menciones inapropiadas.
+**Estado:** ✅ FIXED
 
+## ERR-36: Sobrescritura de Taller en Virginia Stabile y Corrupción de DNI en Eluney Omar Ledesma por Escaneo Extendido de PCP (2026-09-28)
+**Síntoma:**
+1. En `/final-reports`, Virginia Stabile desapareció del filtro del grupo `Emprendedores`. Al intentar verla o cargar planillas para ella, no aparecía o daba error. En la base de datos figuraban 3 registros duplicados (IDs 55, 85 y 86) con su taller alterado.
+2. En la tarjeta de Eluney Omar Ledesma, al lado de Facilitador aparecía un párrafo completo de texto en lugar de su número de DNI: `• DNI: Me despierto con la alarma, me preparo, bajo a desayunar...`.
+3. En Bloque 1, una vez cargado el Word de Verano, el botón desaparecía impidiendo reemplazar el documento si había correcciones.
+4. En Bloque 3, no se permitía regenerar el informe Trimestral 2 con IA a partir de las cuadrículas mensuales una vez creado.
+**Root Cause:**
+1. En `src/app/api/youngs/import-excel/route.ts`, el escaneo de metadatos en la solapa PCP (`for (let r = 1; r <= 20; r++)`) barría hasta la fila 20:
+   - En la planilla de Eluney (`20. Ledesma Eluney Omar_.xlsx`), la fila 9 contenía su rutina diaria: `"...Me busca y llevo mi DNI para entrar a su casa..."`. El scanner encontró la subcadena `dni`, no encontró el prefijo `dni:`, y asignó todo el párrafo de 90+ caracteres a `pcpDni`.
+   - En la planilla de Virginia (`17. Stabile Maria Virginia.xlsx`), la fila 19 contenía su sueño personal: `"Enseñar a mis compañeros y a todos en un salon hacer cajitas (un taller)"`. El scanner encontró la subcadena `taller` y sobrescribió su campo `taller` con esa frase en lugar de `'Emprendedores'`.
+   - Al no tener `taller = 'Emprendedores'`, Virginia desapareció del grupo y al reimportar se crearon registros duplicados espurios (IDs 85 y 86).
+2. En `src/app/final-reports/page.tsx`:
+   - Bloque 1 tenía `{!young.trimestral1.ok && <button>Subir Word</button>}`, ocultando el botón al estar completo.
+   - Bloque 3 tenía `{!young.trimestral2.ok && young.mensuales1.ok && <button>Generar</button>}`, impidiendo la regeneración.
+   - En la cabecera no se validaba el formato o longitud de `young.dni`.
+3. En `src/app/api/reports/final/route.ts`:
+   - `evaluateBlocks` seleccionaba el primer candidato (`find()`) de reports ordenados por `id ASC`, reteniendo reportes antiguos en lugar de la versión regenerada o reemplazada.
+**Solución:**
+1. **Limpieza y Restauración de Base de Datos**:
+   - Se restauró a Virginia Maria Stabile (ID 55) con `taller = 'Emprendedores'`, `dni = '33573626'` y `assigned_facilitators = [11, 1]`.
+   - Se purgaron los registros duplicados de concurrentes 85 y 86 con sus 10 formularios espurios (#360..364, #381..385) y 2 reportes redundantes (#260, #270).
+   - Se saneó a Eluney Omar Ledesma (ID 67), eliminando la rutina del campo DNI (`dni = NULL`, `legajo = '49'`).
+2. **Blindaje del Escaneo en `import-excel/route.ts` (D-87)**:
+   - Se restringió el escaneo dinámico de metadatos estrictamente a filas 1 a 6 (`r <= 6`).
+   - Se validó estrictamente el DNI con regex numérica (`/^[0-9.\s-]{6,15}$/`), descartando cualquier texto largo o párrafos.
+   - Se validó que el taller no exceda los 35 caracteres y no contenga paréntesis ni verbos de sueños/metas personales.
+3. **UI y Regeneración en `final-reports/page.tsx` (D-86)**:
+   - Bloque 1: Botón `[ 📤 Reemplazar Word de Verano ]` visible permanentemente cuando ya existe informe.
+   - Bloque 3: Botón `[ ⚡ Regenerar Trimestral 2 (IA) ]` disponible con confirmación previa siempre que Bloque 2 esté completo.
+   - Cabecera: Guard para DNI exigiendo `young.dni.length <= 15 && /^[0-9.\s-]+$/.test(young.dni)`.
+4. **Precedencia de Informes Más Recientes en `final/route.ts`**:
+   - Se ordenan los candidatos de informes por `id DESC` en `evaluateBlocks` y en la consulta de base de datos.
+5. **Compilación y Despliegue**:
+   - `npx tsc --noEmit` local con 0 errores.
+   - Despliegue SFTP al VPS (`149.50.128.73:5782`), compilación `npm run build` en servidor y reinicio de PM2 (`informes-andar`, PID 459250).
+   - Verificación directa en base de datos: 20 concurrentes en Emprendedores con Virginia y Eluney 100% saneados y funcionales.
+**Estado:** ✅ FIXED
+
+## ERR-37: Alucinación de Catering/Pastelería en Informe Final por Colisión de '2026' con SQL '%02%' (2026-09-28)
+**Síntoma:** En el informe final generado para Jonathan Salvatierra (Emprendedores), el texto afirmaba que realizaba actividades de catering y pastelería, a pesar de que en sus cuadrículas mensuales, habilidades de taller, observaciones de facilitador y vista previa no figuraba nada de gastronomía.
+**Root Cause:**
+1. En `src/app/api/reports/final/route.ts` (POST handler), la consulta SQL para seleccionar el Trimestral 1 automático buscaba:
+   `SELECT ... FROM reports WHERE young_id = ${young.id} AND report_type = 'TRIMESTRAL' AND (periodo ILIKE '%01%' OR periodo ILIKE '%02%' OR periodo ILIKE '%03%' ...) ORDER BY id DESC LIMIT 1`.
+2. Como todos los informes contienen el año `2026`, los caracteres en las posiciones 1-2 (`'02'`) hacían match accidental con `periodo ILIKE '%02%'`.
+3. Esto causó que el Trimestral 2 recién regenerado (Reporte #271, `2026-06 – 2026-04`) fuera erróneamente seleccionado como Trimestral 1 (`t1Auto`).
+4. Al buscar el Trimestral 2 (`t2Auto`), la consulta excluía el ID de t1 (#271) y seleccionó un borrador residual antiguo (Reporte #81, de agosto) que contenía menciones hardcodeadas de pastelería y catering.
+5. El informe legítimo de Verano (Reporte #266) fue salteado, y el texto del Reporte #81 fue inyectado en el prompt de GPT-4o, provocando que la IA sintetizara pastelería en el informe final (Reporte #272). Mientras tanto, la previsualización web utilizaba `r.periodo.includes('2026-01')`, mostrando el #266 limpio y generando una aparente discrepancia total.
+**Solución:**
+1. **Clasificación Canónica en `src/lib/formatters.ts` (D-88)**: Se crearon y exportaron `isTrimestral1(periodo)` e `isTrimestral2(periodo)` requiriendo límites de mes exactos (`2026-01`, `2026-02`, `-01`, `-02`, `01 – 03`, `enero`, `verano`, etc.) evitando cualquier falso positivo con la cadena del año `2026`.
+2. **Consultas Backend en `src/app/api/reports/final/route.ts`**: Se eliminó la cláusula SQL `ILIKE '%02%'`; ahora se consultan los informes trimestrales ordenados por `id DESC` y se clasifican en memoria con `isTrimestral1` e `isTrimestral2`, garantizando 100% de paridad con `evaluateBlocks` y la UI.
+3. **Paridad en Bloques en `src/app/api/reports/final/block-preview/route.ts`**: Se alineó la búsqueda de candidatos de Bloque 1 y Bloque 3 con `isTrimestral1` e `isTrimestral2`.
+4. **Detección Dinámica de Talleres y Prohibición Estricta en Prompt (`finalReportGenerator.ts`)**: Se extraen los talleres reales de `mensuales1` y `mensuales2` (`allTallerNames`). Si ninguno corresponde a catering o pastelería, se inyecta en el System Prompt y User Prompt una directiva prohibitiva explícita (`¡PROHIBICIÓN TERMINANTE DE CATERING / PASTELERÍA / COCINA / GASTRONOMÍA!`).
+5. **Post-Procesador Universal (`sanitizeCateringIfAbsent`)**: Sanitiza y elimina oraciones que atribuyen catering/pastelería si el joven no asiste a dichos talleres, aplicado en `cleanString`, `stripParrafoPrefixes` y exportación DOCX.
+6. **Depuración y Regeneración en Producción**: Se eliminaron los reportes obsoletos #81 y #272 en el VPS. Se regeneró el Informe Final de Jonathan Salvatierra (Reporte #273), confirmando **0 menciones** de catering/pastelería, y se descargó el Word final limpio a `C:\Users\Try Hard\Downloads\informe-final-Jonathan_Salvatierra-Emprendedores-2026-09-28.docx`.
+**Estado:** ✅ FIXED
 

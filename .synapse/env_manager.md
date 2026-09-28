@@ -16,11 +16,12 @@
 - **Estrategia**: PM2 + Nginx
 - **Dependencias Sistema**: `node`, `pm2`, `libnss3`, `libatk-bridge2.0-0`, `libcups2`, `libdrm2`, `libxkbcommon0`, `libgbm1`, `libasound2` (Playwright)
 - **Variables de Entorno Necesarias**:
-  - `NEXTAUTH_URL`: `https://tu-dominio.com`
-  - `NEXTAUTH_SECRET`: (Mantener el actual o generar uno nuevo)
-  - `POSTGRES_URL`: (URL de Neon DB proporcionada en `.env.local`)
+  - `NEXTAUTH_URL`: `https://informes-andar.nextemarketing.com`
+  - `NEXTAUTH_SECRET`: `NatoHAuth`
+  - `POSTGRES_URL`: `postgresql://andar_admin:AndarDbPass.2026@localhost:5432/informes_andar_prod` (PostgreSQL 15 Local en VPS)
   - `OPENAI_API_KEY`: (Key de OpenAI proporcionada en `.env.local`)
-  - `PORT`: `8000` (o el que prefieras, mapeado en Nginx)
+  - `PORT`: `8000` (mapeado en Nginx)
+
 
 ## 🛠️ Comandos de Despliegue (VPS)
 1. `npm install`
