@@ -72,7 +72,7 @@ export default function FormsList() {
       if (res.ok) {
         const json = await res.json();
         loadData(1);
-        if (json.importedMonths && json.importedMonths.length > 0) {
+        if (json.importedMonths && json.importedMonths.length >= 2) {
           setImportWizardYoungId(json.youngId || '');
           setImportWizardMonths(json.importedMonths);
           setImportWizardOpen(true);
@@ -110,7 +110,7 @@ export default function FormsList() {
       if (res.ok) {
         const json = await res.json();
         loadData(1);
-        if (json.importedMonths && json.importedMonths.length > 0) {
+        if (json.importedMonths && json.importedMonths.length >= 2) {
           setImportWizardYoungId(json.youngId || youngId);
           setImportWizardMonths(json.importedMonths);
           setImportWizardOpen(true);

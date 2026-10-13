@@ -424,8 +424,8 @@ export async function POST(req: NextRequest) {
       }
 
 
-      // Scan PCP sheet dynamically for legajo, obraSocial, dni, fechaNacimiento, taller
-      for (let r = 1; r <= 20; r++) {
+      // Scan PCP sheet dynamically for legajo, obraSocial, dni, fechaNacimiento, taller (filas 1 a 6)
+      for (let r = 1; r <= 6; r++) {
         for (let c = 1; c <= 8; c++) {
           const val = pcpSheet.getCell(r, c).value;
           if (val) {
@@ -446,11 +446,13 @@ export async function POST(req: NextRequest) {
                 if (nextVal) pcpObraSocial = cleanText(nextVal);
               }
             } else if (/dni/i.test(low) && !low.includes('dimensi')) {
-              const matched = txt.replace(/dni:\s*/i, '').trim();
-              if (matched) pcpDni = matched;
-              else {
+              let candidate = txt.replace(/dni:\s*/i, '').trim();
+              if (!candidate) {
                 const nextVal = pcpSheet.getCell(r, c + 1).value || pcpSheet.getCell(r + 1, c).value;
-                if (nextVal) pcpDni = cleanText(nextVal);
+                if (nextVal) candidate = cleanText(nextVal);
+              }
+              if (/^[0-9.\s-]{6,15}$/.test(candidate)) {
+                pcpDni = candidate;
               }
             } else if (/fecha\s*de\s*nacimiento/i.test(low) || /nacimiento/i.test(low)) {
               const nextVal = pcpSheet.getCell(r, c + 1).value || pcpSheet.getCell(r + 1, c).value;
@@ -461,20 +463,26 @@ export async function POST(req: NextRequest) {
                 if (!isNaN(parsedDate.getTime())) pcpFechaNacimiento = parsedDate;
               }
             } else if (/taller/i.test(low)) {
-              const parsedTaller = txt
+              let parsedTaller = txt
                 .replace(/taller:\s*/i, '')
                 .replace(/taller de\s*/i, '')
                 .trim();
-              if (parsedTaller) {
-                mainTaller = parsedTaller;
-              } else {
+              if (!parsedTaller) {
                 const nextVal = pcpSheet.getCell(r, c + 1).value || pcpSheet.getCell(r + 1, c).value;
                 if (nextVal) {
-                  mainTaller = String(nextVal)
+                  parsedTaller = String(nextVal)
                     .replace(/taller de\s*/i, '')
                     .replace(/taller:\s*/i, '')
                     .trim();
                 }
+              }
+              if (
+                parsedTaller &&
+                parsedTaller.length <= 35 &&
+                !parsedTaller.includes('(') &&
+                !/hacer|enseñar|aprender|ir|viajar|sueño/i.test(parsedTaller)
+              ) {
+                mainTaller = parsedTaller;
               }
             }
           }
@@ -484,8 +492,20 @@ export async function POST(req: NextRequest) {
       // Limpiar prefijos residuales si vinieron en el texto de la celda
       if (pcpLegajo) pcpLegajo = pcpLegajo.replace(/^legajo:\s*/i, '').trim();
       if (pcpObraSocial) pcpObraSocial = pcpObraSocial.replace(/^obra\s*social:\s*/i, '').trim();
-      if (pcpDni) pcpDni = pcpDni.replace(/^dni:\s*/i, '').trim();
-      if (mainTaller) mainTaller = mainTaller.replace(/^taller(\s*de)?:\s*/i, '').trim();
+      if (pcpDni) {
+        pcpDni = pcpDni.replace(/^dni:\s*/i, '').trim();
+        if (!/^[0-9.\s-]{6,15}$/.test(pcpDni)) pcpDni = '';
+      }
+      if (mainTaller) {
+        mainTaller = mainTaller.replace(/^taller(\s*de)?:\s*/i, '').trim();
+        if (
+          mainTaller.length > 35 ||
+          mainTaller.includes('(') ||
+          /hacer|enseñar|aprender|ir|viajar|sueño/i.test(mainTaller)
+        ) {
+          mainTaller = '';
+        }
+      }
 
       // Buscar nombre de manera flexible en el PCP (filas 1 a 6, columnas 1 a 4)
       for (let r = 1; r <= 6; r++) {
@@ -1024,7 +1044,9 @@ export async function POST(req: NextRequest) {
     }
 
     // 4. REGISTRAR O ACTUALIZAR PLANILLAS MENSUALES (FORMS)
-    const createdFormIds: string[] = [];
+    const newFormIds: string[] = [];
+    const newMonths: { formId: string; periodo: string }[] = [];
+    const existingMonths: { formId: string; periodo: string }[] = [];
 
     for (const report of monthlyReports) {
       const formData = {
@@ -1058,12 +1080,13 @@ export async function POST(req: NextRequest) {
 
         if (existing.rows.length > 0) {
           const formId = String(existing.rows[0].id);
+          // Actualizar datos del formulario existente sin insertar duplicados
           await sql`
             UPDATE forms 
             SET periodo = ${report.periodo}, data = ${JSON.stringify(formData)}::jsonb, updated_at = NOW()
             WHERE id = ${parseInt(formId)}
           `;
-          createdFormIds.push(formId);
+          existingMonths.push({ formId, periodo: report.periodo });
 
           // Si hubiera duplicados obsoletos para este mismo mes del mismo joven, eliminarlos para evitar colisiones
           if (existing.rows.length > 1) {
@@ -1073,12 +1096,15 @@ export async function POST(req: NextRequest) {
             console.log(`[IMPORT-EXCEL] Eliminados formularios duplicados obsoletos:`, extraIds);
           }
         } else {
+          // Es un mes nuevo -> INSERTAR
           const result = await sql`
             INSERT INTO forms (young_id, periodo, data, created_by, status, created_at, updated_at)
             VALUES (${parseInt(youngIdStr)}, ${report.periodo}, ${JSON.stringify(formData)}::jsonb, ${userId}, 'BORRADOR', NOW(), NOW())
             RETURNING id
           `;
-          createdFormIds.push(String(result.rows[0].id));
+          const formId = String(result.rows[0].id);
+          newFormIds.push(formId);
+          newMonths.push({ formId, periodo: report.periodo });
         }
       } else if (process.env.MONGODB_URI) {
         const { FormModel } = await import('@/models/Form');
@@ -1087,7 +1113,7 @@ export async function POST(req: NextRequest) {
           existing.data = formData;
           existing.updatedAt = new Date();
           await existing.save();
-          createdFormIds.push(existing._id.toString());
+          existingMonths.push({ formId: existing._id.toString(), periodo: report.periodo });
         } else {
           const created = await FormModel.create({
             youngId: youngIdStr,
@@ -1096,22 +1122,31 @@ export async function POST(req: NextRequest) {
             createdBy: userId,
             status: 'BORRADOR'
           });
-          createdFormIds.push(created._id.toString());
+          const formId = created._id.toString();
+          newFormIds.push(formId);
+          newMonths.push({ formId, periodo: report.periodo });
         }
       }
     }
 
-    const importedMonths = monthlyReports.map((report, idx) => ({
-      formId: createdFormIds[idx],
-      periodo: report.periodo
-    }));
+    const importedMonths = newMonths;
+
+    let message = '';
+    if (newMonths.length > 0) {
+      message = `Joven "${nombreCompleto}" detectado automáticamente. Se agregó ${newMonths.length} mes nuevo: ${newMonths.map(m => m.periodo).join(', ')}. Se preservaron ${existingMonths.length} meses ya existentes (${existingMonths.map(m => m.periodo).join(', ')}) sin duplicarlos.`;
+    } else {
+      message = `Joven "${nombreCompleto}" detectado automáticamente. No se agregaron meses nuevos porque todos los meses del archivo (${existingMonths.map(m => m.periodo).join(', ')}) ya existen en el sistema.`;
+    }
 
     return NextResponse.json({
       success: true,
       youngId: youngIdStr,
-      formIds: createdFormIds,
+      formIds: newFormIds,
+      newMonths,
+      existingMonths,
       importedMonths,
-      message: `Joven "${nombreCompleto}" procesado con éxito. Se importó su PCP y ${monthlyReports.length} planillas mensuales (${monthlyReports.map(r => r.periodo).join(', ')}).`
+      allProcessedMonths: monthlyReports.map(r => r.periodo),
+      message
     });
 
   } catch (error: any) {

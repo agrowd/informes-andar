@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.9.9] - 2026-10-13
+### Added
+- **Soporte de Octubre en Bloque 4**: Se añadió `has10` en `evaluateBlocks` (`src/app/api/reports/final/route.ts`) y en la matriz institucional (`src/app/final-reports/page.tsx`), mostrando dinámicamente `3 meses evaluados (incluye Octubre)` en el Bloque 4.
+- **Importación Exitosa de Leonel Zenteno (Octubre)**: Cargado y registrado el mes 2026-10 (Form #427) con sus 7 talleres institucionales y 4,800 caracteres de observaciones en la base de datos de producción.
+
+### Changed
+- **Autodetección e Inserción Exclusiva de Meses Nuevos en Importador Excel (D-89)**:
+  - En `src/app/api/youngs/import-excel/route.ts`, se separan estrictamente `newMonths` de `existingMonths`.
+  - Los meses ya existentes en la base de datos se preservan/actualizan in-place sin duplicar filas.
+  - La respuesta JSON retorna en `importedMonths` únicamente los meses verdaderamente nuevos (`newMonths`).
+  - En `forms/page.tsx` y `youngs/page.tsx`, el modal de fusión trimestral (`ExcelImportWizardModal`) solo se abre si se importaron 2 o más meses nuevos (`>= 2`). Si se importa un único mes (ej. Octubre), se muestra directamente la confirmación de la importación.
+
 ## [1.9.8] - 2026-09-28
 ### Fixed
 - **Clasificación Canónica de Trimestrales y Corrección del Bug SQL `%02%` (D-88, ERR-37)**:

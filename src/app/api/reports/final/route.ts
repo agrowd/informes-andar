@@ -102,7 +102,7 @@ function evaluateBlocks(
   trimestral1: { ok: boolean; id: number | null; periodo: string | null };
   mensuales1: { ok: boolean; has04: boolean; has05: boolean; has06: boolean; has07: boolean; count: number; missing: string[] };
   trimestral2: { ok: boolean; id: number | null; periodo: string | null };
-  mensuales2: { ok: boolean; has08: boolean; has09: boolean; count: number; missing: string[] };
+  mensuales2: { ok: boolean; has08: boolean; has09: boolean; has10: boolean; count: number; missing: string[] };
   finalReport: { id: number; periodo: string; status: string; createdAt: string } | null;
   canGenerate: boolean;
   strictCanGenerate: boolean;
@@ -138,9 +138,10 @@ function evaluateBlocks(
   if (!has06) m1Missing.push('Junio');
   const m1Ok = m1Missing.length === 0;
 
-  // 5. Mensuales 2: Agosto (08), Septiembre (09) -> Los 2 son obligatorios
+  // 5. Mensuales 2: Agosto (08), Septiembre (09) -> Los 2 son obligatorios; Octubre (10) se incluye si está presente
   const has08 = forms.some(f => f.periodo?.includes('08') || f.periodo?.toLowerCase().includes('agosto'));
   const has09 = forms.some(f => f.periodo?.includes('09') || f.periodo?.toLowerCase().includes('septiembre') || f.periodo?.toLowerCase().includes('setiembre'));
+  const has10 = forms.some(f => f.periodo?.includes('10') || f.periodo?.toLowerCase().includes('octubre'));
   const m2Missing: string[] = [];
   if (!has08) m2Missing.push('Agosto');
   if (!has09) m2Missing.push('Septiembre');
@@ -162,7 +163,7 @@ function evaluateBlocks(
     trimestral1: { ok: t1Ok, id: t1?.id || null, periodo: t1?.periodo || null },
     mensuales1: { ok: m1Ok, has04, has05, has06, has07, count: [has04, has05, has06, has07].filter(Boolean).length, missing: m1Missing },
     trimestral2: { ok: t2Ok, id: t2?.id || null, periodo: t2?.periodo || null },
-    mensuales2: { ok: m2Ok, has08, has09, count: [has08, has09].filter(Boolean).length, missing: m2Missing },
+    mensuales2: { ok: m2Ok, has08, has09, has10, count: [has08, has09, has10].filter(Boolean).length, missing: m2Missing },
     finalReport,
     canGenerate,
     strictCanGenerate,

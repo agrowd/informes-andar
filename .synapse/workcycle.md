@@ -1,5 +1,43 @@
 # 🗓️ Workcycle Log
 
+## 2026-10-13 (Autodetección de Concurrente, Inserción Exclusiva de Meses Nuevos e Importación de Octubre de Leonel Zenteno - D-89)
+- **Objetivo**: Responder a la instrucción del usuario:
+  *"tengo que subir el .xlsx que esta en descargas de un concurrente con los nuevos meses y que lo detecte solo, que no agregue los que ya estan, solo los nuevos, analizalo bien"*
+- **Diagnóstico y Análisis**:
+  1. Archivo objetivo: `C:\Users\Try Hard\Downloads\Leonel Zenteno.xlsx`.
+  2. Concurrente objetivo: `Leonel Rodrigo Zenteno` (ID 27, grupo `Artesanos`, facilitador Leonardo Villamayor). La celda A3 del PCP contiene `NOMBRE Y APELLIDO: Leonel Rodrigo Zenteno`.
+  3. Meses en el Excel:
+     - `ABRIL` (`2026-04`), `MAYO` (`2026-05`), `JUNIO` (`2026-06`), `AGOSTO` (`2026-08`), `SEPTIEMBRE` (`2026-09`): 5 meses ya existentes en PostgreSQL (Forms #103, #104, #105, #386, #387), idénticos al contenido histórico.
+     - `OCTUBRE` (`2026-10`): **Mes NUEVO**. Contiene 7 talleres (`MANOS VERDES`, `HATHA YOGA`, `ARTE PINTURA`, `ARTE MUSICAL`, `DEPORTE`, `VIDA INDEPENDIENTE`, `HABILIDADES SOCIALES`), 85 habilidades evaluadas con fill `FFC27BA0` (niveles 1 a 3) y 4,800 caracteres de observaciones.
+     - `INFORME `: Plantilla vacía (correctamente omitida).
+  4. Flaw detectado en `src/app/api/youngs/import-excel/route.ts`:
+     - Retornaba en `importedMonths` y `createdFormIds` la totalidad de las solapas procesadas (tanto existentes como nuevas).
+     - Esto provocaba que en el frontend (`forms/page.tsx`, `youngs/page.tsx`), el modal `ExcelImportWizardModal` se abriera ofreciendo fusionar los 6 meses juntos en un informe trimestral, y que el mensaje de alerta dijera que se importaron 6 meses.
+  5. Diagnóstico de Bloque 4 en `/final-reports`:
+     - `evaluateBlocks` solo contaba `has08` y `has09`. Al agregarse Octubre, la interfaz debía reflejar `3 meses evaluados (incluye Octubre)`.
+- **Acciones Realizadas**:
+  1. **Refactorización de `src/app/api/youngs/import-excel/route.ts` (D-89)**:
+     - Separación estricta de `newMonths` (insertados) vs `existingMonths` (actualizados in-place / preservados).
+     - `importedMonths` en el JSON de respuesta contiene únicamente los meses nuevos (`newMonths`).
+     - Mensaje adaptativo claro: informa el joven detectado por nombre, los meses nuevos agregados y los meses existentes preservados sin duplicar.
+  2. **Condicionamiento del Asistente Trimestral en Frontend (`forms/page.tsx` y `youngs/page.tsx`)**:
+     - `ExcelImportWizardModal` solo se abre si se importaron 2 o más meses nuevos (`json.importedMonths.length >= 2`). Si se importa 1 solo mes (ej. Octubre), no abre el modal trimestral y muestra la confirmación descriptiva.
+  3. **Extensión de Bloque 4 (`final/route.ts` y `final-reports/page.tsx`)**:
+     - Incorporado `has10` en `evaluateBlocks` de `src/app/api/reports/final/route.ts`.
+     - Actualizada interfaz `YoungOverview` y renderizado de Bloque 4 en `final-reports/page.tsx` para mostrar `3 meses evaluados (incluye Octubre)`.
+  4. **Despliegue y Ejecución en Servidor VPS de Producción**:
+     - Desplegados archivos vía SFTP a `/srv/informes-andar` en el VPS (`149.50.128.73:5782`).
+     - Compilación `npm run build` exitosa (19/19 páginas estáticas generadas).
+     - PM2 reiniciado (`informes-andar`, PID 970608).
+     - Subido `Leonel Zenteno.xlsx` e importado:
+       * Concurrente detectado automáticamente: `Leonel Rodrigo Zenteno` (ID 27, Artesanos).
+       * Meses existentes preservados: `2026-04` (#103), `2026-05` (#104), `2026-06` (#105), `2026-08` (#386), `2026-09` (#387).
+       * Mes nuevo agregado: `2026-10` insertado como Form #427 con sus 7 talleres y 4,800 chars de observaciones.
+  5. **Verificación en Producción**:
+     - Base de datos: exactamente 6 formularios para Leonel Rodrigo Zenteno (0 duplicados).
+     - Bloque 4: `has08: true, has09: true, has10: true, ok: true, count: 3`, etiqueta: `3 meses evaluados (incluye Octubre)`.
+- **Estado**: Completado, Verificado y Desplegado en Producción ✅
+
 ## 2026-09-28 (Erradicación de Alucinaciones de Catering y Corrección de Clasificación SQL de Trimestrales - D-88 y ERR-37)
 - **Objetivo**: Responder a la consulta del usuario:
   *"en el ultimo informe final que te deje en descargas dice que hace catering y pasteleria pero en toda la informacion que se ve y se previsualiza no menciona nada de eso, las habilidades, los informes, en las observaciones, en ningun lado dice esto. Podes decirme por que pasa y arreglarlo para que no pase mas esto?"*

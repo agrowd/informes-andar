@@ -700,3 +700,32 @@
      - Regenerado el Informe Final oficial (Reporte #273) y descargado a `C:\Users\Try Hard\Downloads\informe-final-Jonathan_Salvatierra-Emprendedores-2026-09-28.docx`.
      - Auditoría con `mammoth`: 0 menciones de catering, 0 de pastelería, 0 de cocina y 0 de niveles de rúbrica.
 
+
+
+# Registro de Conversación - 2026-10-13 (Autodetección de Concurrente, Inserción Exclusiva de Meses Nuevos e Importación de Octubre de Leonel Zenteno)
+## Usuario:
+- "tengo que subir el .xlsx que esta en descargas de un concurrente con los nuevos meses y que lo detecte solo, que no agregue los que ya estan, solo los nuevos, analizalo bien"
+
+## Antigravity:
+- **Diagnóstico y Análisis**:
+  1. Archivo objetivo: `C:\Users\Try Hard\Downloads\Leonel Zenteno.xlsx`.
+  2. Concurrente: `Leonel Rodrigo Zenteno` (ID 27, grupo `Artesanos`, facilitador Leonardo Villamayor). El parser extrae automáticamente su nombre de la solapa `PCP` fila 3 (`NOMBRE Y APELLIDO: Leonel Rodrigo Zenteno`) y asocia a ID 27 sin intervención manual.
+  3. Meses en el Excel vs Base de Datos:
+     - `ABRIL` (2026-04), `MAYO` (2026-05), `JUNIO` (2026-06), `AGOSTO` (2026-08), `SEPTIEMBRE` (2026-09): Ya existían en la base de datos (Forms #103, #104, #105, #386, #387), idénticos al Excel.
+     - `OCTUBRE` (2026-10): Mes NUEVO con 7 talleres (Manos Verdes, Hatha Yoga, Arte Pintura, Arte Musical, Deporte, Vida Independiente, Habilidades Sociales), 85 habilidades evaluadas y 4,800 caracteres de observaciones ricas.
+  4. Flaw en importación previa:
+     - Retornaba todos los meses del archivo en `importedMonths` y `createdFormIds`, haciendo que en el frontend el modal de fusión trimestral intentara fusionar todos los meses juntos.
+- **Acciones Realizadas**:
+  1. **Separación de Meses Nuevos vs Existentes en `import-excel/route.ts` (D-89)**:
+     - Los meses ya existentes se preservan y actualizan en su lugar sin insertar nuevas filas (evitando duplicación).
+     - Solo los meses nuevos se insertan con `INSERT INTO forms`.
+     - `importedMonths` en la respuesta JSON devuelve estrictamente los meses nuevos (`newMonths`).
+     - Mensaje descriptivo informa: concurrente detectado, cantidad de meses nuevos agregados y cantidad de meses históricos preservados.
+  2. **Condicionamiento del Asistente Trimestral (`forms/page.tsx` y `youngs/page.tsx`)**:
+     - `ExcelImportWizardModal` solo se abre cuando se agregan 2 o más meses nuevos (`>= 2`). Si se agrega 1 mes (ej. Octubre), se muestra la confirmación directa.
+  3. **Reconocimiento de Octubre en Bloque 4 (`final/route.ts` y `final-reports/page.tsx`)**:
+     - Agregado `has10` en `evaluateBlocks` y en la UI para mostrar `3 meses evaluados (incluye Octubre)`.
+  4. **Despliegue y Ejecución en Producción**:
+     - Desplegados cambios a VPS (`149.50.128.73:5782`), compilado con `npm run build` (19/19 páginas) y reiniciado PM2.
+     - Importado `Leonel Zenteno.xlsx`: detectado Leonel Rodrigo Zenteno (ID 27), preservados 5 meses existentes e insertado Octubre 2026 como Form #427.
+     - Verificado en PostgreSQL: exactamente 6 formularios, 0 duplicados y Bloque 4 listo con 3 meses evaluados.

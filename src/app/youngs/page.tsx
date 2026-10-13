@@ -281,7 +281,7 @@ export default function YoungsPage() {
       if (res.ok) {
         const json = await res.json();
         loadYoungs();
-        if (json.importedMonths && json.importedMonths.length > 0) {
+        if (json.importedMonths && json.importedMonths.length >= 2) {
           setImportWizardYoungId(json.youngId || '');
           setImportWizardMonths(json.importedMonths);
           setImportWizardOpen(true);
