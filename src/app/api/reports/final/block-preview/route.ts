@@ -328,15 +328,18 @@ export async function GET(req: NextRequest) {
 
       const months = dedupedRows.map(f => {
         const d = f.data || {};
-        const talleres = Array.isArray(d.talleres) ? d.talleres.map((t: any) => ({
-          nombre: (t.nombre || 'GENERAL').trim(),
-          itemsCount: Array.isArray(t.items) ? t.items.length : 0,
-          itemsEvaluadosCount: Array.isArray(t.items) ? t.items.filter((it: any) => (it.nivel || 0) > 0).length : 0,
-          items: Array.isArray(t.items) ? t.items.map((it: any) => ({
-            nombre: (it.nombre || '').trim(),
-            nivel: typeof it.nivel === 'number' ? it.nivel : (parseInt(it.nivel) || 0)
-          })) : []
-        })) : [];
+        const talleres = Array.isArray(d.talleres) ? d.talleres.map((t: any) => {
+          const rawItems = Array.isArray(t.items) ? t.items : (Array.isArray(t.habilidades) ? t.habilidades : []);
+          return {
+            nombre: (t.nombre || 'GENERAL').trim(),
+            itemsCount: rawItems.length,
+            itemsEvaluadosCount: rawItems.filter((it: any) => (it.nivel || 0) > 0).length,
+            items: rawItems.map((it: any) => ({
+              nombre: (it.nombre || '').trim(),
+              nivel: typeof it.nivel === 'number' ? it.nivel : (parseInt(it.nivel) || 0)
+            }))
+          };
+        }) : [];
 
         return {
           id: f.id,
@@ -455,15 +458,18 @@ export async function GET(req: NextRequest) {
 
       const months = dedupedRows.map(f => {
         const d = f.data || {};
-        const talleres = Array.isArray(d.talleres) ? d.talleres.map((t: any) => ({
-          nombre: (t.nombre || 'GENERAL').trim(),
-          itemsCount: Array.isArray(t.items) ? t.items.length : 0,
-          itemsEvaluadosCount: Array.isArray(t.items) ? t.items.filter((it: any) => (it.nivel || 0) > 0).length : 0,
-          items: Array.isArray(t.items) ? t.items.map((it: any) => ({
-            nombre: (it.nombre || '').trim(),
-            nivel: typeof it.nivel === 'number' ? it.nivel : (parseInt(it.nivel) || 0)
-          })) : []
-        })) : [];
+        const talleres = Array.isArray(d.talleres) ? d.talleres.map((t: any) => {
+          const rawItems = Array.isArray(t.items) ? t.items : (Array.isArray(t.habilidades) ? t.habilidades : []);
+          return {
+            nombre: (t.nombre || 'GENERAL').trim(),
+            itemsCount: rawItems.length,
+            itemsEvaluadosCount: rawItems.filter((it: any) => (it.nivel || 0) > 0).length,
+            items: rawItems.map((it: any) => ({
+              nombre: (it.nombre || '').trim(),
+              nivel: typeof it.nivel === 'number' ? it.nivel : (parseInt(it.nivel) || 0)
+            }))
+          };
+        }) : [];
 
         return {
           id: f.id,

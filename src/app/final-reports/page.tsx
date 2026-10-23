@@ -950,7 +950,7 @@ export default function FinalReportsPage() {
                         2. MENSUALES 1 (ABR-JUN)
                       </span>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        {young.mensuales1.ok && (
+                        {(young.mensuales1.ok || young.mensuales1.count > 0) && (
                           <button
                             onClick={() => openBlockPreview(young.id, young.nombre, 2)}
                             title="Vista previa de las evaluaciones mensuales"
@@ -975,7 +975,10 @@ export default function FinalReportsPage() {
                       {young.mensuales1.ok ? (
                         <span>{young.mensuales1.has07 ? '4 meses evaluados (incluye Julio)' : '3 de 3 meses evaluados'}</span>
                       ) : (
-                        <span style={{ color: '#d97706' }}>Faltan: {young.mensuales1.missing.join(', ')}</span>
+                        <span style={{ color: '#d97706' }}>
+                          Faltan: {young.mensuales1.missing.join(', ')}
+                          {young.mensuales1.has07 ? ' (Julio cargado)' : ''}
+                        </span>
                       )}
                     </div>
                     <button
@@ -1104,7 +1107,7 @@ export default function FinalReportsPage() {
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span style={{ fontSize: 11, fontWeight: 700, color: young.mensuales2.ok ? '#166534' : '#92400e' }}>
-                        4. MENSUALES 2 (AGO-SEP)
+                        4. MENSUALES 2 (AGO-OCT)
                       </span>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         {young.mensuales2.ok && (
