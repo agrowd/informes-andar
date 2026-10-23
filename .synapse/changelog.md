@@ -1,5 +1,40 @@
 # Changelog
 
+## [2.0.2] - 2026-10-23
+### Added
+- **Importación y Verificación Integral de Octubre para Francisco Rafael Balbi (Form #429)**:
+  - Importada la solapa `OCTUBRE` (`2026-10`) de `Rafael Francisco Balbi.xlsx` a PostgreSQL en el VPS.
+  - Registrados los 5 talleres institucionales (`DEPORTE`, `VIAJAR`, `HABILIDADES SOCIALES`, `MUSICOTERAPIA`, `MANOS VERDES`) con sus 66 habilidades evaluadas (niveles 1 a 3) y 4.916 caracteres de observaciones (5 párrafos).
+  - Verificada la integridad del concurrente: exactamente 6 meses consolidados sin duplicados (Abril, Mayo, Junio, Agosto, Septiembre, Octubre).
+  - Comprobado el motor de exportación: genera 6 solapas mensuales sin hoja PCP (`includePcp: false`) y con pestaña activa en `OCTUBRE`.
+  - Verificado el Diagnóstico Institucional (`/final-reports`): Bloque 4 cuenta con los 3 meses evaluados (`has08`, `has09`, `has10`).
+
+### Fixed
+- **Desbloqueo de Inicio de Sesión por Acceso Directo por IP en VPS (D-92, ERR-39)**:
+  - Compatibilidad universal de cookies de sesión para HTTP y HTTPS (`useSecureCookies: false`, nombre estándar `next-auth.session-token`).
+  - Navegación dura `window.location.href = '/'` tras autenticación para garantizar la propagación inmediata de cookies en Chrome.
+  - Sincronización del hash de contraseña institucional de `natoh` en PostgreSQL de producción.
+
+
+## [2.0.1] - 2026-10-13
+### Changed
+- **Exclusión Definitiva de Solapa PCP en Exportaciones de Cuadrícula Mensual (D-91)**:
+  - Eliminada la solapa `PCP` de los libros Excel exportados desde formularios y reportes (`includePcp: false` por defecto).
+  - El archivo Excel descargado contiene exclusivamente las solapas de los meses evaluados (`ABRIL`, `MAYO`, `JUNIO`, `AGOSTO`, `SEPTIEMBRE`, `OCTUBRE`), sin mezclar el Plan Centrado en la Persona.
+  - La visualización del libro al abrirse en Excel se posiciona automáticamente en la solapa del mes del formulario consultado (`activeTab = targetMonth`).
+  - Habilitado soporte parametrizado para exportación de solapa mensual individual vía `?single=1`.
+
+## [2.0.0] - 2026-10-13
+### Fixed
+- **Exportación Integral de Planillas Excel con Paridad 100% vs Originales (D-90, ERR-38)**:
+  - Eliminada la dependencia de la plantilla rígida `monthly_template.xlsx` que descartaba silenciosamente los talleres no coincidentes (`if (tallerRow === -1) continue;`) y borraba los demás meses.
+  - Creado el motor dinámico universal `src/lib/excelExport.ts` (`buildCompleteWorkbook` y `renderMonthlyWorksheet`).
+  - La exportación ahora consulta y consolida todos los meses evaluados del concurrente en PostgreSQL (`forms WHERE young_id = $1`), ordenándolos cronológicamente con nombres en español (`ABRIL`, `MAYO`, `JUNIO`, `AGOSTO`, `SEPTIEMBRE`, `OCTUBRE`).
+  - Cada solapa mensual se construye dinámicamente con las 32 columnas estándar, cabecera de taller con colores pastel institucionales, habilidades dispuestas en bloques de 8 con cuadrícula 2x2, bordes y pintado progresivo según el nivel rúbrica y color institucional del grupo (`FFC27BA0` en Artesanos).
+  - Truncado en bucle inverso de las 998 filas fantasma de la solapa PCP a 36 filas limpias preservando el membrete y las imágenes.
+  - Actualizados los endpoints `api/forms/[id]/export-excel` y `api/reports/[id]/export-excel`.
+  - Desplegado y verificado en vivo en el servidor VPS de producción con paridad celda por celda contra `Elias Ezequiel Garea. .xlsx`.
+
 ## [1.9.9] - 2026-10-13
 ### Added
 - **Soporte de Octubre en Bloque 4**: Se añadió `has10` en `evaluateBlocks` (`src/app/api/reports/final/route.ts`) y en la matriz institucional (`src/app/final-reports/page.tsx`), mostrando dinámicamente `3 meses evaluados (incluye Octubre)` en el Bloque 4.

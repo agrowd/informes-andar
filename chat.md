@@ -584,3 +584,98 @@
      - Desplegados cambios a VPS (`149.50.128.73:5782`), compilado con `npm run build` (19/19 páginas) y reiniciado PM2.
      - Importado `Leonel Zenteno.xlsx`: detectado Leonel Rodrigo Zenteno (ID 27), preservados 5 meses existentes e insertado Octubre 2026 como Form #427.
      - Verificado en PostgreSQL: exactamente 6 formularios, 0 duplicados y Bloque 4 listo con 3 meses evaluados.
+
+
+# Registro de Conversación - 2026-10-13 (Exportación Dinámica Integral de Planillas Excel con Paridad 100% vs Original)
+## Usuario:
+- "No se exporta bien, fijate en descargas que esta el que se exporto y no es igual que el original"
+
+## Antigravity:
+- **Diagnóstico y Análisis Comparativo**:
+  1. Comparó el archivo exportado `cuadricula-Ezequiel_Elías_Garea-Artesanos-13-10-2026.xlsx` contra el libro original del facilitador `Elias Ezequiel Garea. .xlsx` en `C:\Users\Try Hard\Downloads\`.
+  2. Detectó la discrepancia fundamental:
+     - El original contiene 7 solapas (`PCP`, `ABRIL`, `MAYO`, `JUNIO`, `AGOSTO`, `SEPTIEMBRE`, `OCTUBRE`).
+     - El exportado previo solo tenía 2 solapas (`PCP` con 998 filas vacías, y `2026-10` con formato numérico).
+     - La hoja `2026-10` dependía de una plantilla rígida (`monthly_template.xlsx`) con 4 talleres ajenos (Deporte, Viajar, Habilidades Sociales, Musicoterapia). Al evaluar `if (tallerRow === -1) continue;`, 6 de los 8 talleres reales de Ezequiel (`MANOS VERDES`, `HATHA YOGA`, `ARTE PINTURA`, `ARTE MUSICAL`, `VIDA INDEPENDIENTE`, `ARQUERIA`) eran descartados por completo sin escribirse.
+- **Acciones Realizadas**:
+  1. **Motor Universal `src/lib/excelExport.ts` (D-90)**:
+     - `buildCompleteWorkbook`: Consulta en PostgreSQL todos los formularios evaluados del concurrente (`forms WHERE young_id = $1`) y los ordena cronológicamente mapeando a solapas con nombres en español (`ABRIL`, `MAYO`, `JUNIO`, `AGOSTO`, `SEPTIEMBRE`, `OCTUBRE`).
+     - `renderMonthlyWorksheet`: Genera dinámicamente cada solapa con cabecera en 32 columnas (A..AF), títulos de taller con paleta pastel institucional, distribución de habilidades en bloques de hasta 8 columnas por fila con cuadrícula de 2x2, bordes y pintado progresivo según el nivel rúbrica (1 a 4) y color institucional (`FFC27BA0` para Artesanos).
+     - Transcribe las observaciones completas con autoajuste de altura de fila.
+     - `writePcpSheet`: Inyecta datos personales, rutinas, sueños y escalas, truncando las filas vacías a partir de la fila 37 para eliminar las 998 filas fantasma y conservando imágenes institucionales.
+  2. **Refactorización de Endpoints**:
+     - `src/app/api/forms/[id]/export-excel/route.ts`: Implementado con `buildCompleteWorkbook`, exportando el libro íntegro del concurrente con su último mes sincronizado.
+     - `src/app/api/reports/[id]/export-excel/route.ts`: Actualizado para utilizar la misma lógica unificada.
+  3. **Despliegue y Verificación en Producción**:
+     - `npx tsc --noEmit` y `npm run build` locales exitosos (19/19 páginas).
+     - Subidos archivos por SFTP al VPS (`149.50.128.73:5782`), compilado `npm run build` en servidor y recargado PM2.
+     - Generado el libro para Ezequiel Elías Garea (Form #428) y descargado directamente a `C:\Users\Try Hard\Downloads\cuadricula-Ezequiel_Elías_Garea-Artesanos-13-10-2026.xlsx`.
+     - Auditoría con ExcelJS: 100% de paridad con `Elias Ezequiel Garea. .xlsx` (7 solapas idénticas, 8 talleres en Octubre, PCP limpio y niveles de habilidades en 2x2 exactos).
+
+# Registro de Conversación - 2026-10-13 (Exclusión Definitiva de Solapa PCP en Exportaciones de Cuadrícula Mensual)
+## Usuario:
+- "Sacale la pcp y que solo sea el excel que tiene que ser"
+
+## Antigravity:
+- **Diagnóstico**:
+  - En la exportación de Cuadrículas Mensuales (`/form?formId=...` o `/forms`), el usuario requiere que el archivo Excel sea estrictamente la planilla de evaluación curricular de talleres y meses, sin incluir la solapa del Plan Centrado en la Persona (PCP).
+  - El libro debe contener exclusivamente las solapas de los meses evaluados (`ABRIL`, `MAYO`, `JUNIO`, `AGOSTO`, `SEPTIEMBRE`, `OCTUBRE`) y posicionar automáticamente la vista de Excel en la solapa correspondiente al formulario que se está editando (`activeTab`).
+- **Acciones Realizadas**:
+  1. **Actualización de `src/lib/excelExport.ts` (D-91)**:
+     - Configurado `includePcp: false` por defecto en `buildCompleteWorkbook`, removiendo por completo la hoja `PCP` del libro generado.
+     - Añadido soporte para `singleMonthOnly: boolean` (opcional vía `?single=1`).
+     - Configurado `activeTab` en la vista del libro (`workbook.views`) para abrir directamente en la solapa del mes del formulario consultado (ej. `OCTUBRE`).
+  2. **Actualización de Endpoints**:
+     - `src/app/api/forms/[id]/export-excel/route.ts`: pasa `includePcp: false` y lee `?single=1`.
+     - `src/app/api/reports/[id]/export-excel/route.ts`: pasa `includePcp: false`.
+  3. **Despliegue y Compilación en Servidor VPS de Producción**:
+     - Archivos subidos por SFTP a `/srv/informes-andar`.
+     - Compilación `npm run build` en servidor (código 0, 19/19 páginas estáticas generadas).
+     - Servicio PM2 recargado en caliente (`informes-andar`).
+  4. **Descarga y Verificación**:
+     - Generado y descargado a `C:\Users\Try Hard\Downloads\cuadricula-Ezequiel_Elías_Garea-Artesanos-13-10-2026.xlsx`.
+     - Verificación con ExcelJS:
+       * `Has PCP sheet?: false` (0 solapas PCP).
+       * Solapas presentes: `[ 'ABRIL', 'MAYO', 'JUNIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE' ]`.
+       * Solapa activa al abrir: `OCTUBRE` (`activeTab: 5`).
+
+
+# Registro de Conversación - 2026-10-23 (Resolución de Bloqueo de Inicio de Sesión por IP Directa)
+## Usuario:
+- "No inicia sesion, se queda asi" (con captura de pantalla en http://149.50.128.73:8000/login?callbackUrl=%2F y botón "Iniciando sesión...")
+
+## Antigravity:
+- **Causa Raíz**:
+  1. `NEXTAUTH_URL` estaba seteado en HTTPS (`https://informes-andar.nextemarketing.com`), pero el dominio apunta a otra IP externa (200.58.119.215), forzando al usuario a entrar por IP directa `http://149.50.128.73:8000`.
+  2. NextAuth emitía cookies con flag `Secure` y prefijo `__Secure-`. Por normas de seguridad de navegadores (RFC 6265bis), Chrome descarta silenciosamente estas cookies sobre HTTP.
+  3. Sin cookies de sesión, el middleware rebotaba cualquier navegación a `/` de regreso a `/login`.
+  4. El hash en Postgres del usuario `natoh` no coincidía con su contraseña institucional (`Federyco88!`).
+- **Solución Aplicada**:
+  1. Configuración de cookies universales compatibles con HTTP y HTTPS en `src/lib/auth.ts` y `src/middleware.ts` (`useSecureCookies: false`, nombre `next-auth.session-token`).
+  2. Actualización de `NEXTAUTH_URL` en VPS a `http://149.50.128.73:8000`.
+  3. Reemplazo de `router.push('/')` por `window.location.href = '/'` en `src/app/login/page.tsx`.
+  4. Actualización del hash de contraseña de `natoh` a `Federyco88!` en la base de datos PostgreSQL de producción.
+  5. Compilación y recarga de PM2 en el VPS. Verificación exitosa del flujo completo de autenticación (200 OK y acceso directo a `/`).
+
+
+# Registro de Conversación - 2026-10-23 (Importación y Verificación de Octubre para Francisco Rafael Balbi)
+## Usuario:
+- "Subi el mes de octubre y fijate que este bien del que esta en descargas FRANCISCO RAFAEL BALBI"
+
+## Antigravity:
+- **Inspección del archivo fuente**:
+  - Archivo en Descargas: `C:\Users\Try Hard\Downloads\Rafael Francisco Balbi.xlsx`.
+  - Solapas contenidas: `[ 'PCP', 'ABRIL', 'MAYO', 'JUNIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE' ]`.
+  - Concurrente: Francisco Rafael Balbi (Young ID 5, grupo `Clave de Sol`, legajo 38).
+  - Facilitadora detectada en cabecera: Juliana Soledad Arias Espinoza (User ID 7).
+- **Procesamiento e Importación**:
+  - Subido el archivo al VPS por SFTP a `/srv/informes-andar/scratch/Rafael_Francisco_Balbi.xlsx`.
+  - Parseada la solapa `OCTUBRE` (`2026-10`):
+    * 5 talleres: `DEPORTE` (19 habilidades), `VIAJAR` (16 habilidades), `HABILIDADES SOCIALES` (15 habilidades), `MUSICOTERAPIA` (8 habilidades), `MANOS VERDES` (8 habilidades).
+    * Total: 66 habilidades evaluadas (niveles 1 a 3), 0 habilidades vacías.
+    * Observaciones: 5 párrafos completos (4.916 caracteres) con narrativa de asistencia regular, desempeño en talleres, interacción con pares, vínculo con facilitadora Juliana y eventos destacados (festejo de cumplemes y llaveros de madera por el Día de la Madre).
+  - Inserción en Postgres: Creado **Form #429** (`young_id = 5`, `periodo = '2026-10'`, `created_by = 7`, `status = 'BORRADOR'`).
+  - Preservación de meses previos sin duplicación: Form #15 (Abril), Form #16 (Mayo), Form #17 (Junio), Form #304 (Agosto), Form #305 (Septiembre). Total: 6 meses consolidados.
+- **Verificación de Exportación y Diagnóstico**:
+  - Verificado el motor de exportación `buildCompleteWorkbook`: genera 6 solapas mensuales exactas, 0 hojas de PCP (`includePcp: false`), y foco en `activeTab: 5` (`OCTUBRE`).
+  - En el Diagnóstico Institucional (`/final-reports`), el Bloque 4 refleja `3 meses evaluados (incluye Octubre)` con `has08: true`, `has09: true`, `has10: true`.

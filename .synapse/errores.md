@@ -349,4 +349,41 @@
 5. **Post-Procesador Universal (`sanitizeCateringIfAbsent`)**: Sanitiza y elimina oraciones que atribuyen catering/pastelería si el joven no asiste a dichos talleres, aplicado en `cleanString`, `stripParrafoPrefixes` y exportación DOCX.
 6. **Depuración y Regeneración en Producción**: Se eliminaron los reportes obsoletos #81 y #272 en el VPS. Se regeneró el Informe Final de Jonathan Salvatierra (Reporte #273), confirmando **0 menciones** de catering/pastelería, y se descargó el Word final limpio a `C:\Users\Try Hard\Downloads\informe-final-Jonathan_Salvatierra-Emprendedores-2026-09-28.docx`.
 **Estado:** ✅ FIXED
+## ERR-38: Exportación de Excel Inconsistente con Plantilla Rígida y Omisión de Meses/Talleres (2026-10-13)
+**Síntoma:** Al hacer click en "Exportar Excel" desde la vista de formulario mensual (`/form?formId=...`), el archivo generado en Descargas (`cuadricula-Ezequiel_Elías_Garea-Artesanos-13-10-2026.xlsx`) no se parecía en nada al libro Excel original del facilitador (`Elias Ezequiel Garea. .xlsx`): 1) Solo contenía 1 mes con nombre numérico (`2026-10`) en vez de los 6 meses evaluados en español (`ABRIL`, `MAYO`, `JUNIO`, `AGOSTO`, `SEPTIEMBRE`, `OCTUBRE`). 2) Mostraba talleres fantasma ajenos (`VIAJAR`, `MUSICOTERAPIA`) y omitía 6 de los 8 talleres reales del joven (`MANOS VERDES`, `HATHA YOGA`, `ARTE PINTURA`, etc.). 3) La solapa PCP contenía 998 filas vacías con datos residuales de Juan Pablo Herrera de 2022.
+**Root Cause:**
+1. `src/app/api/forms/[id]/export-excel/route.ts` dependía exclusivamente de `templates/monthly_template.xlsx`, un archivo estático legado que contenía una hoja con talleres fijos (`DEPORTE`, `VIAJAR`, `HABILIDADES SOCIALES`, `MUSICOTERAPIA`).
+2. En la línea 197 se evaluaba `if (tallerRow === -1) continue;`: cualquier taller de `form.data.talleres` que no coincidiera con los nombres de la plantilla fija era ignorado y descartado silenciosamente.
+3. Las líneas 105-109 borraban todas las solapas del libro dejando únicamente la solapa del período consultado, perdiendo todos los meses históricos evaluados para el joven en la base de datos.
+4. El nombre de la solapa se fijaba literalmente al string de período (`2026-10`) en lugar del nombre del mes en español en mayúsculas (`OCTUBRE`).
+5. La solapa PCP del template contenía rangos definidos hasta la fila 998, provocando un archivo hinchado e inconsistente.
+**Solución:**
+1. Se construyó el motor dinámico universal `src/lib/excelExport.ts` (`buildCompleteWorkbook` y `renderMonthlyWorksheet`).
+2. Se consultan todos los meses evaluados del concurrente en PostgreSQL y se normalizan canónicamente a nombres de mes en español (`ABRIL`, `MAYO`, `JUNIO`, `AGOSTO`, `SEPTIEMBRE`, `OCTUBRE`), ordenados cronológicamente.
+3. Cada solapa mensual se construye dinámicamente:
+   - Cabecera en 32 columnas (A..AF) con `INFORME MENSUAL`, nombre, fecha y facilitador.
+   - Cada taller se crea con su barra de título combinada de 32 columnas y su color pastel característico (Huerta: damasco, Yoga: durazno, Pintura: celeste, Música: rosa, Deporte: amarillo, etc.).
+   - Las habilidades se agrupan en bloques de 8 columnas por fila con su título centrado y la cuadrícula 2x2 debajo, con bordes y pintado progresivo según el nivel rúbrica (1 a 4) y el color institucional del grupo (`FFC27BA0` en Artesanos).
+   - Las observaciones se transcriben con altura proporcional y ajuste de línea automático.
+4. En la solapa PCP, se truncan en bucle inverso las filas vacías residuales a partir de la fila 37, dejando exactamente 36 filas limpias y preservando todas las imágenes institucionales.
+5. Se actualizaron los endpoints `src/app/api/forms/[id]/export-excel/route.ts` y `src/app/api/reports/[id]/export-excel/route.ts`.
+6. Se desplegó al VPS de producción (`149.50.128.73:5782`), compilación `npm run build` exitosa y recarga en PM2.
+7. Se descargó el archivo regenerado directamente a `C:\Users\Try Hard\Downloads\cuadricula-Ezequiel_Elías_Garea-Artesanos-13-10-2026.xlsx`, verificando 100% de paridad con las 7 solapas y los 8 talleres de `Elias Ezequiel Garea. .xlsx`.
+**Estado:** ✅ FIXED
 
+
+## ERR-39: Bloqueo de Inicio de Sesión ("Iniciando sesión...") por Acceso HTTP con Cookies __Secure- (2026-10-23)
+**Síntoma:** El usuario ingresa credenciales válidas en `http://149.50.128.73:8000/login`, el botón se queda permanentemente en "Iniciando sesión..." y nunca entra al sistema ni muestra error.
+**Root Cause:** 
+1. `NEXTAUTH_URL` en producción estaba configurado como `https://informes-andar.nextemarketing.com` (cuyo DNS apunta a Traxhost 200.58.119.215, obligando al usuario a entrar por IP directa `http://149.50.128.73:8000`).
+2. Al detectar HTTPS en `NEXTAUTH_URL`, NextAuth activó `useSecureCookies: true` y emitió cookies con prefijo `__Secure-next-auth.session-token` y flag `Secure; SameSite=Lax`.
+3. Chrome y los navegadores modernos (RFC 6265bis) descartan automáticamente cookies `Secure` o con prefijo `__Secure-` si la conexión es HTTP simple, dejando al cliente sin cookies de sesión.
+4. Al hacer `router.push('/')`, el middleware recibía la petición sin cookies (`hasToken: false`) y redirigía de vuelta a `/login`.
+5. Además, la contraseña de `natoh` en PostgreSQL no coincidía con `Federyco88!`.
+**Solución:**
+1. Se configuró `useSecureCookies: false` y cookies universales sin prefijo (`next-auth.session-token`, `next-auth.csrf-token`) en `src/lib/auth.ts` y `src/middleware.ts`.
+2. Se actualizó `NEXTAUTH_URL` en el VPS a `http://149.50.128.73:8000`.
+3. Se actualizó el hash de contraseña de `natoh` en PostgreSQL a `Federyco88!`.
+4. Se cambió `router.push('/')` por `window.location.href = '/'` en `src/app/login/page.tsx` para forzar el envío de cookies.
+**Commit:** Desplegado en VPS
+**Estado:** ✅ FIXED
