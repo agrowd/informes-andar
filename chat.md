@@ -679,3 +679,29 @@
 - **Verificación de Exportación y Diagnóstico**:
   - Verificado el motor de exportación `buildCompleteWorkbook`: genera 6 solapas mensuales exactas, 0 hojas de PCP (`includePcp: false`), y foco en `activeTab: 5` (`OCTUBRE`).
   - En el Diagnóstico Institucional (`/final-reports`), el Bloque 4 refleja `3 meses evaluados (incluye Octubre)` con `has08: true`, `has09: true`, `has10: true`.
+
+
+# Registro de Conversación - 2026-10-23 (Importación y Verificación de Octubre para Marisol Fernanda Brito)
+## Usuario:
+- "Ahora con el de Marisol Fernanda Brito que esta en descargas"
+
+## Antigravity:
+- **Inspección del archivo fuente**:
+  - Archivo en Descargas: `C:\Users\Try Hard\Downloads\Marisol Fernanda Brito.xlsx`.
+  - Solapas contenidas: `[ 'PCP', 'ABRIL', 'MAYO', 'JUNIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'INFORME ' ]`.
+  - Concurrente: Marisol Fernanda Brito (Young ID 8, grupo `Clave de Sol`, legajo 12).
+  - Facilitadora detectada en cabecera: Juliana Soledad Arias Espinoza (User ID 7).
+  - Fecha detectada: 10/10/2026.
+- **Procesamiento e Importación**:
+  - Subido el archivo al VPS por SFTP a `/srv/informes-andar/scratch/Marisol_Fernanda_Brito.xlsx`.
+  - Parseada la solapa `OCTUBRE` (`2026-10`):
+    * 5 talleres: `DEPORTE` (19 habilidades), `VIAJAR` (16 habilidades), `HABILIDADES SOCIALES` (16 habilidades), `MUSICOTERAPIA` (8 habilidades), `MANOS VERDES` (8 habilidades).
+    * Total: 67 habilidades evaluadas.
+    * Observaciones: 6 párrafos completos (4.258 caracteres) detallando asistencia regular, desempeño en circuitos motores con apoyo físico, caminatas con andador y resistencia de marcha, musicoterapia explorando instrumentos y contacto afectivo, socialización grupal con pares, vínculo estrecho con facilitadora Juliana, situaciones relevantes (festejo de cumplemes, trabajo con madera y pintado por el Día de la Madre) y seguimiento antropométrico (registro de peso de 25,500 kg en octubre).
+  - Inserción en PostgreSQL: Creado **Form #430** (`young_id = 8`, `periodo = '2026-10'`, `created_by = 7`, `status = 'BORRADOR'`).
+  - Preservación de meses previos sin duplicación: Form #31 (Abril), Form #32 (Mayo), Form #33 (Junio), Form #308 (Agosto), Form #309 (Septiembre). Total: 6 meses consolidados.
+- **Compatibilidad y Exportación**:
+  - Añadido fallback `taller.items || taller.habilidades || []` en `src/lib/excelExport.ts` y `src/lib/formSummary.ts` para compatibilidad retroactiva con esquemas históricos.
+  - Verificada la exportación con `scratch/test_marisol_export.mjs`: 6 solapas mensuales exactas (`ABRIL`, `MAYO`, `JUNIO`, `AGOSTO`, `SEPTIEMBRE`, `OCTUBRE`), 0 solapas PCP (`includePcp: false`), y foco activo en `activeTab: 5` (`OCTUBRE`).
+  - Verificado el Diagnóstico Institucional (`/final-reports`): Bloque 4 registra los 3 meses evaluados (`has08: true`, `has09: true`, `has10: true`).
+  - Compilación `npm run build` y recarga de PM2 en el VPS ejecutadas con código 0.

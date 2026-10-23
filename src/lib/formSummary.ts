@@ -21,7 +21,7 @@ export function extractFormSummary(data: any): FormSummaryInfo {
       const name = String(t.nombre).trim();
       if (!talleresNombres.includes(name)) talleresNombres.push(name);
     }
-    const items = Array.isArray(t?.items) ? t.items : [];
+    const items = Array.isArray(t?.items) ? t.items : (Array.isArray(t?.habilidades) ? t.habilidades : []);
     items.forEach((it: any) => {
       totalSkills++;
       if (it?.nivel !== undefined && it?.nivel !== null && it?.nivel !== '' && Number(it.nivel) > 0) {
