@@ -1,5 +1,20 @@
 # 🗓️ Workcycle Log
 
+## 2026-10-23 (Resolución de "Failed to fetch" e Importación de Octubre para Nicolás Agustín Maita - Form #431)
+- **Objetivo**: Resolver reporte del usuario:
+  *"Quiero subir el excel este y me tira este error"* con captura en `http://149.50.128.73:8000/final-reports` mostrando modal de carga con error `⚠️ Failed to fetch` al intentar subir `NICOLAS MAITA.xlsx`.
+- **Diagnóstico y Análisis**:
+  1. Causa de `Failed to fetch`: Durante la iteración previa, se ejecutó una compilación `next build` y reinicio de PM2 en el servidor. Al momento exacto en que el usuario intentó subir el archivo, el proceso de Next.js en el puerto 8000 estaba reiniciando su socket listener, provocando que la petición HTTP fuera rechazada a nivel TCP, lo que en el navegador se traduce en `TypeError: Failed to fetch`.
+  2. Incongruencia de Bloque: El usuario intentó cargar el archivo desde el botón de **Bloque 2 (Abril - Junio)**. Sin embargo, `NICOLAS MAITA.xlsx` contiene únicamente `[ 'PCP', 'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE' ]` (Maita inició su concurrencia en Julio y no tiene registros de Abril-Junio). El mes nuevo en la planilla es **Octubre**, que corresponde al **Bloque 4 (Agosto - Octubre)**.
+- **Acciones Realizadas**:
+  1. Con el servidor estable, se procesó la subida de `NICOLAS MAITA.xlsx` a través del endpoint `/api/youngs/import-excel` con autenticación, retornando **HTTP 200 OK**.
+  2. Se importó la solapa `OCTUBRE` (`2026-10`) como **Form #431** (`young_id = 38`, `status = 'BORRADOR'`, facilitadora Marina Trejo).
+  3. Contiene 9 talleres (`ARTE RECICLADO`, `DESARROLLO PERSONAL VIDA INDEPENDIENTE`, `VIAJAR`, `HUERTA SUMEMOS VERDE`, `DERECHOS A SER PROTAGONISTAS`, `HABILIDADES SOCIALES`, `HABILIDADES DE INTERACCIÓN`, `BIENESTAR EMOCIONAL EXPRESANDO`, `DEPORTE ACTIVANDO`) con 127 habilidades evaluadas y 7.597 caracteres de observaciones narrativas.
+  4. Se preservaron intactos los formularios previos de Maita (`2026-07` Form #280, `2026-08` Form #406, `2026-09` Form #407).
+  5. En `/final-reports`, el Bloque 4 para Nicolás Agustín Maita ahora refleja los **3 meses evaluados (incluye Octubre)**.
+- **Estado**: Completado, Verificado y Desplegado en Producción ✅
+
+
 ## 2026-10-23 (Importación y Verificación Integral del Mes de Octubre para Marisol Fernanda Brito - Form #430)
 - **Objetivo**: Responder a la instrucción del usuario:
   *"Ahora con el de Marisol Fernanda Brito que esta en descargas"*

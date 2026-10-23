@@ -705,3 +705,19 @@
   - Verificada la exportación con `scratch/test_marisol_export.mjs`: 6 solapas mensuales exactas (`ABRIL`, `MAYO`, `JUNIO`, `AGOSTO`, `SEPTIEMBRE`, `OCTUBRE`), 0 solapas PCP (`includePcp: false`), y foco activo en `activeTab: 5` (`OCTUBRE`).
   - Verificado el Diagnóstico Institucional (`/final-reports`): Bloque 4 registra los 3 meses evaluados (`has08: true`, `has09: true`, `has10: true`).
   - Compilación `npm run build` y recarga de PM2 en el VPS ejecutadas con código 0.
+
+
+# Registro de Conversación - 2026-10-23 (Resolución de Error "Failed to fetch" e Importación de NICOLAS MAITA.xlsx)
+## Usuario:
+- "Quiero subir el excel este y me tira este error" (con captura de pantalla en http://149.50.128.73:8000/final-reports mostrando el modal "Cargar Planilla Excel Mensual (Bloque 2 (Abril - Junio))" con "⚠️ Failed to fetch" al intentar subir "NICOLAS MAITA.xlsx").
+
+## Antigravity:
+- **Causa Raíz**:
+  1. Al momento exacto de la subida, el proceso de Next.js en el VPS se encontraba en compilación y reinicio en caliente de PM2. Mientras Next.js reinicia el listener en el puerto 8000, los sockets TCP entrantes se rechazan momentáneamente, provocando que la API Fetch del navegador lance un `TypeError: Failed to fetch`.
+  2. Adicionalmente, el usuario intentaba cargarlo desde el botón de **Bloque 2 (Abril - Junio)**, pero la planilla `NICOLAS MAITA.xlsx` contiene únicamente las solapas `[ 'PCP', 'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE' ]` (Maita no posee meses del primer semestre debido a que su ciclo inició en Julio). El mes nuevo contenido en la planilla es **Octubre**, correspondiente al **Bloque 4**.
+- **Solución y Procesamiento**:
+  1. Una vez estabilizado el servicio en el VPS, se procesó la planilla `NICOLAS MAITA.xlsx` en el endpoint `/api/youngs/import-excel` con autenticación de sesión, respondiendo exitosamente con **HTTP 200 OK**.
+  2. Se extrajo la solapa `OCTUBRE` (`2026-10`) y se insertó como **Form #431** (`young_id = 38`, `status = 'BORRADOR'`, facilitadora Marina Trejo).
+  3. Contiene los 9 talleres institucionales de Buenos Mozos con 127 habilidades evaluadas y 7.597 caracteres de observaciones narrativas completas.
+  4. Se preservaron los meses existentes sin duplicar (`2026-07` Form #280, `2026-08` Form #406, `2026-09` Form #407).
+  5. En el Diagnóstico Institucional (`/final-reports`), el Bloque 4 para Nicolás Agustín Maita ahora cuenta con los **3 meses evaluados (incluye Octubre)**.
