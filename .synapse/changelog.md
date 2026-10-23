@@ -2,6 +2,12 @@
 
 ## [2.0.2] - 2026-10-23
 ### Added
+- **Importación y Verificación Integral de Octubre para Juan Pablo Herrera y Analia Noemi Celis (Forms #432 y #433)**:
+  - Importada la solapa `OCTUBRE` (`2026-10`) de `Juan Pablo Herrera.xlsx` para Juan Pablo Herrera (Young ID 7, Form #432, 5 talleres, 67 habilidades, 3.812 chars de observaciones).
+  - Importada la solapa `OCTUBRE` (`2026-10`) de `Celis Analia Noemi.xlsx` para Analia Noemi Celis (Young ID 3, Form #433, 5 talleres, 69 habilidades, 4.700 chars de observaciones).
+  - Ambos concurrentes consolidados en 6 meses exactos sin duplicados (Abril, Mayo, Junio, Agosto, Septiembre, Octubre).
+  - Verificada exportación limpia con 6 solapas mensuales, 0 PCP, foco en `OCTUBRE` y Bloque 4 completo en `/final-reports`.
+
 - **Importación y Verificación Integral de Octubre para Nicolás Agustín Maita (Form #431)**:
   - Resuelto el error transitorio `Failed to fetch` ocurrido durante el reinicio de PM2 en el VPS.
   - Importada la solapa `OCTUBRE` (`2026-10`) de `NICOLAS MAITA.xlsx` para Nicolás Agustín Maita (Young ID 38, grupo `Buenos Mozos`, facilitadora Marina Trejo).

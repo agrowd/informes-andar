@@ -721,3 +721,29 @@
   3. Contiene los 9 talleres institucionales de Buenos Mozos con 127 habilidades evaluadas y 7.597 caracteres de observaciones narrativas completas.
   4. Se preservaron los meses existentes sin duplicar (`2026-07` Form #280, `2026-08` Form #406, `2026-09` Form #407).
   5. En el Diagnóstico Institucional (`/final-reports`), el Bloque 4 para Nicolás Agustín Maita ahora cuenta con los **3 meses evaluados (incluye Octubre)**.
+
+
+# Registro de Conversación - 2026-10-23 (Importación y Verificación de Octubre para Juan Pablo Herrera y Analia Noemi Celis)
+## Usuario:
+- "Subi el mes de octubre de juan pablo herrera que esta en descargas y el de celis analia noemi"
+
+## Antigravity:
+- **Inspección de archivos fuente**:
+  - `C:\Users\Try Hard\Downloads\Juan Pablo Herrera.xlsx` (513.157 bytes).
+  - `C:\Users\Try Hard\Downloads\Celis Analia Noemi.xlsx` (397.456 bytes, solapa `OCTUBRE  ` normalizada con trim).
+- **Procesamiento e Importación en Servidor VPS**:
+  - Subidos ambos archivos por SFTP a `/srv/informes-andar/scratch/`.
+  - **Juan Pablo Herrera (Young ID 7, Clave de Sol, legajo 43)**:
+    * Solapa `OCTUBRE` (`2026-10`) insertada como **Form #432** (`status = 'BORRADOR'`, facilitadora Juliana Soledad Arias Espinoza).
+    * 5 talleres: `DEPORTE` (19), `VIAJAR` (16), `HABILIDADES SOCIALES` (16), `MUSICOTERAPIA` (8), `MANOS VERDES` (8). Total: 67 habilidades (67/67 evaluadas).
+    * Observaciones: 6 párrafos, 3.812 caracteres.
+    * Historial consolidado: 6 meses (Forms 27, 28, 29, 306, 307, 432) sin duplicados.
+    * Exportación: 6 solapas mensuales exactas, 0 PCP, foco activo en `OCTUBRE`.
+  - **Analia Noemi Celis (Young ID 3, Clave de Sol)**:
+    * Solapa `OCTUBRE` (`2026-10`) insertada como **Form #433** (`status = 'BORRADOR'`, facilitadora Juliana Soledad Arias Espinoza).
+    * 5 talleres: `DEPORTE` (21), `VIAJAR` (16), `HABILIDADES SOCIALES` (16), `MUSICOTERAPIA` (8), `MANOS VERDES` (8). Total: 69 habilidades (67 evaluadas > 0).
+    * Observaciones: 6 párrafos, 4.700 caracteres.
+    * Historial consolidado: 6 meses (Forms 19, 20, 21, 302, 303, 433) sin duplicados.
+    * Exportación: 6 solapas mensuales exactas, 0 PCP, foco activo en `OCTUBRE`.
+- **Diagnóstico Institucional (`/final-reports`)**:
+  - Ambos concurrentes reflejan ahora en Bloque 4: **3 meses evaluados (incluye Octubre)**.
