@@ -130,16 +130,27 @@ export default function FinalReportsPage() {
   // Generar Informe Final Anual
   const handleGenerateFinal = async (young: YoungOverview) => {
     if (!young.canGenerate) {
-      setAlert({
-        type: 'error',
-        text: `No se puede generar el Informe Final de ${young.nombre}: Faltan insumos obligatorios.`,
-        details: young.missingItems
-      });
+      const confirmUnlock = confirm(
+        `Para generar o regenerar el Informe Final de ${young.nombre} faltan insumos del primer semestre:\n\n` +
+        young.missingItems.map(it => `• ${it}`).join('\n') +
+        `\n\n¿Deseas activar la Excepción Institucional para generar el informe con los bloques disponibles?`
+      );
+      if (confirmUnlock) {
+        await handleToggleException(young);
+      } else {
+        setAlert({
+          type: 'error',
+          text: `No se puede generar el Informe Final de ${young.nombre}: Faltan insumos obligatorios.`,
+          details: young.missingItems
+        });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
       return;
     }
 
     setGeneratingId(young.id);
-    setAlert(null);
+    setAlert({ type: 'info', text: `Generando Informe Final Anual con IA para ${young.nombre}... Esto puede demorar unos 15-20 segundos.` });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 
     try {
       const res = await fetch('/api/reports/final', {
@@ -155,16 +166,19 @@ export default function FinalReportsPage() {
           text: data.error || 'Error al generar el Informe Final Anual.',
           details: data.missingErrors
         });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
         setAlert({
           type: 'success',
           text: `¡Informe Final Anual de ${young.nombre} generado exitosamente! (Reporte ID #${data.reportId})`
         });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
         await loadData();
       }
     } catch (err: any) {
       console.error('Error llamando a API final report:', err);
       setAlert({ type: 'error', text: 'Error de conexión al generar el informe final.' });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setGeneratingId(null);
     }
