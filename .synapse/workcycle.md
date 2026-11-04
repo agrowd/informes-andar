@@ -1,5 +1,94 @@
 # 🗓️ Workcycle Log
 
+## 2026-11-04 (Corrección de Grupo Institucional y Asignación de Titularidad al Facilitador con Aclaración de Carga por Natoh)
+- **Objetivo**: Responder y resolver la consulta y requerimiento del usuario:
+  *"lo que aparece en grupo/taller esta bien? o deberia de aparecer otra cosa? ademas si el usuario natoh sube algo que se le asigne como su lo subio el facilitador de ese grupo pero con una aclaracion de que se subio desde el usuario de natoh"*
+- **Diagnóstico y Análisis**:
+  1. **Grupo / Taller en Inicio**:
+     - En la tabla de *Últimos Informes Mensuales Editados* (`src/app/page.tsx`), la fila mostraba `ARTE / ACTIVIDADES TEATRALES / DP - AU` para Martiniano Correa y Pablo Hernán Lezcano.
+     - Ese texto es el nombre técnico de una actividad pedagógica interna con siglas de dimensiones de calidad de vida (`/ DP - AU`), extraído de la primera actividad evaluada en el Excel.
+     - Los grupos canónicos de Granja Andar son estrictamente los 7 oficiales (D-55). Tanto Martiniano Correa como Pablo Hernán Lezcano pertenecen al grupo **Promotores**.
+     - La tabla leía `f.data?.datosGenerales?.taller` en lugar de `f.grupo || y.taller`.
+  2. **Titularidad del Facilitador al subir desde Natoh**:
+     - Al subir planillas Excel desde la cuenta administradora `Natoh` (`userId = 1`), `forms.created_by` se guardaba con valor `1`.
+     - En consecuencia, la columna *Facilitador* mostraba `Natoh` en vez del facilitador real (Lemuel Sola), y en la base de datos la titularidad del formulario no quedaba asignada al facilitador del grupo.
+- **Acciones Realizadas**:
+  1. **Frontend (`src/app/page.tsx`)**:
+     - Se actualizó el encabezado de columna de `Grupo / Taller` a `Grupo`.
+     - Se vinculó la celda a `f.grupo || y.taller`, renderizando el badge con el Grupo Institucional oficial (`Promotores`, `Buenos Mozos`, `Clave de Sol`, etc.).
+     - En la columna *Facilitador*, se renderiza el nombre del facilitador oficial con la aclaración: `{facilitadorNombre}` y debajo `(subido por Natoh)`.
+  2. **API de Cuadrículas (`src/app/api/forms/route.ts`)**:
+     - Se expuso `uploadedBy` y se priorizó `facilitadorNombre` institucional tanto en Postgres como en MongoDB.
+  3. **Importador de Excel (`src/app/api/youngs/import-excel/route.ts`)**:
+     - Se integró el mapa canónico de facilitadores oficiales por grupo (`Promotores` -> Lemuel Sola ID 14, `Buenos Mozos` -> Marina Trejo ID 10, etc.).
+     - Cuando sube un usuario administrador o de coordinación (`Natoh`), `forms.created_by` se asigna directamente al ID del facilitador oficial del grupo, y se registra `uploadedBy = 'Natoh'` en `datosGenerales`.
+     - Se evita contaminar `assigned_facilitators` del joven con el usuario admin.
+  4. **Migración en Base de Datos de Producción (PostgreSQL)**:
+     - Se ejecutó `scratch/migrate_forms_facilitator.cjs` en el VPS, migrando exitosamente los **131 formularios históricos** creados por Natoh hacia sus facilitadores correspondientes (`created_by = groupFacilitator.id`, `uploadedBy = 'Natoh'`).
+  5. **Compilación y Despliegue**:
+     - `npm run build` ejecutado localmente y en el VPS con código 0.
+     - PM2 recargado en el VPS (`pid: 241962`).
+     - Verificada la respuesta del API en producción: Martiniano Correa, Pablo Lezcano, Sofía Chavez, etc. ahora reflejan Grupo: `Promotores`, Facilitador: `Lemuel Sola`, UploadedBy: `Natoh`.
+     - Código commiteado y sincronizado en GitHub (`f5dc866`).
+- **Estado**: Solucionado, Migrado y Desplegado en Producción ✅
+
+
+
+## 2026-11-02 (Resolución de ERR_CONNECTION_RESET y Estabilización de Servicio)
+- **Objetivo**: Resolver incidencia reportada por el usuario con captura de pantalla:
+  *"No me carga, revisar que pasa"* mostrando pantalla negra de Chrome con error `ERR_CONNECTION_RESET` ("Se ha restablecido la conexión") en `http://149.50.128.73:8000`.
+- **Diagnóstico**:
+  1. El VPS responde normalmente a ping y SSH.
+  2. En los logs de error de PM2 se identificó:
+     `Error: Failed to find Server Action "x". This request might be from an older or newer deployment`
+     seguido de:
+     `TypeError: Cannot read properties of null (reading 'digest')`.
+  3. Esto ocurre cuando el navegador mantiene en memoria o caché archivos JavaScript de compilaciones previas. Al disparar una navegación o acción con un ID de Server Action desactualizado, Next.js falla internamente y destruye el socket TCP (`socket.destroy()`), provocando que Chrome reciba un TCP RST y muestre `ERR_CONNECTION_RESET`.
+  4. Además, en Chrome moderno, ingresar una URL directa sin protocolo explícito puede intentar forzar HTTPS (`https://149.50.128.73:8000`), lo que genera un reset inmediato porque el puerto 8000 escucha exclusivamente en HTTP.
+- **Acciones Realizadas**:
+  1. Se reinició el proceso de PM2 `informes-andar` en el VPS (`pid: 996717`), liberando la memoria y reseteando los workers de Next.js.
+  2. Se validaron las rutas principales (`/`, `/login`, `/final-reports`, `/youngs`) respondiendo con códigos HTTP 200 y 307.
+  3. Se verificó la disponibilidad del dominio SSL seguro: `https://informes-andar.nexteweb.com` (responde 200 OK con HTTPS válido vía Cloudflare).
+- **Documentación**: Registrado como `ERR-40` en `.synapse/errores.md`.
+- **Estado**: Solucionado y Verificado ✅
+
+
+
+## 2026-10-23 (Confirmación de Operatividad para Carga Masiva de Excels con Octubre)
+- **Objetivo**: Responder a la consulta del usuario:
+  *"una consulta, ya puedo subir los excels que tienen el mes de octubre asi ya empiezo a subirlos a la plataforma"*
+- **Verificación Técnica**:
+  1. El servidor de producción (`149.50.128.73:8000`) se encuentra 100% operativo y en estado estable con PM2 activo.
+  2. El parser de Excel (`/api/youngs/import-excel`) está completamente optimizado para procesar solapas de `OCTUBRE` (tanto `OCTUBRE`, `OCT`, como nombres con espacios finales tipo `OCTUBRE  `).
+  3. Soporta actualización idempotente: si la planilla trae meses históricos (Abril-Septiembre) más Octubre, actualiza los datos sin duplicar registros en Postgres.
+  4. La interfaz de `/final-reports` tiene habilitado el arrastre y subida en el **Bloque 4 (Agosto - Octubre)**.
+- **Instrucción al Usuario**:
+  - Confirmar que ya está todo listo para subir.
+  - Recordar subir preferentemente desde el botón o arrastrando sobre el **Bloque 4 (Agosto - Octubre)** en la tarjeta de cada joven en `/final-reports` (o desde `/youngs`).
+- **Estado**: Verificado y Operativo ✅
+
+
+
+## 2026-10-23 (Verificación Documental y Aclaración de Movilidad para Analia Noemi Celis)
+- **Objetivo**: Responder a la consulta del usuario:
+  *"donde dice lo de las caminatas de analia celis, ya que ella esta en silla de ruedas"*
+- **Diagnóstico y Auditoría Documental**:
+  1. **En las Observaciones de OCTUBRE (Form #433 / Celda A63 de `Celis Analia Noemi.xlsx`)**:
+     - **NO figura ninguna mención a caminatas**. Analía está en silla de ruedas y su texto narrativo describe fielmente:
+       * Estimulación sensorial: *"la joven se ubica en un puff y, con el acompañamiento de la facilitadora... logra tolerar permanecer en un espacio diferente al de su silla de ruedas"*.
+       * Actividad física y desplazamiento: *"También continúa realizando el desplazamiento de su silla de ruedas mediante el uso de los miembros superiores, logrando completar la misma distancia previamente establecida"*.
+       * Deporte: *"participa en encuentros de boccia junto al grupo de Comunicadores... participación cada vez más activa durante los lanzamientos"*.
+  2. **En la Cuadrícula de Habilidades de OCTUBRE**:
+     * Taller `DEPORTE`: el ítem `"Caminar"` está registrado en **nivel 0** (no lo realiza / desestimado por su movilidad en silla de ruedas).
+     * Taller `VIAJAR`: figura el ítem preimpreso institucional `"Sostener caminatas"` con nivel 3, el cual proviene de la plantilla predeterminada del grupo `Clave de Sol` (compartida con los demás integrantes).
+  3. **Origen de la palabra "caminatas" en los antecedentes**:
+     * En la solapa de **SEPTIEMBRE** (Fila 67), la facilitadora Juliana Arias escribió textualmente: *"durante algunas caminatas por la institución se observa, en determinadas ocasiones, cierta inestabilidad y signos compatibles con vértigo"* y *"participa de caminatas por diferentes senderos, disfruta del contacto con la naturaleza"* (salida a la Reserva Los Robles).
+     * En el resumen rápido del chat anterior, el asistente mencionó "caminatas" al consolidar los puntos de Clave de Sol, mezclando el antecedente de septiembre y la grilla con el texto de octubre.
+- **Acción**: Aclarar detalladamente y con citas textuales al usuario la realidad del archivo de Octubre, confirmando que la base de datos y la planilla reflejan con total precisión su desplazamiento en silla de ruedas y boccia adaptada.
+- **Estado**: Aclarado y Verificado ✅
+
+
+
 ## 2026-10-23 (Importación y Verificación Integral de Octubre para Juan Pablo Herrera y Analia Noemi Celis - Forms #432 y #433)
 - **Objetivo**: Responder a la instrucción del usuario:
   *"Subi el mes de octubre de juan pablo herrera que esta en descargas y el de celis analia noemi"*

@@ -747,3 +747,63 @@
     * Exportación: 6 solapas mensuales exactas, 0 PCP, foco activo en `OCTUBRE`.
 - **Diagnóstico Institucional (`/final-reports`)**:
   - Ambos concurrentes reflejan ahora en Bloque 4: **3 meses evaluados (incluye Octubre)**.
+
+
+# Registro de Conversación - 2026-10-23 (Auditoría de Observaciones y Movilidad de Analia Noemi Celis)
+## Usuario:
+- "donde dice lo de las caminatas de analia celis, ya que ella esta en silla de ruedas"
+
+## Antigravity:
+- **Auditoría Documental del Excel Original y Base de Datos**:
+  1. En las **observaciones narrativas de Octubre** redactadas por la facilitadora Juliana Arias (`Celis Analia Noemi.xlsx` / Form #433):
+     - **NO dice que camine**. Describe fielmente su desplazamiento en silla de ruedas y su trabajo postural:
+       * *"logra tolerar permanecer en un espacio diferente al de su silla de ruedas"* (al ubicarse en un puff en estimulación sensorial).
+       * *"También continúa realizando el desplazamiento de su silla de ruedas mediante el uso de los miembros superiores, logrando completar la misma distancia previamente establecida"*.
+       * *"participa en encuentros de boccia junto al grupo de Comunicadores"* (lanzamientos sentada).
+  2. En la **cuadrícula de habilidades de Octubre**:
+     - En el taller `DEPORTE`: el ítem `"Caminar"` está en **nivel 0** (no lo realiza).
+     - En el taller `VIAJAR`: figura el ítem de plantilla estándar `"Sostener caminatas"` con nivel 3 porque es una grilla compartida con el grupo Clave de Sol.
+  3. **Antecedente de la palabra**:
+     - En la solapa de **Septiembre**, la facilitadora había redactado: *"durante algunas caminatas por la institución se observa... inestabilidad y signos compatibles con vértigo"* y *"caminatas por diferentes senderos"* en la salida a la Reserva Los Robles.
+     - En la respuesta anterior del chat, el asistente agrupó erróneamente esa referencia en el resumen de Octubre.
+- **Resultado**: Se aclaró detalladamente con las citas textuales exactas del informe original de Octubre.
+
+
+# Registro de Conversación - 2026-10-23 (Confirmación de Operatividad para Carga de Excels con Octubre)
+## Usuario:
+- "una consulta, ya puedo subir los excels que tienen el mes de octubre asi ya empiezo a subirlos a la plataforma"
+
+## Antigravity:
+- Confirmó operatividad total del servidor y del importador de planillas mensuales (`/api/youngs/import-excel`).
+- Detalló los pasos recomendados para la subida desde `/final-reports` (arrastrando o seleccionando en el Bloque 4) y explicó que el sistema detecta automáticamente la solapa de Octubre, preserva los meses previos y actualiza el estado de evaluación del concurrente de inmediato.
+
+
+# Registro de Conversación - 2026-11-02 (Resolución de ERR_CONNECTION_RESET en http://149.50.128.73:8000)
+## Usuario:
+- "No me carga, revisar que pasa" (con captura de pantalla de Chrome mostrando `ERR_CONNECTION_RESET` en `149.50.128.73:8000`).
+
+## Antigravity:
+- **Diagnóstico**:
+  - Se verificó el servidor VPS: hardware, memoria y PM2 estaban activos.
+  - En los registros de Node.js se detectó una excepción interna provocada por un mismatch de Server Actions de Next.js (`Failed to find Server Action "x". This request might be from an older or newer deployment`) y `Cannot read properties of null (reading 'digest')`. Al fallar el formateo del error, el socket TCP se interrumpió de golpe, generando el error `ERR_CONNECTION_RESET` en el navegador del cliente.
+  - También influye si Chrome intenta autocompletar con HTTPS hacia el puerto 8000 (`https://149.50.128.73:8000`), el cual es un puerto HTTP simple.
+- **Solución**:
+  - Se reinició el proceso de Node.js en PM2 (`pm2 restart informes-andar`), limpiando workers y sockets colgados.
+  - Se confirmó que todas las rutas (`/login`, `/final-reports`, etc.) responden con código 200/307.
+  - Se proporcionaron las indicaciones al usuario: forzar recarga limpia con `Ctrl + F5` o ingresar por `http://149.50.128.73:8000` (o por el dominio seguro SSL `https://informes-andar.nexteweb.com`).
+
+
+# Registro de Conversación - 2026-11-04 (Grupo Institucional en Inicio y Titularidad al Facilitador con Aclaración de Carga por Natoh)
+## Usuario:
+- "lo que aparece en grupo/taller esta bien? o deberia de aparecer otra cosa? ademas si el usuario natoh sube algo que se le asigne como su lo subio el facilitador de ese grupo pero con una aclaracion de que se subio desde el usuario de natoh" (con captura de la pantalla de Inicio mostrando la tabla de Cuadrículas con "ARTE / ACTIVIDADES TEATRALES / DP - AU" y Facilitador "Natoh").
+
+## Antigravity:
+- **Respuesta y Diagnóstico**:
+  1. **Grupo / Taller**: No estaba bien. `ARTE / ACTIVIDADES TEATRALES / DP - AU` es el nombre técnico de una actividad pedagógica interna con siglas de dimensiones, que la tabla leía del campo interno del formulario en vez del grupo del joven. Lo que debe figurar es el **Grupo Institucional oficial** (`Promotores`, `Buenos Mozos`, `Clave de Sol`, etc.).
+  2. **Titularidad y Aclaración de Facilitador**: Al subir un archivo desde la cuenta administradora de Natoh, el formulario debe asignarse en la base de datos al facilitador oficial del grupo (`created_by = groupFacilitator.id`), de modo que cuando el facilitador inicie sesión tenga plena titularidad de sus informes, visualizando en la columna Facilitador: `Lemuel Sola (subido por Natoh)`.
+- **Implementación Realizada**:
+  1. En `src/app/page.tsx`: se corrigió la columna para mostrar el **Grupo Institucional** (`Promotores`, etc.) y el Facilitador con la aclaración `(subido por Natoh)`.
+  2. En `src/app/api/forms/route.ts`: se incorporó `uploadedBy` y resolución de facilitador oficial.
+  3. En `src/app/api/youngs/import-excel/route.ts`: se configuró la asignación automática de `created_by` al facilitador del grupo cuando el uploader es admin (`Natoh`), guardando la autoría técnica `uploadedBy: 'Natoh'`.
+  4. En PostgreSQL del VPS: se corrió la migración actualizando los 131 formularios históricos creados por Natoh a sus respectivos facilitadores.
+  5. Desplegado y verificado en producción con recarga de PM2.

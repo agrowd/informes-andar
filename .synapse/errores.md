@@ -387,3 +387,16 @@
 4. Se cambió `router.push('/')` por `window.location.href = '/'` en `src/app/login/page.tsx` para forzar el envío de cookies.
 **Commit:** Desplegado en VPS
 **Estado:** ✅ FIXED
+
+
+## ERR-40: Caída de Conexión ERR_CONNECTION_RESET por Mismatch de Server Action y Cache en Navegador (2026-11-02)
+**Síntoma:** El navegador muestra la pantalla de error de Chrome con "No se puede acceder a este sitio. Se ha restablecido la conexión. ERR_CONNECTION_RESET" al intentar ingresar a `http://149.50.128.73:8000`.
+**Root Cause:**
+1. Mismatch de Server Action en Next.js: `Error: Failed to find Server Action "x". This request might be from an older or newer deployment`. Al recibir una petición desde una pestaña con JavaScript o chunks cacheados de un despliegue anterior, Next.js no encontró el ID de la Server Action y lanzó un error interno.
+2. Al intentar formatear el error, Next.js lanzó `TypeError: Cannot read properties of null (reading 'digest')`, lo que provocó una excepción no controlada a nivel del servidor HTTP, destruyendo el socket TCP (`socket.destroy()`) y enviando un paquete RST al navegador.
+3. Adicionalmente, si el navegador intenta autocompletar o forzar HTTPS (`https://149.50.128.73:8000`), el puerto 8000 (servidor HTTP puro) rechaza el handshake TLS con un TCP Reset.
+**Solución:**
+1. Reinicio del proceso en PM2 (`pm2 restart informes-andar`) en el VPS para limpiar el pool de workers y liberar sockets en espera.
+2. Verificación de respuesta HTTP 200/307 en `http://149.50.128.73:8000` y en el dominio HTTPS seguro `https://informes-andar.nexteweb.com`.
+3. Instruir al usuario a realizar una recarga limpia con descarte de caché (`Ctrl + F5` o `Ctrl + Shift + R`) asegurando el protocolo `http://` o ingresando por el dominio con SSL.
+**Estado:** ✅ FIXED
