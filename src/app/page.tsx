@@ -176,7 +176,7 @@ export default function InicioPage() {
               <thead>
                 <tr style={{ background: '#f8fafc' }}>
                   <th>Concurrente</th>
-                  <th>Grupo / Taller</th>
+                  <th>Grupo</th>
                   <th>Período</th>
                   <th>Facilitador</th>
                   <th>Última Modificación</th>
@@ -187,7 +187,7 @@ export default function InicioPage() {
               <tbody>
                 {forms.slice(0, 10).map(f => {
                   const formId = f._id || f.id;
-                  const tallerName = f.data?.datosGenerales?.taller || f.data?.datosGenerales?.grupo || 'Sin grupo';
+                  const grupoName = f.grupo || f.data?.datosGenerales?.grupo || f.data?.datosGenerales?.taller || 'Sin grupo';
                   return (
                     <tr key={formId} className="ga-table-row-hover">
                       <td>
@@ -205,14 +205,19 @@ export default function InicioPage() {
                           textTransform: 'uppercase',
                           letterSpacing: 0.3
                         }}>
-                          {tallerName}
+                          {grupoName}
                         </span>
                       </td>
                       <td>
                         <strong style={{ color: '#334155' }}>{f.periodo || '—'}</strong>
                       </td>
-                      <td style={{ fontSize: 13, color: '#475569' }}>
-                        {f.facilitadorNombre || 'Sin facilitador'}
+                      <td style={{ fontSize: 13, color: '#334155' }}>
+                        <div style={{ fontWeight: 600 }}>{f.facilitadorNombre || 'Sin facilitador'}</div>
+                        {f.uploadedBy && f.uploadedBy.toLowerCase() !== (f.facilitadorNombre || '').toLowerCase() && (
+                          <div style={{ fontSize: 11, color: '#64748b', fontWeight: 400 }}>
+                            (subido por {f.uploadedBy})
+                          </div>
+                        )}
                       </td>
                       <td style={{ fontSize: 12, color: '#64748b' }}>
                         {formatDateTime(f.updatedAt || f.updated_at)}

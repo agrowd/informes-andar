@@ -1,3 +1,14 @@
+
+const GROUP_FACILITATORS: Record<string, { id: number; name: string }> = {
+  'Artesanos': { id: 9, name: 'Leonardo Villamayor' },
+  'Atrapasueños': { id: 12, name: 'Matias Maciel' },
+  'Buenos Mozos': { id: 10, name: 'Marina Trejo' },
+  'Clave de Sol': { id: 7, name: 'Juliana Arias' },
+  'Empoderadas': { id: 8, name: 'Ana Reartes' },
+  'Emprendedores': { id: 11, name: 'Analia Almada' },
+  'Promotores': { id: 14, name: 'Lemuel Sola' }
+};
+
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDB, sql } from '@/lib/db';
 import { getServerSession } from 'next-auth';
@@ -879,6 +890,7 @@ export async function POST(req: NextRequest) {
 
     // 3. GUARDAR JOVEN EN LA BASE DE DATOS
     let youngIdStr = '';
+    let youngOfficialTaller = '';
     const userId = session?.user?.id ? (USE_POSTGRES ? Number(session.user.id) : session.user.id) : null;
     
     if (USE_POSTGRES && sql) {
@@ -937,9 +949,13 @@ export async function POST(req: NextRequest) {
         // Mezclar PCP existente con el nuevo
         const mergedPcp = { ...(existingYoung.pcp || {}), ...pcpData };
         
-        // Mezclar facilitadores asignados
+        // Mezclar facilitadores asignados (asociar el facilitador oficial del grupo)
         let facilitators = existingYoung.assigned_facilitators || [];
-        if (userId && !facilitators.includes(userId)) {
+        const youngGroup = existingYoung.taller || mainTaller;
+        const groupFacil = youngGroup && GROUP_FACILITATORS[youngGroup];
+        if (groupFacil && !facilitators.includes(groupFacil.id)) {
+          facilitators = [...facilitators, groupFacil.id];
+        } else if (userId && !facilitators.includes(userId) && session?.user?.role === 'FACILITADOR') {
           facilitators = [...facilitators, userId];
         }
         const arrayString = facilitators.length > 0 ? `{${facilitators.join(',')}}` : '{}';
@@ -951,6 +967,7 @@ export async function POST(req: NextRequest) {
         const finalDni = pcpDni || existingYoung.dni || null;
         const finalBirth = pcpFechaNacimiento ? pcpFechaNacimiento.toISOString() : (existingYoung.fecha_nacimiento || null);
         const finalTaller = mainTaller || existingYoung.taller || null;
+        youngOfficialTaller = existingYoung.taller || finalTaller || '';
 
         await sql`
           UPDATE youngs 
@@ -1048,14 +1065,25 @@ export async function POST(req: NextRequest) {
     const newMonths: { formId: string; periodo: string }[] = [];
     const existingMonths: { formId: string; periodo: string }[] = [];
 
+    // Determinar facilitador oficial del grupo y si se sube desde cuenta administradora
+    const youngOfficialGroup = youngOfficialTaller || mainTaller;
+    const groupFacilInfo = youngOfficialGroup && GROUP_FACILITATORS[youngOfficialGroup];
+    const isAdminOrCoord = session?.user?.role === 'ADMIN' || session?.user?.role === 'COORDINACION' || userId === 1;
+    const effectiveCreatedBy = (isAdminOrCoord && groupFacilInfo) ? groupFacilInfo.id : userId;
+    const uploaderAclaracion = (isAdminOrCoord && groupFacilInfo) ? (session.user.name || 'Natoh') : undefined;
+
     for (const report of monthlyReports) {
+      const finalFacilName = groupFacilInfo ? groupFacilInfo.name : (report.facilitadorNombre || session.user.name || session.user.email);
       const formData = {
         datosGenerales: {
           nombreCompleto,
           periodo: report.periodo,
           taller: report.taller,
+          grupo: youngOfficialGroup || report.taller,
           youngId: youngIdStr,
-          facilitadorNombre: report.facilitadorNombre || session.user.name || session.user.email
+          facilitadorNombre: finalFacilName,
+          uploadedBy: uploaderAclaracion,
+          cargadoPor: uploaderAclaracion
         },
         talleres: report.talleres,
         observaciones: report.observaciones
@@ -1083,7 +1111,10 @@ export async function POST(req: NextRequest) {
           // Actualizar datos del formulario existente sin insertar duplicados
           await sql`
             UPDATE forms 
-            SET periodo = ${report.periodo}, data = ${JSON.stringify(formData)}::jsonb, updated_at = NOW()
+            SET periodo = ${report.periodo}, 
+                data = ${JSON.stringify(formData)}::jsonb, 
+                created_by = COALESCE(${effectiveCreatedBy}, created_by),
+                updated_at = NOW()
             WHERE id = ${parseInt(formId)}
           `;
           existingMonths.push({ formId, periodo: report.periodo });
@@ -1099,7 +1130,7 @@ export async function POST(req: NextRequest) {
           // Es un mes nuevo -> INSERTAR
           const result = await sql`
             INSERT INTO forms (young_id, periodo, data, created_by, status, created_at, updated_at)
-            VALUES (${parseInt(youngIdStr)}, ${report.periodo}, ${JSON.stringify(formData)}::jsonb, ${userId}, 'BORRADOR', NOW(), NOW())
+            VALUES (${parseInt(youngIdStr)}, ${report.periodo}, ${JSON.stringify(formData)}::jsonb, ${effectiveCreatedBy || userId}, 'BORRADOR', NOW(), NOW())
             RETURNING id
           `;
           const formId = String(result.rows[0].id);

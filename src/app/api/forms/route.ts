@@ -269,6 +269,8 @@ export async function GET(req: NextRequest) {
       
       const items = result.rows.map((row: any) => {
         const summary = extractFormSummary(row.data);
+        const uploadedBy = row.data?.datosGenerales?.uploadedBy || row.data?.datosGenerales?.cargadoPor || null;
+        const facilitadorNombre = row.data?.datosGenerales?.facilitadorNombre || row.facilitador_nombre || row.facilitador_email || 'Sin facilitador';
         return {
           id: row.id,
           _id: String(row.id),
@@ -279,7 +281,8 @@ export async function GET(req: NextRequest) {
           createdAt: row.created_at,
           updatedAt: row.updated_at,
           status: row.status || 'BORRADOR',
-          facilitadorNombre: row.facilitador_nombre || row.facilitador_email || 'Sin facilitador',
+          facilitadorNombre,
+          uploadedBy,
           jovenNombre: row.joven_nombre || row.data?.datosGenerales?.nombreCompleto || 'Sin joven asignado',
           grupo: row.grupo || 'Sin grupo',
           talleresCount: summary.talleresCount,
@@ -335,9 +338,12 @@ export async function GET(req: NextRequest) {
         }
         
         const summary = extractFormSummary(item.data);
+        const uploadedBy = item.data?.datosGenerales?.uploadedBy || item.data?.datosGenerales?.cargadoPor || null;
+        const finalFacilitador = item.data?.datosGenerales?.facilitadorNombre || facilitadorNombre;
         return {
           ...item,
-          facilitadorNombre,
+          facilitadorNombre: finalFacilitador,
+          uploadedBy,
           jovenNombre,
           grupo,
           talleresCount: summary.talleresCount,
