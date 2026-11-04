@@ -339,9 +339,14 @@ export default function ReportsList() {
                     </span>
                   </td>
                   <td style={{ border: '1px solid #ccc', padding: 4 }}>
-                    <span style={{ fontSize: 12, color: '#334155', fontWeight: 600 }}>
-                      👤 {it.facilitadorNombre || 'Sin facilitador'}
-                    </span>
+                    <div style={{ fontSize: 12, color: '#334155', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      <span>👤</span> {it.facilitadorNombre || 'Sin facilitador'}
+                    </div>
+                    {it.uploadedBy && it.uploadedBy.toLowerCase() !== (it.facilitadorNombre || '').toLowerCase() && (
+                      <div style={{ fontSize: 11, color: '#64748b', fontWeight: 400, marginLeft: 18 }}>
+                        (subido por {it.uploadedBy})
+                      </div>
+                    )}
                   </td>
                   <td style={{ border: '1px solid #ccc', padding: 4 }}>{it.periodo}</td>
                   <td style={{ border: '1px solid #ccc', padding: 4 }}>

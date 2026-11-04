@@ -1,5 +1,31 @@
 # 🗓️ Workcycle Log
 
+## 2026-11-04 (Asignación de Titularidad y Aclaración de Carga por Natoh en Informes Trimestrales y Finales - D-94)
+- **Objetivo**: Responder a la instrucción del usuario con imagen de la tabla de Informes Trimestrales/Finales:
+  *"Lo mismo aca"* (mostrando la tabla *Últimos Informes Trimestrales (Word / PDF)* con concurrentes de Promotores como Sofía Chávez, Pablo Lezcano, Martiniano Correa, etc. figurando con Facilitador `👤 Natoh`).
+- **Diagnóstico y Análisis**:
+  1. En la tabla de informes de la Home (`src/app/page.tsx`) y en el listado general (`src/app/reports/page.tsx`), la columna de Facilitador mostraba únicamente el nombre del usuario técnico que generó el reporte (`generated_by = 1` -> `Natoh`), en lugar del facilitador oficial del grupo (Lemuel Sola para Promotores).
+  2. En la base de datos PostgreSQL, los informes generados por Natoh tenían `generated_by = 1`, privando al facilitador de grupo de la titularidad de sus informes en su cuenta.
+  3. En `src/app/api/reports/route.ts`, las consultas SQL seleccionaban `COALESCE(u.name, ...)` donde `u.name` ('Natoh') sobreescribía al facilitador real, y no retornaban `uploaded_by`.
+- **Acciones Realizadas**:
+  1. **Frontend (`src/app/page.tsx` y `src/app/reports/page.tsx`)**:
+     - Se actualizó la celda de Facilitador para renderizar el facilitador institucional (`{r.facilitadorNombre}`) y, en una línea secundaria con tipografía limpia, la aclaración: `(subido por {r.uploadedBy})` cuando fue cargado o generado desde la cuenta de Natoh.
+  2. **API de Reportes (`src/app/api/reports/route.ts`)**:
+     - Se priorizó el facilitador institucional `r.data->'datosGenerales'->>'facilitadorNombre'` sobre `u.name`.
+     - Se expuso el campo `uploaded_by` (tanto en Postgres como en MongoDB) mapeándolo a `uploadedBy`.
+  3. **Generadores de Informes (`final/route.ts`, `trimestral/route.ts`, `upload-manual-docx/route.ts`)**:
+     - Al generar o subir informes desde una cuenta administradora (`Natoh` / `sessionUserId = 1` / `role = ADMIN`), el campo `generated_by` se asigna directamente al ID del facilitador oficial del grupo (`Artesanos` -> 9, `Atrapasueños` -> 12, `Buenos Mozos` -> 10, `Clave de Sol` -> 7, `Empoderadas` -> 8, `Emprendedores` -> 11, `Promotores` -> 14).
+     - Se inyecta `uploadedBy = 'Natoh'` en `datosGenerales` para preservar la trazabilidad institucional.
+  4. **Base de Datos de Producción (PostgreSQL)**:
+     - Se verificó la migración completa de los 145 informes históricos en la tabla `reports`, dejando 0 informes huérfanos con `generated_by = 1` y asignándolos a sus facilitadores oficiales.
+  5. **Compilación y Despliegue**:
+     - Compilaciones `npm run build` ejecutadas localmente y en el VPS con 19/19 páginas estáticas generadas exitosamente (código 0).
+     - PM2 recargado en el VPS (`pid: 254938`).
+     - Verificada la respuesta de producción con `curl/fetch`: `Sofia Luciana Chavez`, `Pablo Lezcano`, `Martiniano Correa`, etc. devuelven `grupo: "Promotores"`, `facilitador: "Lemuel Sola"`, `uploadedBy: "Natoh"`.
+- **Estado**: Solucionado, Migrado y Desplegado en Producción ✅
+
+
+
 ## 2026-11-04 (Corrección de Grupo Institucional y Asignación de Titularidad al Facilitador con Aclaración de Carga por Natoh)
 - **Objetivo**: Responder y resolver la consulta y requerimiento del usuario:
   *"lo que aparece en grupo/taller esta bien? o deberia de aparecer otra cosa? ademas si el usuario natoh sube algo que se le asigne como su lo subio el facilitador de ese grupo pero con una aclaracion de que se subio desde el usuario de natoh"*

@@ -807,3 +807,19 @@
   3. En `src/app/api/youngs/import-excel/route.ts`: se configuró la asignación automática de `created_by` al facilitador del grupo cuando el uploader es admin (`Natoh`), guardando la autoría técnica `uploadedBy: 'Natoh'`.
   4. En PostgreSQL del VPS: se corrió la migración actualizando los 131 formularios históricos creados por Natoh a sus respectivos facilitadores.
   5. Desplegado y verificado en producción con recarga de PM2.
+
+
+# Registro de Conversación - 2026-11-04 (Titularidad al Facilitador con Aclaración de Carga por Natoh en Informes Trimestrales y Finales)
+## Usuario:
+- "Lo mismo aca" (con captura de la pantalla de Inicio en la tabla de "Últimos Informes Trimestrales (Word / PDF)" mostrando a Sofía Chávez, Pablo Lezcano, Martiniano Correa, etc. con Grupo "Promotores" y Facilitador "👤 Natoh").
+
+## Antigravity:
+- **Diagnóstico**:
+  - En la tabla de informes consolidados de Inicio (`src/app/page.tsx`) y en el listado de `/reports`, la columna *Facilitador* mostraba directamente al usuario `Natoh` (`generated_by = 1`), privando al facilitador del grupo (Lemuel Sola en Promotores) de la titularidad institucional y omitiendo la aclaración de que fue cargado o generado por Natoh.
+  - En PostgreSQL, los informes tenían `generated_by = 1` y la consulta SQL priorizaba el nombre del usuario `u.name` sobre el facilitador de la metadata.
+- **Implementación**:
+  1. En `src/app/page.tsx` y `src/app/reports/page.tsx`: se actualizó la columna Facilitador para mostrar el facilitador oficial del grupo (`Lemuel Sola`, `Marina Trejo`, etc.) y debajo en tipografía secundaria `(subido por Natoh)`.
+  2. En `src/app/api/reports/route.ts`: se priorizó `facilitadorNombre` en la consulta SQL y se mapeó el campo `uploadedBy`.
+  3. En `final/route.ts`, `trimestral/route.ts` y `upload-manual-docx/route.ts`: al generar o subir informes desde Natoh/Admin, se asigna `generated_by` al facilitador oficial del grupo y se guarda `uploadedBy: 'Natoh'`.
+  4. En PostgreSQL: se migraron todos los informes históricos de `generated_by = 1` a sus facilitadores correspondientes (0 informes huérfanos).
+  5. Desplegado y verificado en vivo en producción en `http://149.50.128.73:8000`.

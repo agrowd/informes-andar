@@ -8,6 +8,8 @@ export const fetchCache = 'force-no-store';
 export const runtime = 'nodejs';
 
 function mapReportRow(r: any) {
+  const uploadedBy = r.uploaded_by || r.data?.datosGenerales?.uploadedBy || r.data?.datosGenerales?.cargadoPor || null;
+  const facilitadorNombre = r.data?.datosGenerales?.facilitadorNombre || r.data?.datosGenerales?.facilitador || r.facilitador_nombre || 'Sin facilitador';
   return {
     id: String(r.id),
     periodo: r.periodo,
@@ -20,7 +22,8 @@ function mapReportRow(r: any) {
     youngId: r.young_id ? String(r.young_id) : null,
     grupo: r.grupo || 'Sin grupo',
     jovenNombre: r.joven_nombre || 'Sin nombre',
-    facilitadorNombre: r.facilitador_nombre || r.data?.datosGenerales?.facilitadorNombre || r.data?.datosGenerales?.facilitador || 'Sin facilitador',
+    facilitadorNombre,
+    uploadedBy,
     openComments: Array.isArray(r.comments) ? r.comments.filter((c: any) => c.status !== 'RESOLVED').length : 0
   };
 }
@@ -51,7 +54,8 @@ export async function GET(req: NextRequest) {
               r.id, r.periodo, r.status, r.pdf_url, r.created_at, r.comments,
               r.young_id, r.version, r.report_type, r.source_report_ids,
               y.taller as grupo, y.nombre_completo as joven_nombre,
-              COALESCE(u.name, r.data->'datosGenerales'->>'facilitadorNombre', r.data->'datosGenerales'->>'facilitador', 'Sin facilitador') as facilitador_nombre
+              COALESCE(NULLIF(r.data->'datosGenerales'->>'facilitadorNombre', ''), NULLIF(r.data->'datosGenerales'->>'facilitador', ''), u.name, 'Sin facilitador') as facilitador_nombre,
+                   COALESCE(r.data->'datosGenerales'->>'uploadedBy', r.data->'datosGenerales'->>'cargadoPor') as uploaded_by
             FROM reports r
             LEFT JOIN youngs y ON r.young_id = y.id
             LEFT JOIN users u ON r.generated_by = u.id
@@ -65,7 +69,8 @@ export async function GET(req: NextRequest) {
               r.id, r.periodo, r.status, r.pdf_url, r.created_at, r.comments,
               r.young_id, r.version, r.report_type, r.source_report_ids,
               y.taller as grupo, y.nombre_completo as joven_nombre,
-              COALESCE(u.name, r.data->'datosGenerales'->>'facilitadorNombre', r.data->'datosGenerales'->>'facilitador', 'Sin facilitador') as facilitador_nombre
+              COALESCE(NULLIF(r.data->'datosGenerales'->>'facilitadorNombre', ''), NULLIF(r.data->'datosGenerales'->>'facilitador', ''), u.name, 'Sin facilitador') as facilitador_nombre,
+                   COALESCE(r.data->'datosGenerales'->>'uploadedBy', r.data->'datosGenerales'->>'cargadoPor') as uploaded_by
             FROM reports r
             LEFT JOIN youngs y ON r.young_id = y.id
             LEFT JOIN users u ON r.generated_by = u.id
@@ -95,7 +100,8 @@ export async function GET(req: NextRequest) {
             SELECT r.id, r.periodo, r.status, r.pdf_url, r.created_at, r.comments,
                    r.young_id, r.version, r.report_type, r.source_report_ids,
                    y.taller as grupo, y.nombre_completo as joven_nombre,
-                   COALESCE(u.name, r.data->'datosGenerales'->>'facilitadorNombre', r.data->'datosGenerales'->>'facilitador', 'Sin facilitador') as facilitador_nombre
+                   COALESCE(NULLIF(r.data->'datosGenerales'->>'facilitadorNombre', ''), NULLIF(r.data->'datosGenerales'->>'facilitador', ''), u.name, 'Sin facilitador') as facilitador_nombre,
+                   COALESCE(r.data->'datosGenerales'->>'uploadedBy', r.data->'datosGenerales'->>'cargadoPor') as uploaded_by
             FROM reports r 
             LEFT JOIN youngs y ON r.young_id = y.id
             LEFT JOIN users u ON r.generated_by = u.id
@@ -108,7 +114,8 @@ export async function GET(req: NextRequest) {
             SELECT r.id, r.periodo, r.status, r.pdf_url, r.created_at, r.comments,
                    r.young_id, r.version, r.report_type, r.source_report_ids,
                    y.taller as grupo, y.nombre_completo as joven_nombre,
-                   COALESCE(u.name, r.data->'datosGenerales'->>'facilitadorNombre', r.data->'datosGenerales'->>'facilitador', 'Sin facilitador') as facilitador_nombre
+                   COALESCE(NULLIF(r.data->'datosGenerales'->>'facilitadorNombre', ''), NULLIF(r.data->'datosGenerales'->>'facilitador', ''), u.name, 'Sin facilitador') as facilitador_nombre,
+                   COALESCE(r.data->'datosGenerales'->>'uploadedBy', r.data->'datosGenerales'->>'cargadoPor') as uploaded_by
             FROM reports r 
             LEFT JOIN youngs y ON r.young_id = y.id
             LEFT JOIN users u ON r.generated_by = u.id
@@ -121,7 +128,8 @@ export async function GET(req: NextRequest) {
             SELECT r.id, r.periodo, r.status, r.pdf_url, r.created_at, r.comments,
                    r.young_id, r.version, r.report_type, r.source_report_ids,
                    y.taller as grupo, y.nombre_completo as joven_nombre,
-                   COALESCE(u.name, r.data->'datosGenerales'->>'facilitadorNombre', r.data->'datosGenerales'->>'facilitador', 'Sin facilitador') as facilitador_nombre
+                   COALESCE(NULLIF(r.data->'datosGenerales'->>'facilitadorNombre', ''), NULLIF(r.data->'datosGenerales'->>'facilitador', ''), u.name, 'Sin facilitador') as facilitador_nombre,
+                   COALESCE(r.data->'datosGenerales'->>'uploadedBy', r.data->'datosGenerales'->>'cargadoPor') as uploaded_by
             FROM reports r 
             LEFT JOIN youngs y ON r.young_id = y.id
             LEFT JOIN users u ON r.generated_by = u.id
@@ -134,7 +142,8 @@ export async function GET(req: NextRequest) {
             SELECT r.id, r.periodo, r.status, r.pdf_url, r.created_at, r.comments,
                    r.young_id, r.version, r.report_type, r.source_report_ids,
                    y.taller as grupo, y.nombre_completo as joven_nombre,
-                   COALESCE(u.name, r.data->'datosGenerales'->>'facilitadorNombre', r.data->'datosGenerales'->>'facilitador', 'Sin facilitador') as facilitador_nombre
+                   COALESCE(NULLIF(r.data->'datosGenerales'->>'facilitadorNombre', ''), NULLIF(r.data->'datosGenerales'->>'facilitador', ''), u.name, 'Sin facilitador') as facilitador_nombre,
+                   COALESCE(r.data->'datosGenerales'->>'uploadedBy', r.data->'datosGenerales'->>'cargadoPor') as uploaded_by
             FROM reports r 
             LEFT JOIN youngs y ON r.young_id = y.id
             LEFT JOIN users u ON r.generated_by = u.id
@@ -149,7 +158,8 @@ export async function GET(req: NextRequest) {
             SELECT r.id, r.periodo, r.status, r.pdf_url, r.created_at, r.comments,
                    r.young_id, r.version, r.report_type, r.source_report_ids,
                    y.taller as grupo, y.nombre_completo as joven_nombre,
-                   COALESCE(u.name, r.data->'datosGenerales'->>'facilitadorNombre', r.data->'datosGenerales'->>'facilitador', 'Sin facilitador') as facilitador_nombre
+                   COALESCE(NULLIF(r.data->'datosGenerales'->>'facilitadorNombre', ''), NULLIF(r.data->'datosGenerales'->>'facilitador', ''), u.name, 'Sin facilitador') as facilitador_nombre,
+                   COALESCE(r.data->'datosGenerales'->>'uploadedBy', r.data->'datosGenerales'->>'cargadoPor') as uploaded_by
             FROM reports r 
             LEFT JOIN youngs y ON r.young_id = y.id
             LEFT JOIN users u ON r.generated_by = u.id
@@ -162,7 +172,8 @@ export async function GET(req: NextRequest) {
             SELECT r.id, r.periodo, r.status, r.pdf_url, r.created_at, r.comments,
                    r.young_id, r.version, r.report_type, r.source_report_ids,
                    y.taller as grupo, y.nombre_completo as joven_nombre,
-                   COALESCE(u.name, r.data->'datosGenerales'->>'facilitadorNombre', r.data->'datosGenerales'->>'facilitador', 'Sin facilitador') as facilitador_nombre
+                   COALESCE(NULLIF(r.data->'datosGenerales'->>'facilitadorNombre', ''), NULLIF(r.data->'datosGenerales'->>'facilitador', ''), u.name, 'Sin facilitador') as facilitador_nombre,
+                   COALESCE(r.data->'datosGenerales'->>'uploadedBy', r.data->'datosGenerales'->>'cargadoPor') as uploaded_by
             FROM reports r 
             LEFT JOIN youngs y ON r.young_id = y.id
             LEFT JOIN users u ON r.generated_by = u.id
@@ -175,7 +186,8 @@ export async function GET(req: NextRequest) {
             SELECT r.id, r.periodo, r.status, r.pdf_url, r.created_at, r.comments,
                    r.young_id, r.version, r.report_type, r.source_report_ids,
                    y.taller as grupo, y.nombre_completo as joven_nombre,
-                   COALESCE(u.name, r.data->'datosGenerales'->>'facilitadorNombre', r.data->'datosGenerales'->>'facilitador', 'Sin facilitador') as facilitador_nombre
+                   COALESCE(NULLIF(r.data->'datosGenerales'->>'facilitadorNombre', ''), NULLIF(r.data->'datosGenerales'->>'facilitador', ''), u.name, 'Sin facilitador') as facilitador_nombre,
+                   COALESCE(r.data->'datosGenerales'->>'uploadedBy', r.data->'datosGenerales'->>'cargadoPor') as uploaded_by
             FROM reports r 
             LEFT JOIN youngs y ON r.young_id = y.id
             LEFT JOIN users u ON r.generated_by = u.id
@@ -188,7 +200,8 @@ export async function GET(req: NextRequest) {
             SELECT r.id, r.periodo, r.status, r.pdf_url, r.created_at, r.comments,
                    r.young_id, r.version, r.report_type, r.source_report_ids,
                    y.taller as grupo, y.nombre_completo as joven_nombre,
-                   COALESCE(u.name, r.data->'datosGenerales'->>'facilitadorNombre', r.data->'datosGenerales'->>'facilitador', 'Sin facilitador') as facilitador_nombre
+                   COALESCE(NULLIF(r.data->'datosGenerales'->>'facilitadorNombre', ''), NULLIF(r.data->'datosGenerales'->>'facilitador', ''), u.name, 'Sin facilitador') as facilitador_nombre,
+                   COALESCE(r.data->'datosGenerales'->>'uploadedBy', r.data->'datosGenerales'->>'cargadoPor') as uploaded_by
             FROM reports r 
             LEFT JOIN youngs y ON r.young_id = y.id
             LEFT JOIN users u ON r.generated_by = u.id

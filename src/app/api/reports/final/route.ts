@@ -579,14 +579,32 @@ export async function POST(req: NextRequest) {
     if (trimestral1?.id) sourceReportIds.push(trimestral1.id);
     if (trimestral2?.id) sourceReportIds.push(trimestral2.id);
 
+    const GROUP_FACILITATORS: Record<string, { id: number; name: string }> = {
+      'Artesanos': { id: 9, name: 'Leonardo Villamayor' },
+      'Atrapasueños': { id: 12, name: 'Matias Maciel' },
+      'Buenos Mozos': { id: 10, name: 'Marina Trejo' },
+      'Clave de Sol': { id: 7, name: 'Juliana Arias' },
+      'Empoderadas': { id: 8, name: 'Ana Reartes' },
+      'Emprendedores': { id: 11, name: 'Analia Almada' },
+      'Promotores': { id: 14, name: 'Lemuel Sola' }
+    };
+
+    const sessionRole = (session?.user as any)?.role || 'FACILITADOR';
+    const isUploaderAdmin = sessionRole === 'ADMIN' || sessionRole === 'COORDINACION' || sessionUserId === 1;
+    const groupFacil = young.taller ? GROUP_FACILITATORS[young.taller] : null;
+    const effectiveGeneratedBy = isUploaderAdmin && groupFacil ? groupFacil.id : (sessionUserId || groupFacil?.id || 1);
+    const facilitadorReal = groupFacil?.name || young.facilitador_nombre || session.user?.name || 'Sin facilitador';
+    const uploadedBy = isUploaderAdmin ? (session.user?.name || 'Natoh') : null;
+
     const datosGenerales = {
       nombreCompleto: young.nombre_completo,
       grupo: young.taller || 'Sin grupo',
       taller: young.taller || 'Sin taller',
-      facilitador: young.facilitador_nombre || session.user?.name,
-      facilitadora: young.facilitador_nombre || session.user?.name,
-      facilitadorNombre: young.facilitador_nombre || session.user?.name,
-      facilitadores: young.facilitador_nombre || session.user?.name,
+      facilitador: facilitadorReal,
+      facilitadora: facilitadorReal,
+      facilitadorNombre: facilitadorReal,
+      facilitadores: facilitadorReal,
+      uploadedBy,
       periodo: '2026 (Ciclo Anual Consolidado)',
       fechaInforme,
       pcpAnio,
@@ -638,7 +656,7 @@ export async function POST(req: NextRequest) {
           source_report_ids = ${sourceIdsArrayStr}::int4[],
           edited_docx_base64 = NULL,
           edited_docx_filename = NULL,
-          generated_by = ${sessionUserId},
+          generated_by = ${effectiveGeneratedBy},
           updated_at = NOW()
         WHERE id = ${targetReportId}
       `;
@@ -669,7 +687,7 @@ export async function POST(req: NextRequest) {
           ${JSON.stringify(reportData)}::jsonb,
           ${JSON.stringify(reportData)}::jsonb,
           ${sourceIdsArrayStr}::int4[],
-          ${sessionUserId},
+          ${effectiveGeneratedBy},
           NOW(),
           NOW()
         )

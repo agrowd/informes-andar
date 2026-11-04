@@ -272,6 +272,7 @@ export async function POST(req: NextRequest) {
     }
 
     const sessionUserId = session.user ? Number((session.user as any).id) : null;
+    const sessionRole = (session?.user as any)?.role || 'FACILITADOR';
 
     const formData = await req.formData();
     const file = formData.get('file') as File;
@@ -442,6 +443,24 @@ export async function POST(req: NextRequest) {
       facilitadorNombre = session.user?.name || 'Facilitador no especificado';
     }
 
+    const GROUP_FACILITATORS: Record<string, { id: number; name: string }> = {
+      'Artesanos': { id: 9, name: 'Leonardo Villamayor' },
+      'Atrapasueños': { id: 12, name: 'Matias Maciel' },
+      'Buenos Mozos': { id: 10, name: 'Marina Trejo' },
+      'Clave de Sol': { id: 7, name: 'Juliana Arias' },
+      'Empoderadas': { id: 8, name: 'Ana Reartes' },
+      'Emprendedores': { id: 11, name: 'Analia Almada' },
+      'Promotores': { id: 14, name: 'Lemuel Sola' }
+    };
+    const isUploaderAdmin = sessionRole === 'ADMIN' || sessionRole === 'COORDINACION' || sessionUserId === 1;
+    const groupFacil = matchedYoung.taller ? GROUP_FACILITATORS[matchedYoung.taller] : null;
+    if (isUploaderAdmin && groupFacil) {
+      if (!facilitatorUserId || facilitatorUserId === sessionUserId) {
+        facilitatorUserId = groupFacil.id;
+        facilitadorNombre = groupFacil.name;
+      }
+    }
+
     if (!facilitatorUserId) {
       facilitatorUserId = sessionUserId;
     }
@@ -493,6 +512,7 @@ export async function POST(req: NextRequest) {
       facilitador: facilitadorNombre,
       facilitadora: facilitadorNombre,
       facilitadorNombre: facilitadorNombre,
+      uploadedBy: isUploaderAdmin ? (session.user?.name || 'Natoh') : null,
       periodo: periodo,
       origen: 'DOCX_MANUAL',
       archivoOriginal: file.name,

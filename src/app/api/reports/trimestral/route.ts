@@ -39,8 +39,12 @@ export async function POST(req: NextRequest) {
     if (USE_POSTGRES && sql) {
       // 1. Obtener formularios de Postgres
       for (const id of formIds) {
+        const numId = parseInt(id);
+        if (isNaN(numId)) {
+          return NextResponse.json({ error: `ID de formulario inválido: ${id}` }, { status: 400 });
+        }
         const result = await sql`
-          SELECT id, young_id, periodo, data FROM forms WHERE id = ${parseInt(id)}
+          SELECT id, young_id, periodo, data FROM forms WHERE id = ${numId}
         `;
         if (result.rows.length > 0) {
           const row = result.rows[0];
@@ -217,6 +221,22 @@ export async function POST(req: NextRequest) {
     const fechaCreacionIso = fechaActual.toISOString();
     const formattedYoungName = formatApellidoNombre(youngName);
 
+    const GROUP_FACILITATORS: Record<string, { id: number; name: string }> = {
+      'Artesanos': { id: 9, name: 'Leonardo Villamayor' },
+      'Atrapasueños': { id: 12, name: 'Matias Maciel' },
+      'Buenos Mozos': { id: 10, name: 'Marina Trejo' },
+      'Clave de Sol': { id: 7, name: 'Juliana Arias' },
+      'Empoderadas': { id: 8, name: 'Ana Reartes' },
+      'Emprendedores': { id: 11, name: 'Analia Almada' },
+      'Promotores': { id: 14, name: 'Lemuel Sola' }
+    };
+    const sessionRole = (session?.user as any)?.role || 'FACILITADOR';
+    const groupFacil = youngTaller ? GROUP_FACILITATORS[youngTaller] : null;
+    const isUploaderAdmin = sessionRole === 'ADMIN' || sessionRole === 'COORDINACION' || Number(session.user.id) === 1;
+    const effectiveGeneratedBy = isUploaderAdmin && groupFacil ? groupFacil.id : (Number(session.user.id) || groupFacil?.id || 1);
+    const facilitadorReal = groupFacil?.name || facilitators || session.user.name || 'Sin facilitador';
+    const uploadedBy = isUploaderAdmin ? (session.user?.name || 'Natoh') : null;
+
     const reportData = {
       datosGenerales: {
         nombreCompleto: formattedYoungName,
@@ -224,7 +244,11 @@ export async function POST(req: NextRequest) {
         periodo: mergedPeriodo,
         grupo: youngTaller || 'Clave de Sol',
         taller: youngTaller || 'Clave de Sol',
-        facilitadores: facilitators,
+        facilitadores: facilitadorReal,
+        facilitador: facilitadorReal,
+        facilitadora: facilitadorReal,
+        facilitadorNombre: facilitadorReal,
+        uploadedBy,
         metaSueno: metaSueno,
         legajo: youngLegajo,
         obraSocial: youngObraSocial,
@@ -301,7 +325,7 @@ export async function POST(req: NextRequest) {
           ${formIdsArrayStr}::int4[],
           'BORRADOR',
           1,
-          ${generatedByNum},
+          ${effectiveGeneratedBy},
           NOW(),
           NOW()
         )

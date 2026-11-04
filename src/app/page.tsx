@@ -367,10 +367,15 @@ export default function InicioPage() {
                         {r.grupo || 'Sin grupo'}
                       </span>
                     </td>
-                    <td>
-                      <span style={{ fontSize: 13, color: '#334155', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    <td style={{ fontSize: 13, color: '#334155' }}>
+                      <div style={{ fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                         <span>👤</span> {r.facilitadorNombre || r.facilitador_nombre || 'Sin facilitador'}
-                      </span>
+                      </div>
+                      {r.uploadedBy && r.uploadedBy.toLowerCase() !== (r.facilitadorNombre || r.facilitador_nombre || '').toLowerCase() && (
+                        <div style={{ fontSize: 11, color: '#64748b', fontWeight: 400, marginLeft: 20 }}>
+                          (subido por {r.uploadedBy})
+                        </div>
+                      )}
                     </td>
                     <td><strong style={{ color: '#334155' }}>{r.periodo || '—'}</strong></td>
                     <td style={{ fontSize: 12, color: '#64748b' }}>{formatDateTime(r.createdAt || r.created_at)}</td>
