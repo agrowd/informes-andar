@@ -1,6 +1,8 @@
 "use client";
 import { useEffect, useState, useMemo } from 'react';
 import ExcelImportWizardModal from '../_components/ExcelImportWizardModal';
+import MonthlyFormPreviewModal from '../_components/MonthlyFormPreviewModal';
+import { useActiveCycle } from '@/lib/cycleState';
 import { formatDate, formatDateTime } from '@/lib/formatters';
 import { getFormSummary } from '@/lib/formSummary';
 
@@ -39,6 +41,8 @@ export default function FormsList() {
   const [importWizardOpen, setImportWizardOpen] = useState(false);
   const [importWizardYoungId, setImportWizardYoungId] = useState('');
   const [importWizardMonths, setImportWizardMonths] = useState<any[]>([]);
+  const { activeYear } = useActiveCycle();
+  const [previewFormId, setPreviewFormId] = useState<string | null>(null);
 
   // Sincronizar parámetro ?grupo= de la URL
   useEffect(() => {
@@ -62,6 +66,7 @@ export default function FormsList() {
     setIsImporting(true);
     const formData = new FormData();
     formData.append('file', file);
+    formData.append('year', activeYear);
     
     try {
       const res = await fetch('/api/youngs/import-excel', {
@@ -100,6 +105,7 @@ export default function FormsList() {
     if (youngId && !youngId.startsWith('noyoung-')) {
       formData.append('youngId', youngId);
     }
+    formData.append('year', activeYear);
 
     try {
       const res = await fetch('/api/youngs/import-excel', {
@@ -135,6 +141,7 @@ export default function FormsList() {
       const params = new URLSearchParams();
       params.set('page', String(pageNum));
       params.set('pageSize', '1000');
+      if (activeYear) params.set('year', activeYear);
       const r = await fetch(`/api/forms?${params.toString()}`);
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const j = await r.json();
@@ -152,7 +159,7 @@ export default function FormsList() {
 
   useEffect(() => {
     loadData(1);
-  }, []);
+  }, [activeYear]);
 
   useEffect(() => {
     // Por defecto, todas las cuadrículas comienzan COLAPSADAS para ahorrar espacio
@@ -1155,6 +1162,15 @@ export default function FormsList() {
                                     </td>
                                     <td style={{ border: '1px solid #cbd5e1', padding: '8px 10px' }}>
                                       <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center' }} onClick={(e) => e.stopPropagation()}>
+                                        <button
+                                          type="button"
+                                          className="ga-btn secondary"
+                                          style={{ fontSize: 12, padding: '4px 8px', whiteSpace: 'nowrap', background: '#eff6ff', color: '#1d4ed8', borderColor: '#bfdbfe', fontWeight: 600 }}
+                                          onClick={() => setPreviewFormId(String(id))}
+                                          title="Previsualización rápida de la cuadrícula mensual"
+                                        >
+                                          👁️ Previsualizar
+                                        </button>
                                         <a 
                                           href={`/form?formId=${id}`} 
                                           className="ga-btn secondary" 
@@ -1349,6 +1365,12 @@ export default function FormsList() {
           onSuccess={handleWizardSuccess}
         />
       )}
+
+      <MonthlyFormPreviewModal
+        isOpen={!!previewFormId}
+        onClose={() => setPreviewFormId(null)}
+        formId={previewFormId}
+      />
     </div>
   );
 }

@@ -5,9 +5,11 @@ interface UploadManualDocxModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (report: any) => void;
+  initialYoungId?: string;
+  initialPeriodo?: string;
 }
 
-export default function UploadManualDocxModal({ isOpen, onClose, onSuccess }: UploadManualDocxModalProps) {
+export default function UploadManualDocxModal({ isOpen, onClose, onSuccess, initialYoungId, initialPeriodo }: UploadManualDocxModalProps) {
   const [file, setFile] = useState<File | null>(null);
   const [youngs, setYoungs] = useState<any[]>([]);
   const [selectedYoungId, setSelectedYoungId] = useState<string>('');
@@ -24,8 +26,8 @@ export default function UploadManualDocxModal({ isOpen, onClose, onSuccess }: Up
       setError('');
       setSuccessData(null);
       setFile(null);
-      setSelectedYoungId('');
-      setPeriodo('');
+      setSelectedYoungId(initialYoungId || '');
+      setPeriodo(initialPeriodo || '');
       setFacilitadorNombre('');
 
       // Cargar lista de jóvenes para selección manual opcional
@@ -141,10 +143,12 @@ export default function UploadManualDocxModal({ isOpen, onClose, onSuccess }: Up
         }}>
           <div>
             <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span>📤</span> Cargar Informe Trimestral (Word / .docx)
+              <span>📤</span> {periodo?.includes('04') || periodo?.includes('06') ? 'Cargar Informe Trimestral 2 (Bloque 3 - Abr-Jun)' : 'Cargar Informe Trimestral (Word / .docx)'}
             </h2>
             <p style={{ margin: '4px 0 0 0', fontSize: 12, color: '#bfdbfe' }}>
-              Subí un informe redactado a mano por el facilitador para integrarlo al sistema
+              {periodo?.includes('04') || periodo?.includes('06')
+                ? 'Subí el informe redactado a mano por el profesor/facilitador para el Bloque 3 (Abril-Junio)'
+                : 'Subí un informe redactado a mano por el facilitador para integrarlo al sistema'}
             </p>
           </div>
           <button
@@ -174,6 +178,26 @@ export default function UploadManualDocxModal({ isOpen, onClose, onSuccess }: Up
               <p style={{ color: '#475569', fontSize: 14, marginBottom: 20 }}>
                 El archivo Word se almacenó y procesó correctamente. Ya está disponible para edición y para la futura fusión en el Informe Final.
               </p>
+
+              {successData.reassignedNotice && (
+                <div style={{
+                  padding: '12px 16px',
+                  background: '#fef3c7',
+                  border: '1px solid #fcd34d',
+                  borderRadius: 10,
+                  color: '#92400e',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  marginBottom: 20,
+                  textAlign: 'left',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: 10
+                }}>
+                  <span style={{ fontSize: 18 }}>💡</span>
+                  <span>{successData.reassignedNotice}</span>
+                </div>
+              )}
 
               <div style={{
                 background: '#f8fafc',

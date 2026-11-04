@@ -91,13 +91,14 @@ function deduplicateFormsByMonth(rows: any[]): any[] {
 }
 
 /**
- * Helper para verificar los 4 bloques institucionales de un joven
+ * Helper para verificar los 4 bloques institucionales de un joven en un ciclo lectivo
  */
 function evaluateBlocks(
   reports: any[],
   forms: any[],
   exceptionUnlocked?: boolean,
-  exceptionReason?: string
+  exceptionReason?: string,
+  targetYear: string = '2026'
 ): {
   trimestral1: { ok: boolean; id: number | null; periodo: string | null };
   mensuales1: { ok: boolean; has04: boolean; has05: boolean; has06: boolean; has07: boolean; count: number; missing: string[] };
@@ -110,8 +111,23 @@ function evaluateBlocks(
   exceptionReason: string | null;
   missingItems: string[];
 } {
-  // 1. Informe Final Anual existente (obtener el más reciente)
-  const finalReportRaw = reports.filter(r => r.report_type === 'FINAL').sort((a, b) => (b.id || 0) - (a.id || 0))[0] || null;
+  const yStr = String(targetYear).trim();
+
+  // Filtrar reports y forms por el año del ciclo lectivo activo
+  const yearReports = reports.filter(r => {
+    const p = r.periodo || '';
+    const m = p.match(/\b(20\d{2})\b/);
+    return m ? m[1] === yStr : p.includes(yStr);
+  });
+
+  const yearForms = forms.filter(f => {
+    const p = f.periodo || '';
+    const m = p.match(/\b(20\d{2})\b/);
+    return m ? m[1] === yStr : p.includes(yStr);
+  });
+
+  // 1. Informe Final Anual existente para este año específico
+  const finalReportRaw = yearReports.filter(r => r.report_type === 'FINAL').sort((a, b) => (b.id || 0) - (a.id || 0))[0] || null;
   const finalReport = finalReportRaw ? {
     id: finalReportRaw.id,
     periodo: finalReportRaw.periodo,
@@ -119,19 +135,19 @@ function evaluateBlocks(
     createdAt: finalReportRaw.created_at
   } : null;
 
-  // 2. Trimestral 1: Ene - Mar (el más reciente)
-  const t1Candidates = reports.filter(r => r.report_type === 'TRIMESTRAL' && isTrimestral1(r.periodo)).sort((a, b) => (b.id || 0) - (a.id || 0));
+  // 2. Trimestral 1: Ene - Mar (el más reciente del ciclo)
+  const t1Candidates = yearReports.filter(r => r.report_type === 'TRIMESTRAL' && isTrimestral1(r.periodo, yStr)).sort((a, b) => (b.id || 0) - (a.id || 0));
   const t1 = t1Candidates[0] || null;
 
-  // 3. Trimestral 2: Abr - Jun (distinto de Trimestral 1, el más reciente)
-  const t2Candidates = reports.filter(r => r.report_type === 'TRIMESTRAL' && (!t1 || r.id !== t1.id)).sort((a, b) => (b.id || 0) - (a.id || 0));
-  const t2 = t2Candidates.find(r => isTrimestral2(r.periodo)) || (t2Candidates.length > 0 ? t2Candidates[0] : null);
+  // 3. Trimestral 2: Abr - Jun (distinto de Trimestral 1, el más reciente del ciclo)
+  const t2Candidates = yearReports.filter(r => r.report_type === 'TRIMESTRAL' && (!t1 || r.id !== t1.id)).sort((a, b) => (b.id || 0) - (a.id || 0));
+  const t2 = t2Candidates.find(r => isTrimestral2(r.periodo, yStr)) || (t2Candidates.length > 0 ? t2Candidates[0] : null);
 
   // 4. Mensuales 1: Abril (04), Mayo (05), Junio (06) -> Los 3 son obligatorios; Julio (07) es opcional (se suma si existe)
-  const has04 = forms.some(f => f.periodo?.includes('04') || f.periodo?.toLowerCase().includes('abril'));
-  const has05 = forms.some(f => f.periodo?.includes('05') || f.periodo?.toLowerCase().includes('mayo'));
-  const has06 = forms.some(f => f.periodo?.includes('06') || f.periodo?.toLowerCase().includes('junio'));
-  const has07 = forms.some(f => f.periodo?.includes('07') || f.periodo?.toLowerCase().includes('julio'));
+  const has04 = yearForms.some(f => f.periodo?.includes('04') || f.periodo?.toLowerCase().includes('abril'));
+  const has05 = yearForms.some(f => f.periodo?.includes('05') || f.periodo?.toLowerCase().includes('mayo'));
+  const has06 = yearForms.some(f => f.periodo?.includes('06') || f.periodo?.toLowerCase().includes('junio'));
+  const has07 = yearForms.some(f => f.periodo?.includes('07') || f.periodo?.toLowerCase().includes('julio'));
   const m1Missing: string[] = [];
   if (!has04) m1Missing.push('Abril');
   if (!has05) m1Missing.push('Mayo');
@@ -139,9 +155,9 @@ function evaluateBlocks(
   const m1Ok = m1Missing.length === 0;
 
   // 5. Mensuales 2: Agosto (08), Septiembre (09) -> Los 2 son obligatorios; Octubre (10) se incluye si está presente
-  const has08 = forms.some(f => f.periodo?.includes('08') || f.periodo?.toLowerCase().includes('agosto'));
-  const has09 = forms.some(f => f.periodo?.includes('09') || f.periodo?.toLowerCase().includes('septiembre') || f.periodo?.toLowerCase().includes('setiembre'));
-  const has10 = forms.some(f => f.periodo?.includes('10') || f.periodo?.toLowerCase().includes('octubre'));
+  const has08 = yearForms.some(f => f.periodo?.includes('08') || f.periodo?.toLowerCase().includes('agosto'));
+  const has09 = yearForms.some(f => f.periodo?.includes('09') || f.periodo?.toLowerCase().includes('septiembre') || f.periodo?.toLowerCase().includes('setiembre'));
+  const has10 = yearForms.some(f => f.periodo?.includes('10') || f.periodo?.toLowerCase().includes('octubre'));
   const m2Missing: string[] = [];
   if (!has08) m2Missing.push('Agosto');
   if (!has09) m2Missing.push('Septiembre');
@@ -154,16 +170,16 @@ function evaluateBlocks(
   const canGenerate = strictCanGenerate || isExceptionUnlocked;
 
   const missingItems: string[] = [];
-  if (!t1Ok) missingItems.push('Bloque 1: Trimestral 1 (Enero, Febrero, Marzo)');
-  if (!m1Ok) missingItems.push(`Bloque 2: Mensuales 1 (Faltan: ${m1Missing.join(', ')})`);
-  if (!t2Ok) missingItems.push('Bloque 3: Trimestral 2 (Abril, Mayo, Junio)');
-  if (!m2Ok) missingItems.push(`Bloque 4: Mensuales 2 (Faltan: ${m2Missing.join(', ')})`);
+  if (!t1Ok) missingItems.push(`Bloque 1: Trimestral 1 (${yStr} Ene - Mar)`);
+  if (!m1Ok) missingItems.push(`Bloque 2: Mensuales 1 (${yStr} Faltan: ${m1Missing.join(', ')})`);
+  if (!t2Ok) missingItems.push(`Bloque 3: Trimestral 2 (${yStr} Abr - Jun)`);
+  if (!m2Ok) missingItems.push(`Bloque 4: Mensuales 2 (${yStr} Faltan: ${m2Missing.join(', ')})`);
 
   return {
-    trimestral1: { ok: t1Ok, id: t1?.id || null, periodo: t1?.periodo || null },
-    mensuales1: { ok: m1Ok, has04, has05, has06, has07, count: [has04, has05, has06, has07].filter(Boolean).length, missing: m1Missing },
-    trimestral2: { ok: t2Ok, id: t2?.id || null, periodo: t2?.periodo || null },
-    mensuales2: { ok: m2Ok, has08, has09, has10, count: [has08, has09, has10].filter(Boolean).length, missing: m2Missing },
+    trimestral1: { ok: t1Ok, id: t1 ? t1.id : null, periodo: t1 ? t1.periodo : null },
+    mensuales1: { ok: m1Ok, has04, has05, has06, has07, count: (has04?1:0)+(has05?1:0)+(has06?1:0)+(has07?1:0), missing: m1Missing },
+    trimestral2: { ok: t2Ok, id: t2 ? t2.id : null, periodo: t2 ? t2.periodo : null },
+    mensuales2: { ok: m2Ok, has08, has09, has10, count: (has08?1:0)+(has09?1:0)+(has10?1:0), missing: m2Missing },
     finalReport,
     canGenerate,
     strictCanGenerate,
@@ -194,6 +210,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const isOverview = searchParams.get('overview') === 'true';
     const youngIdStr = searchParams.get('youngId');
+    const targetYear = searchParams.get('year') || searchParams.get('cycle') || '2026';
 
     // ==========================================
     // MODO 1: RESUMEN INSTITUCIONAL COMPLETO
@@ -234,7 +251,7 @@ export async function GET(req: NextRequest) {
       const list = youngsRes.rows.map(y => {
         const yReports = reportsByYoung.get(y.id) || [];
         const yForms = formsByYoung.get(y.id) || [];
-        const evalRes = evaluateBlocks(yReports, yForms, y.exception_unlocked, y.exception_reason);
+        const evalRes = evaluateBlocks(yReports, yForms, y.exception_unlocked, y.exception_reason, targetYear);
 
         return {
           id: y.id,
@@ -299,7 +316,7 @@ export async function GET(req: NextRequest) {
       `
     ]);
 
-    const evalRes = evaluateBlocks(reportsRes.rows, formsRes.rows);
+    const evalRes = evaluateBlocks(reportsRes.rows, formsRes.rows, young.exception_unlocked, young.exception_reason, targetYear);
 
     return NextResponse.json({
       young: {
@@ -338,6 +355,8 @@ export async function POST(req: NextRequest) {
     const sessionUserId = session.user ? Number((session.user as any).id) : null;
     const body = await req.json();
     const { youngId, trimestral1Id, trimestral2Id, mensuales1Ids, mensuales2Ids } = body;
+    const targetYear = String(body.year || body.cycle || '2026').trim();
+    const consolidatedPeriod = `${targetYear} (Ciclo Anual Consolidado)`;
 
     if (!youngId) {
       return NextResponse.json({ error: 'youngId es requerido' }, { status: 400 });
@@ -378,7 +397,7 @@ export async function POST(req: NextRequest) {
         if (t1Res.rows.length > 0) trimestral1 = t1Res.rows[0];
       }
     } else {
-      const t1Candidates = allTrimestrales.filter(r => isTrimestral1(r.periodo));
+      const t1Candidates = allTrimestrales.filter(r => isTrimestral1(r.periodo, targetYear));
       trimestral1 = t1Candidates[0] || null;
     }
 
@@ -394,6 +413,7 @@ export async function POST(req: NextRequest) {
       const m1Auto = await sql`
         SELECT id, periodo, data FROM forms
         WHERE young_id = ${young.id}
+        AND periodo ILIKE ${'%' + targetYear + '%'}
         AND (
           periodo ILIKE '%04%' OR periodo ILIKE '%05%' OR periodo ILIKE '%06%' OR periodo ILIKE '%07%'
           OR periodo ILIKE '%abril%' OR periodo ILIKE '%mayo%' OR periodo ILIKE '%junio%' OR periodo ILIKE '%julio%'
@@ -413,8 +433,8 @@ export async function POST(req: NextRequest) {
       }
     } else {
       const excludeT1Id = trimestral1?.id ? trimestral1.id : 0;
-      const t2Candidates = allTrimestrales.filter(r => r.id !== excludeT1Id);
-      trimestral2 = t2Candidates.find(r => isTrimestral2(r.periodo)) || (t2Candidates.length > 0 ? t2Candidates[0] : null);
+      const t2Candidates = allTrimestrales.filter(r => r.id !== excludeT1Id && isTrimestral2(r.periodo, targetYear));
+      trimestral2 = t2Candidates[0] || null;
     }
 
     // 5. Obtener Mensuales 2 (Agosto, Septiembre)
@@ -429,6 +449,7 @@ export async function POST(req: NextRequest) {
       const m2Auto = await sql`
         SELECT id, periodo, data FROM forms
         WHERE young_id = ${young.id}
+        AND periodo ILIKE ${'%' + targetYear + '%'}
         AND (
           periodo ILIKE '%08%' OR periodo ILIKE '%09%' OR periodo ILIKE '%10%' OR periodo ILIKE '%11%' OR periodo ILIKE '%12%'
           OR periodo ILIKE '%agosto%' OR periodo ILIKE '%septiembre%' OR periodo ILIKE '%setiembre%'
@@ -605,9 +626,9 @@ export async function POST(req: NextRequest) {
       facilitadorNombre: facilitadorReal,
       facilitadores: facilitadorReal,
       uploadedBy,
-      periodo: '2026 (Ciclo Anual Consolidado)',
+      periodo: consolidatedPeriod,
       fechaInforme,
-      pcpAnio,
+      pcpAnio: pcpAnio || targetYear,
       metaSueno,
       dni: young.dni || '',
       legajo: young.legajo || '',
@@ -640,6 +661,7 @@ export async function POST(req: NextRequest) {
     const existingFinal = await sql`
       SELECT id FROM reports 
       WHERE young_id = ${young.id} AND report_type = 'FINAL' 
+        AND (periodo = ${consolidatedPeriod} OR periodo ILIKE ${'%' + targetYear + '%'})
       ORDER BY id DESC LIMIT 1
     `;
 
@@ -648,7 +670,7 @@ export async function POST(req: NextRequest) {
       targetReportId = existingFinal.rows[0].id;
       await sql`
         UPDATE reports SET
-          periodo = '2026 (Ciclo Anual Consolidado)',
+          periodo = ${consolidatedPeriod},
           status = 'BORRADOR',
           version = COALESCE(version, 1) + 1,
           data = ${JSON.stringify(reportData)}::jsonb,
@@ -660,9 +682,9 @@ export async function POST(req: NextRequest) {
           updated_at = NOW()
         WHERE id = ${targetReportId}
       `;
-      // Limpiar duplicados obsoletos si existieran
+      // Limpiar duplicados obsoletos si existieran para este ciclo
       await sql`
-        DELETE FROM reports WHERE young_id = ${young.id} AND report_type = 'FINAL' AND id != ${targetReportId}
+        DELETE FROM reports WHERE young_id = ${young.id} AND report_type = 'FINAL' AND (periodo = ${consolidatedPeriod} OR periodo ILIKE ${'%' + targetYear + '%'}) AND id != ${targetReportId}
       `;
     } else {
       const insertResult = await sql`
@@ -680,7 +702,7 @@ export async function POST(req: NextRequest) {
           updated_at
         ) VALUES (
           ${young.id},
-          '2026 (Ciclo Anual Consolidado)',
+          ${consolidatedPeriod},
           'FINAL',
           'BORRADOR',
           1,

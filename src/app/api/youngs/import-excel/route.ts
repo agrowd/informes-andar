@@ -283,6 +283,7 @@ export async function POST(req: NextRequest) {
     const formData = await req.formData();
     const file = formData.get('file') as Blob;
     const manualYoungId = formData.get('youngId') ? Number(formData.get('youngId')) : null;
+    const cycleYear = (formData.get('year') || formData.get('cycle') || '').toString().trim();
     if (!file) {
       return NextResponse.json({ error: 'No se subió ningún archivo' }, { status: 400 });
     }
@@ -712,9 +713,9 @@ export async function POST(req: NextRequest) {
       ) continue;
 
       const monthNum = getMonthNumber(sheet.name);
-      // Extraer año si está en el nombre de la solapa (ej: "AGOSTO 2026")
+      // Extraer año si está en el nombre de la solapa (ej: "AGOSTO 2026") o usar el ciclo activo indicado
       const sheetYearMatch = sheet.name.match(/\b(202\d)\b/);
-      const effectiveYear = sheetYearMatch ? sheetYearMatch[1] : (anioPcp || new Date().getFullYear().toString());
+      const effectiveYear = sheetYearMatch ? sheetYearMatch[1] : (cycleYear || anioPcp || '2026');
       const parsedPeriod = monthNum ? `${effectiveYear}-${monthNum}` : sheet.name.trim().toUpperCase();
 
       const report: any = {
@@ -1090,18 +1091,19 @@ export async function POST(req: NextRequest) {
       };
 
       if (USE_POSTGRES && sql) {
-        // Buscar borrador mensual existente por periodo exacto (ej: 2026-08), nombre de solapa legado (ej: AGOSTO) o mes numérico (ej: %-08)
+        // Buscar borrador mensual existente por periodo exacto (ej: 2026-08), nombre de solapa legado o mes numérico acotado al ciclo/año efectivo
         const targetPeriodo = report.periodo;
+        const reportEffectiveYear = report.periodo?.match(/\b(202\d)\b/)?.[1] || cycleYear || '2026';
         const sheetUpper = (report.sheetName || '').trim().toUpperCase();
-        const monthPattern = report.monthNum ? `%${report.monthNum}` : null;
+        const monthExactInYear = report.monthNum ? `${reportEffectiveYear}-${report.monthNum}` : null;
 
         const existing = await sql`
           SELECT id, periodo FROM forms 
           WHERE young_id = ${parseInt(youngIdStr)} 
           AND (
             periodo = ${targetPeriodo}
-            OR (${sheetUpper} != '' AND UPPER(periodo) = ${sheetUpper})
-            OR (${monthPattern}::text IS NOT NULL AND periodo ILIKE ${monthPattern})
+            OR (${monthExactInYear}::text IS NOT NULL AND periodo = ${monthExactInYear})
+            OR (${sheetUpper} != '' AND UPPER(periodo) = ${sheetUpper} AND (periodo ILIKE ${'%' + reportEffectiveYear + '%'} OR ${reportEffectiveYear} = '2026'))
           )
           ORDER BY id DESC
         `;

@@ -8,6 +8,7 @@ import { generateReportJSON } from './providers/router';
 import { getInstitutionalConfig } from '../docs/constants';
 import { getEditable, getEditableMapByPrefix } from '@/lib/editable';
 import { participacionCirculoOptions } from '@/lib/form/options';
+import { formatApellidoNombre } from '@/lib/formatters';
 
 const ajv = new Ajv2020({ allErrors: true, strict: true });
 addFormats(ajv);
@@ -173,7 +174,7 @@ function renderMarkdownText(report: any, institutional: any, originalForm?: any)
   // 1. DATOS GENERALES
   lines.push('**1. DATOS GENERALES**');
   lines.push('');
-  lines.push(`Nombre completo: ${report.datosGenerales.nombreCompleto}`);
+  lines.push(`Apellido y Nombre: ${formatApellidoNombre(report.datosGenerales.nombreCompleto)}`);
   lines.push('');
   if (report.datosGenerales.dni) {
     lines.push(`DNI: ${report.datosGenerales.dni}`);
@@ -425,13 +426,25 @@ function mergeDatosGeneralesFromForm(report: any, originalForm?: any) {
   const formCirculo = originalForm?.circuloApoyo || {};
   
   // Siempre restaurar/sobrescribir los datos reales del joven desde el formulario original
-  if (formDG.nombreCompleto) target.nombreCompleto = formDG.nombreCompleto;
+  if (formDG.nombreCompleto) {
+    target.nombreCompleto = formDG.nombreCompleto;
+    target.nombreCompletoFormatted = formatApellidoNombre(formDG.nombreCompleto);
+  }
   if (formDG.dni !== undefined) target.dni = formDG.dni;
   if (formDG.periodo) target.periodo = formDG.periodo;
   if (formDG.metaSueño !== undefined) target.metaSueño = formDG.metaSueño;
   
+  target.grupo = formDG.grupo || formDG.taller || target.grupo || target.taller || 'Clave de Sol';
+  target.taller = formDG.taller || formDG.grupo || target.taller || target.grupo || 'Clave de Sol';
+  
+  const fechaActual = new Date();
+  const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+  target.fechaCreacion = formDG.fechaCreacion || target.fechaCreacion || fechaActual.toISOString();
+  target.fechaInforme = formDG.fechaInforme || target.fechaInforme || `${fechaActual.getDate()} de ${meses[fechaActual.getMonth()]} del ${fechaActual.getFullYear()}`;
+
   if (formDG.numeroLegajo) target.numeroLegajo = formDG.numeroLegajo;
   if (formDG.facilitadorNombre) target.facilitadorNombre = formDG.facilitadorNombre;
+  if (formDG.facilitadores) target.facilitadores = formDG.facilitadores;
   if (formDG.obraSocial) target.obraSocial = formDG.obraSocial;
   if (formDG.fotoJoven) target.fotoJoven = formDG.fotoJoven;
   if (formDG.youngId) target.youngId = formDG.youngId;
@@ -462,8 +475,15 @@ function mergeDatosGeneralesFromForm(report: any, originalForm?: any) {
 function renderFromForm(form: any) {
   // Construcción 100% extractiva a la estructura de salida
   const miembrosCirculo = Array.isArray(form?.circuloApoyo?.miembros) ? form.circuloApoyo.miembros : [];
+  const fechaActual = new Date();
+  const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+
   const datosGenerales = {
     nombreCompleto: form?.datosGenerales?.nombreCompleto || 'No informado',
+    grupo: form?.datosGenerales?.grupo || form?.datosGenerales?.taller || 'Clave de Sol',
+    taller: form?.datosGenerales?.taller || form?.datosGenerales?.grupo || 'Clave de Sol',
+    fechaCreacion: form?.datosGenerales?.fechaCreacion || fechaActual.toISOString(),
+    fechaInforme: form?.datosGenerales?.fechaInforme || `${fechaActual.getDate()} de ${meses[fechaActual.getMonth()]} del ${fechaActual.getFullYear()}`,
     dni: form?.datosGenerales?.dni || null,
     periodo: form?.datosGenerales?.periodo || 'No informado',
     metaSueño: form?.datosGenerales?.metaSueño || null,

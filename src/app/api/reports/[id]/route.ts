@@ -78,10 +78,10 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     }
 
     const body = await req.json();
-    const { secciones } = body;
+    const { secciones, parte1_informeFinal, parte2_planAbordaje, datosGenerales } = body;
 
-    if (!secciones || typeof secciones !== 'object') {
-      return NextResponse.json({ error: 'Se requiere el campo secciones' }, { status: 400 });
+    if (!secciones && !parte1_informeFinal && !parte2_planAbordaje) {
+      return NextResponse.json({ error: 'Se requieren campos a actualizar' }, { status: 400 });
     }
 
     if (sql) {
@@ -94,10 +94,13 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       const currentData = current.rows[0].data || {};
       const newVersion = (current.rows[0].version || 1) + 1;
 
-      // Mezclar las secciones editadas con los datos existentes
+      // Mezclar los datos editados con los datos existentes
       const updatedData = {
         ...currentData,
-        secciones: secciones
+        ...(secciones ? { secciones } : {}),
+        ...(parte1_informeFinal ? { parte1_informeFinal } : {}),
+        ...(parte2_planAbordaje ? { parte2_planAbordaje } : {}),
+        ...(datosGenerales ? { datosGenerales: { ...currentData.datosGenerales, ...datosGenerales } } : {})
       };
 
       // Inject the real persistent report ID

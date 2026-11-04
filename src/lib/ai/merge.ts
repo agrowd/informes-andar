@@ -177,9 +177,16 @@ async function mergeWithAI(sources: SourceReport[], options: MergeOptions, insti
   const mergedSecciones: any = {};
   for (const key of SECTION_KEYS) {
     const aiText = parsed.secciones?.[key] || parsed[key] || '';
+    let rawText = typeof aiText === 'string' ? aiText : (Array.isArray(aiText) ? aiText.map((f: any) => typeof f === 'string' ? f : f.texto).join(' ') : String(aiText));
+    rawText = rawText.replace(/inclusi[oó]n social/gi, 'integración social')
+      .replace(/inclusi[oó]n comunitaria/gi, 'integración comunitaria')
+      .replace(/inclusiv[oa]s?/gi, 'integrador/a')
+      .replace(/inclusi[oó]n/gi, 'integración')
+      .replace(/apoyos? pedag[oó]gicos?/gi, 'apoyos formativos')
+      .replace(/pedag[oó]gic[oa]s?/gi, 'formativo');
     mergedSecciones[key] = [{
       id: `merge-ai-${key}`,
-      texto: typeof aiText === 'string' ? aiText : (Array.isArray(aiText) ? aiText.map((f: any) => typeof f === 'string' ? f : f.texto).join(' ') : String(aiText)),
+      texto: rawText,
       fuentes: sources.map(s => `Informe ${s.periodo}`)
     }];
   }
@@ -240,6 +247,9 @@ Fusiona los siguientes informes evolutivos individuales de **${options.jovenNomb
 5. Queda estrictamente PROHIBIDO escribir frases negativas como "No se registraron observaciones" o "Aunque no se registran datos". En su lugar, redacta siempre en positivo señalando que se continúa trabajando y avanzando activamente en dicha área con el acompañamiento del equipo institucional.
 6. PROHIBICIÓN TERMINANTE DE TÉRMINOS PEDAGÓGICOS O EDUCATIVO-TERAPÉUTICOS: Granja Andar es un Centro de Día / Asociación Civil, no un Centro Educativo Terapéutico (CET) ni una escuela. PROHIBIDO usar palabras como "pedagogía", "pedagógico/a", "malla curricular", "alumno/a", "docente", "profesor". Utilizar siempre: "concurrente", "joven", "facilitador/a", "apoyos formativos/sociolaborales", "Centro de Día".
 7. VARIABILIDAD AL REFERIRSE AL CONCURRENTE: Queda prohibido comenzar cada sección repitiendo el nombre completo de la persona. Alterna con sujeto tácito, primer nombre de pila ocasional o términos como "el concurrente", "la joven", "el joven".
+8. TERMINOLOGÍA OBLIGATORIA (INTEGRACIÓN EN VEZ DE INCLUSIÓN): Queda terminantemente PROHIBIDO utilizar la palabra "inclusión" o "inclusivo/a". Utilizar siempre: "integración", "integración social", "integración comunitaria", "espacios integradores".
+9. EL PROTAGONISTA ES EL JOVEN (CENTRICIDAD EN LA PERSONA): El concurrente es el protagonista absoluto y el centro del informe. La institución y los facilitadores son apoyos externos, no los protagonistas gramaticales. Prohibido redactar oraciones centradas en la facilitadora. Redacta desde la persona: qué hace, qué elige, cómo se vincula, qué destrezas muestra y qué apoyos utiliza.
+10. FOCO EN HABILIDADES, ESTRATEGIAS Y APOYOS (ANTI-REITERATIVO): Evita fórmulas trilladas o redacción genérica. Explicita habilidades prácticas de taller, estrategias de autorregulación y aprendizaje, y modalidades y grado de apoyos requeridos.
 
 ## DATOS DE ENTRADA (por sección y período)
 

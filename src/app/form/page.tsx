@@ -475,13 +475,13 @@ export default function ChecklistFormPage() {
           </label>
 
           <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <span style={{ fontSize: 13, fontWeight: 600, color: '#475569' }}>Taller Principal:</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: '#475569' }}>Grupo / Taller:</span>
             <input 
               type="text" 
               className="ga-input" 
               value={data.datosGenerales?.taller || ''} 
               onChange={(e) => updateDatosGenerales('taller', e.target.value)} 
-              placeholder="Ej: DEPORTE"
+              placeholder="Ej: Clave de Sol, Artesanos"
             />
           </label>
 

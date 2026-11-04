@@ -3,6 +3,8 @@ import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import UploadManualDocxModal from '@/app/_components/UploadManualDocxModal';
 import GenerateFinalReportModal from '@/app/_components/GenerateFinalReportModal';
+import ReportPreviewModal from '@/app/_components/ReportPreviewModal';
+import { useActiveCycle } from '@/lib/cycleState';
 import { formatDateTime, formatDate } from '@/lib/formatters';
 
 const REPORT_TYPE_LABELS: Record<string, string> = {
@@ -43,6 +45,8 @@ export default function ReportsList() {
   const [total, setTotal] = useState(0);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showFinalModal, setShowFinalModal] = useState(false);
+  const { activeYear } = useActiveCycle();
+  const [previewReportId, setPreviewReportId] = useState<string | null>(null);
   
   // Selección para fusión
   const [selectionMode, setSelectionMode] = useState(false);
@@ -63,6 +67,7 @@ export default function ReportsList() {
       params.set('page', String(pageNum));
       params.set('pageSize', '20');
       if (typeFilter) params.set('reportType', typeFilter);
+      if (activeYear) params.set('year', activeYear);
       const r = await fetch(`/api/reports?${params.toString()}`);
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const j = await r.json();
@@ -80,7 +85,7 @@ export default function ReportsList() {
 
   useEffect(() => {
     loadData(1);
-  }, [typeFilter]);
+  }, [typeFilter, activeYear]);
 
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) => {
@@ -386,6 +391,15 @@ export default function ReportsList() {
                         await fetch(`/api/reports/${it.id}/status`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'APROBADO' }) });
                         location.reload();
                       }}>Aprobar</button>
+                      <button
+                        type="button"
+                        className="ga-btn secondary"
+                        style={{ fontSize: 12, padding: '4px 8px', whiteSpace: 'nowrap', background: '#eff6ff', color: '#1d4ed8', borderColor: '#bfdbfe', fontWeight: 600 }}
+                        onClick={() => setPreviewReportId(String(it.id))}
+                        title="Previsualizar informe completo"
+                      >
+                        👁️ Previsualizar
+                      </button>
                       <a className="ga-btn secondary" style={{ fontSize: 12, padding: '4px 8px', whiteSpace: 'nowrap' }} href={`/reports/${it.id}`}>Revisar</a>
                       <button className="ga-btn secondary" style={{ fontSize: 12, padding: '4px 8px', whiteSpace: 'nowrap' }} onClick={() => {
                         window.location.href = `/form?reportId=${it.id}`;
@@ -549,6 +563,12 @@ export default function ReportsList() {
           setShowFinalModal(false);
           loadData(page);
         }}
+      />
+
+      <ReportPreviewModal
+        isOpen={!!previewReportId}
+        onClose={() => setPreviewReportId(null)}
+        reportId={previewReportId}
       />
     </div>
   );

@@ -31,13 +31,19 @@ export default withAuth(
   },
   {
     callbacks: {
-      authorized: ({ token }) => {
+      authorized: ({ token, req }) => {
+        if (req?.nextUrl?.pathname === '/login') return true;
         console.log('[Middleware] authorized callback:', { hasToken: !!token });
         return !!token;
       }
     },
     pages: {
       signIn: '/login'
+    },
+    cookies: {
+      sessionToken: {
+        name: 'next-auth.session-token'
+      }
     }
   }
 );

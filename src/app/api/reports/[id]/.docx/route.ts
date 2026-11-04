@@ -7,6 +7,7 @@ import PizZip from 'pizzip';
 import Docxtemplater from 'docxtemplater';
 import { reportToDocxBuffer } from '@/lib/pdf/render';
 import { formatApellidoNombre } from '@/lib/formatters';
+import { stripParrafoPrefixes } from '@/lib/ai/finalReportGenerator';
 
 export const dynamic = 'force-dynamic';
 
@@ -79,8 +80,14 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     }
 
     
-    const usesInstitutionalTemplate = isTrimestral || isFinal;
-    let templatePath = path.join(process.cwd(), 'templates', usesInstitutionalTemplate ? 'trimestral_template.docx' : 'report.docx');
+    let templatePath: string;
+    if (isFinal) {
+      templatePath = path.join(process.cwd(), 'templates', 'final_template.docx');
+    } else if (isTrimestral) {
+      templatePath = path.join(process.cwd(), 'templates', 'trimestral_template.docx');
+    } else {
+      templatePath = path.join(process.cwd(), 'templates', 'report.docx');
+    }
     let buf: Buffer;
     
     try {
@@ -89,7 +96,83 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
         const zip = new PizZip(content);
         const doc = new Docxtemplater(zip, { paragraphLoop: true, linebreaks: true });
         
-        if (usesInstitutionalTemplate) {
+        if (isFinal) {
+          const p1 = repData?.parte1_informeFinal || {};
+          const p2 = repData?.parte2_planAbordaje || {};
+          const dims = Array.isArray(p1.evaluacionDimensiones) ? p1.evaluacionDimensiones : [];
+
+          const getDim = (name: string) => {
+            const d = dims.find((x: any) => x.dimension?.toLowerCase().includes(name.toLowerCase()));
+            return {
+              val: d?.valoracion || '✔',
+              com: d?.comentario || 'Avances continuos en esta dimensión.'
+            };
+          };
+
+          const bf = getDim('físico');
+          const be = getDim('emocional');
+          const bm = getDim('material');
+          const dp = getDim('personal');
+          const ri = getDim('interpersonales');
+          const isDim = getDim('inclusión') || getDim('integración');
+          const ad = getDim('autodeterminación');
+          const de = getDim('derechos');
+
+          const rawName = repData?.datosGenerales?.nombreCompleto || '';
+          const formattedName = formatApellidoNombre(rawName);
+
+          const p2Lineas = p2.lineasAccion || {};
+          const p2Indicadores = p2.indicadores || {};
+
+          doc.setData({
+            nombreCompleto: formattedName,
+            dni: repData?.datosGenerales?.dni || '',
+            obraSocial: repData?.datosGenerales?.obraSocial || '',
+            circuloParticipacion: repData?.datosGenerales?.circuloApoyoParticipacion || 'Sí',
+            circuloIntegrantes: repData?.datosGenerales?.circuloApoyoPersonas || 'Familiares, facilitadores y compañeras de taller.',
+            objetivoProceso: stripParrafoPrefixes(p1.objetivoProceso || repData?.secciones?.participacion || ''),
+            escuchaActiva: stripParrafoPrefixes(p1.escuchaActiva || repData?.secciones?.habilidadesViajar || ''),
+            estadoEmocional: stripParrafoPrefixes(p1.estadoEmocional || repData?.secciones?.dimensionesCalidadVida || ''),
+            apoyosAjustes: stripParrafoPrefixes(p1.apoyosAjustes || 'Se incorporaron apoyos visuales y herramientas organizativas para afianzar su autonomía.'),
+            dim_bf_val: bf.val, dim_bf_com: stripParrafoPrefixes(bf.com),
+            dim_be_val: be.val, dim_be_com: stripParrafoPrefixes(be.com),
+            dim_bm_val: bm.val, dim_bm_com: stripParrafoPrefixes(bm.com),
+            dim_dp_val: dp.val, dim_dp_com: stripParrafoPrefixes(dp.com),
+            dim_ri_val: ri.val, dim_ri_com: stripParrafoPrefixes(ri.com),
+            dim_is_val: isDim.val, dim_is_com: stripParrafoPrefixes(isDim.com),
+            dim_ad_val: ad.val, dim_ad_com: stripParrafoPrefixes(ad.com),
+            dim_de_val: de.val, dim_de_com: stripParrafoPrefixes(de.com),
+            logros_practicas: stripParrafoPrefixes(p1.logros?.practicas || repData?.secciones?.vidaIndependiente || ''),
+            logros_emocionalesSociales: stripParrafoPrefixes(p1.logros?.emocionalesSociales || repData?.secciones?.desarrolloPersonal || ''),
+            logros_decisiones: stripParrafoPrefixes(p1.logros?.decisiones || repData?.secciones?.metasSociales || ''),
+            logros_nuevasExperiencias: stripParrafoPrefixes(p1.logros?.nuevasExperiencias || repData?.secciones?.metasDeportivas || ''),
+            suenosMetas: stripParrafoPrefixes(p1.suenosMetas || repData?.secciones?.metaAlcanzada || ''),
+            circuloApoyo: stripParrafoPrefixes(p1.circuloApoyo || repData?.secciones?.integracionRelaciones || ''),
+            proyeccionesTexto: Array.isArray(p1.proyecciones) ? p1.proyecciones.join('\n') : (p1.proyecciones || ''),
+            planAnio: p2.anio || '2026',
+            planIntroduccion: p2.introduccion || 'Este plan se ha elaborado con el objetivo de mejorar el acceso del concurrente a los apoyos y servicios necesarios para incrementar su calidad de vida.',
+            planObjetivoGeneral: p2.objetivoGeneral || '',
+            planObjetivosEspecificos: Array.isArray(p2.objetivosEspecificos) ? p2.objetivosEspecificos.join('\n') : '',
+            planLineas_autonomia: Array.isArray(p2Lineas.autonomia) ? p2Lineas.autonomia.join('\n') : '',
+            planLineas_regulacionEmocional: Array.isArray(p2Lineas.regulacionEmocional) ? p2Lineas.regulacionEmocional.join('\n') : '',
+            planLineas_habilidadesSociales: Array.isArray(p2Lineas.habilidadesSociales) ? p2Lineas.habilidadesSociales.join('\n') : '',
+            planLineas_inclusionComunitaria: Array.isArray(p2Lineas.inclusionComunitaria) ? p2Lineas.inclusionComunitaria.join('\n') : (Array.isArray(p2Lineas.integracionComunitaria) ? p2Lineas.integracionComunitaria.join('\n') : ''),
+            planLineas_autodeterminacion: Array.isArray(p2Lineas.autodeterminacion) ? p2Lineas.autodeterminacion.join('\n') : '',
+            planLineas_acompanamientoFamiliar: Array.isArray(p2Lineas.acompanamientoFamiliar) ? p2Lineas.acompanamientoFamiliar.join('\n') : '',
+            planSuenosMetas: Array.isArray(p2.suenosMetas) ? p2.suenosMetas.join('\n') : (p2.suenosMetas || ''),
+            planIndicadores: [
+              `Bienestar Físico: ${p2Indicadores.bienestarFisico || 'Continuidad en actividades físicas y saludables.'}`,
+              `Bienestar Emocional: ${p2Indicadores.bienestarEmocional || 'Regulación de emociones con apoyos.'}`,
+              `Bienestar Material: ${p2Indicadores.bienestarMaterial || 'Cobertura adecuada de necesidades materiales básicas, transporte y recursos indispensables.'}`,
+              `Desarrollo Personal: ${p2Indicadores.desarrolloPersonal || 'Progresos en habilidades prácticas y vida diaria.'}`,
+              `Relaciones Interpersonales: ${p2Indicadores.relacionesInterpersonales || 'Fortalecimiento de lazos de compañerismo.'}`,
+              `Inclusión Social: ${p2Indicadores.inclusionSocial || p2Indicadores.integracionSocial || 'Participación en eventos comunitarios y deportivos.'}`,
+              `Autodeterminación: ${p2Indicadores.autodeterminacion || 'Elecciones autónomas en actividades cotidianas.'}`,
+              `Derechos: ${p2Indicadores.derechos || 'Respeto a decisiones y acceso a apoyos.'}`
+            ].join('\n'),
+            planLineamientosFacilitador: Array.isArray(p2.lineamientosFacilitador) ? p2.lineamientosFacilitador.join('\n') : (p2.lineamientosFacilitador || '')
+          });
+        } else if (isTrimestral) {
           const fechaActual = new Date();
           const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
           const fechaInforme = `${fechaActual.getDate()} de ${meses[fechaActual.getMonth()]} del ${fechaActual.getFullYear()}`;

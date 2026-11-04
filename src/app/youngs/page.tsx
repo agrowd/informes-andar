@@ -5,6 +5,9 @@ import { useSession } from 'next-auth/react';
 import ImageUpload from '../_components/ImageUpload';
 import QualityOfLifeChart from '../_components/QualityOfLifeChart';
 import ExcelImportWizardModal from '../_components/ExcelImportWizardModal';
+import MonthlyFormPreviewModal from '../_components/MonthlyFormPreviewModal';
+import ReportPreviewModal from '../_components/ReportPreviewModal';
+import { useActiveCycle } from '@/lib/cycleState';
 import { integrantesCirculoTipos } from '@/lib/form/options';
 import { getFormSummary } from '@/lib/formSummary';
 
@@ -83,6 +86,9 @@ export default function YoungsPage() {
   const [importWizardOpen, setImportWizardOpen] = useState(false);
   const [importWizardYoungId, setImportWizardYoungId] = useState('');
   const [importWizardMonths, setImportWizardMonths] = useState<any[]>([]);
+  const { activeYear } = useActiveCycle();
+  const [previewFormId, setPreviewFormId] = useState<string | null>(null);
+  const [previewReportId, setPreviewReportId] = useState<string | null>(null);
 
   // Sub-pestañas PCP
   const [pcpSubTab, setPcpSubTab] = useState<'rutinas' | 'perfil' | 'planFuturo'>('rutinas');
@@ -1488,6 +1494,15 @@ export default function YoungsPage() {
                           <td><strong>{r.periodo}</strong></td>
                           <td><span className={`ga-status-pill ${r.status?.toLowerCase()}`}>{r.status}</span></td>
                           <td style={{ textAlign: 'right' }}>
+                            <button
+                              type="button"
+                              className="ga-btn secondary"
+                              style={{ fontSize: 12, marginRight: 8, background: '#eff6ff', color: '#1d4ed8', borderColor: '#bfdbfe', fontWeight: 600 }}
+                              onClick={() => setPreviewReportId(String(r.id))}
+                              title="Previsualización del informe"
+                            >
+                              👁️ Previsualizar
+                            </button>
                             <a href={`/reports/${r.id}`} className="ga-btn secondary" style={{ fontSize: 12, marginRight: 8 }}>Ver Informe Completo</a>
                             <a href={`/api/reports/${r.id}/.docx`} className="ga-btn primary" style={{ fontSize: 12 }}>📥 Descargar Word</a>
                           </td>
@@ -1782,6 +1797,15 @@ export default function YoungsPage() {
                             </td>
                             <td onClick={e => e.stopPropagation()}>
                               <div style={{ display: 'flex', gap: 4, justifyContent: 'center' }}>
+                                <button
+                                  type="button"
+                                  className="ga-btn secondary"
+                                  style={{ fontSize: 12, padding: '4px 8px', background: '#eff6ff', color: '#1d4ed8', borderColor: '#bfdbfe', fontWeight: 600 }}
+                                  onClick={() => setPreviewFormId(String(id))}
+                                  title="Previsualización de la cuadrícula"
+                                >
+                                  👁️ Ver
+                                </button>
                                 <a 
                                   href={`/form?formId=${id}`} 
                                   className="ga-btn secondary" 
@@ -2229,6 +2253,18 @@ export default function YoungsPage() {
           onSuccess={handleWizardSuccess}
         />
       )}
+
+      <MonthlyFormPreviewModal
+        isOpen={!!previewFormId}
+        onClose={() => setPreviewFormId(null)}
+        formId={previewFormId}
+      />
+
+      <ReportPreviewModal
+        isOpen={!!previewReportId}
+        onClose={() => setPreviewReportId(null)}
+        reportId={previewReportId}
+      />
     </div>
   );
 }

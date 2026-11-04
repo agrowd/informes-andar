@@ -164,6 +164,9 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
     // Si se extrajeron secciones, actualizar el JSON del reporte
     const updatedData = { ...currentData };
+    if (extractedText && extractedText.trim()) {
+      updatedData.textoBrutoOriginal = extractedText.trim();
+    }
     if (!updatedData.secciones) updatedData.secciones = {};
 
     const detectedKeys = Object.keys(parsedSections);

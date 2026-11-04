@@ -42,6 +42,8 @@ export async function GET(req: NextRequest) {
     const periodoFilter = url.searchParams.get('periodo');
     const youngIdFilter = url.searchParams.get('youngId');
     const reportTypeFilter = url.searchParams.get('reportType');
+    const yearFilter = url.searchParams.get('year') || url.searchParams.get('cycle');
+    const yearPattern = yearFilter ? `%${yearFilter}%` : null;
     
     // Si usa Postgres
     if (sql) {
@@ -95,7 +97,7 @@ export async function GET(req: NextRequest) {
       
       if (role === 'FACILITADOR' && userId) {
         if (reportTypeFilter && periodoFilter) {
-          countResult = await sql`SELECT COUNT(*) as total FROM reports WHERE report_type = ${reportTypeFilter} AND periodo = ${periodoFilter} AND (generated_by = ${userId} OR young_id IN (SELECT id FROM youngs WHERE ${userId} = ANY(assigned_facilitators)))`;
+          countResult = await sql`SELECT COUNT(*) as total FROM reports WHERE report_type = ${reportTypeFilter} AND periodo = ${periodoFilter} AND (generated_by = ${userId} OR young_id IN (SELECT id FROM youngs WHERE ${userId} = ANY(assigned_facilitators))) AND (${yearPattern}::text IS NULL OR periodo ILIKE ${yearPattern})`;
           dataResult = await sql`
             SELECT r.id, r.periodo, r.status, r.pdf_url, r.created_at, r.comments,
                    r.young_id, r.version, r.report_type, r.source_report_ids,
@@ -105,11 +107,11 @@ export async function GET(req: NextRequest) {
             FROM reports r 
             LEFT JOIN youngs y ON r.young_id = y.id
             LEFT JOIN users u ON r.generated_by = u.id
-            WHERE r.report_type = ${reportTypeFilter} AND r.periodo = ${periodoFilter} AND (r.generated_by = ${userId} OR r.young_id IN (SELECT id FROM youngs WHERE ${userId} = ANY(assigned_facilitators)))
+            WHERE r.report_type = ${reportTypeFilter} AND r.periodo = ${periodoFilter} AND (r.generated_by = ${userId} OR r.young_id IN (SELECT id FROM youngs WHERE ${userId} = ANY(assigned_facilitators))) AND (${yearPattern}::text IS NULL OR r.periodo ILIKE ${yearPattern})
             ORDER BY r.created_at DESC LIMIT ${pageSize} OFFSET ${offset}
           `;
         } else if (reportTypeFilter) {
-          countResult = await sql`SELECT COUNT(*) as total FROM reports WHERE report_type = ${reportTypeFilter} AND (generated_by = ${userId} OR young_id IN (SELECT id FROM youngs WHERE ${userId} = ANY(assigned_facilitators)))`;
+          countResult = await sql`SELECT COUNT(*) as total FROM reports WHERE report_type = ${reportTypeFilter} AND (generated_by = ${userId} OR young_id IN (SELECT id FROM youngs WHERE ${userId} = ANY(assigned_facilitators))) AND (${yearPattern}::text IS NULL OR periodo ILIKE ${yearPattern})`;
           dataResult = await sql`
             SELECT r.id, r.periodo, r.status, r.pdf_url, r.created_at, r.comments,
                    r.young_id, r.version, r.report_type, r.source_report_ids,
@@ -119,11 +121,11 @@ export async function GET(req: NextRequest) {
             FROM reports r 
             LEFT JOIN youngs y ON r.young_id = y.id
             LEFT JOIN users u ON r.generated_by = u.id
-            WHERE r.report_type = ${reportTypeFilter} AND (r.generated_by = ${userId} OR r.young_id IN (SELECT id FROM youngs WHERE ${userId} = ANY(assigned_facilitators)))
+            WHERE r.report_type = ${reportTypeFilter} AND (r.generated_by = ${userId} OR r.young_id IN (SELECT id FROM youngs WHERE ${userId} = ANY(assigned_facilitators))) AND (${yearPattern}::text IS NULL OR r.periodo ILIKE ${yearPattern})
             ORDER BY r.created_at DESC LIMIT ${pageSize} OFFSET ${offset}
           `;
         } else if (periodoFilter) {
-          countResult = await sql`SELECT COUNT(*) as total FROM reports WHERE periodo = ${periodoFilter} AND (generated_by = ${userId} OR young_id IN (SELECT id FROM youngs WHERE ${userId} = ANY(assigned_facilitators)))`;
+          countResult = await sql`SELECT COUNT(*) as total FROM reports WHERE periodo = ${periodoFilter} AND (generated_by = ${userId} OR young_id IN (SELECT id FROM youngs WHERE ${userId} = ANY(assigned_facilitators))) AND (${yearPattern}::text IS NULL OR periodo ILIKE ${yearPattern})`;
           dataResult = await sql`
             SELECT r.id, r.periodo, r.status, r.pdf_url, r.created_at, r.comments,
                    r.young_id, r.version, r.report_type, r.source_report_ids,
@@ -133,11 +135,11 @@ export async function GET(req: NextRequest) {
             FROM reports r 
             LEFT JOIN youngs y ON r.young_id = y.id
             LEFT JOIN users u ON r.generated_by = u.id
-            WHERE r.periodo = ${periodoFilter} AND (r.generated_by = ${userId} OR r.young_id IN (SELECT id FROM youngs WHERE ${userId} = ANY(assigned_facilitators)))
+            WHERE r.periodo = ${periodoFilter} AND (r.generated_by = ${userId} OR r.young_id IN (SELECT id FROM youngs WHERE ${userId} = ANY(assigned_facilitators))) AND (${yearPattern}::text IS NULL OR r.periodo ILIKE ${yearPattern})
             ORDER BY r.created_at DESC LIMIT ${pageSize} OFFSET ${offset}
           `;
         } else {
-          countResult = await sql`SELECT COUNT(*) as total FROM reports WHERE (generated_by = ${userId} OR young_id IN (SELECT id FROM youngs WHERE ${userId} = ANY(assigned_facilitators)))`;
+          countResult = await sql`SELECT COUNT(*) as total FROM reports WHERE (generated_by = ${userId} OR young_id IN (SELECT id FROM youngs WHERE ${userId} = ANY(assigned_facilitators))) AND (${yearPattern}::text IS NULL OR periodo ILIKE ${yearPattern})`;
           dataResult = await sql`
             SELECT r.id, r.periodo, r.status, r.pdf_url, r.created_at, r.comments,
                    r.young_id, r.version, r.report_type, r.source_report_ids,
@@ -147,13 +149,13 @@ export async function GET(req: NextRequest) {
             FROM reports r 
             LEFT JOIN youngs y ON r.young_id = y.id
             LEFT JOIN users u ON r.generated_by = u.id
-            WHERE (r.generated_by = ${userId} OR r.young_id IN (SELECT id FROM youngs WHERE ${userId} = ANY(assigned_facilitators)))
+            WHERE (r.generated_by = ${userId} OR r.young_id IN (SELECT id FROM youngs WHERE ${userId} = ANY(assigned_facilitators))) AND (${yearPattern}::text IS NULL OR r.periodo ILIKE ${yearPattern})
             ORDER BY r.created_at DESC LIMIT ${pageSize} OFFSET ${offset}
           `;
         }
       } else {
         if (reportTypeFilter && periodoFilter) {
-          countResult = await sql`SELECT COUNT(*) as total FROM reports WHERE report_type = ${reportTypeFilter} AND periodo = ${periodoFilter}`;
+          countResult = await sql`SELECT COUNT(*) as total FROM reports WHERE report_type = ${reportTypeFilter} AND periodo = ${periodoFilter} AND (${yearPattern}::text IS NULL OR periodo ILIKE ${yearPattern})`;
           dataResult = await sql`
             SELECT r.id, r.periodo, r.status, r.pdf_url, r.created_at, r.comments,
                    r.young_id, r.version, r.report_type, r.source_report_ids,
@@ -163,11 +165,11 @@ export async function GET(req: NextRequest) {
             FROM reports r 
             LEFT JOIN youngs y ON r.young_id = y.id
             LEFT JOIN users u ON r.generated_by = u.id
-            WHERE r.report_type = ${reportTypeFilter} AND r.periodo = ${periodoFilter}
+            WHERE r.report_type = ${reportTypeFilter} AND r.periodo = ${periodoFilter} AND (${yearPattern}::text IS NULL OR r.periodo ILIKE ${yearPattern})
             ORDER BY r.created_at DESC LIMIT ${pageSize} OFFSET ${offset}
           `;
         } else if (reportTypeFilter) {
-          countResult = await sql`SELECT COUNT(*) as total FROM reports WHERE report_type = ${reportTypeFilter}`;
+          countResult = await sql`SELECT COUNT(*) as total FROM reports WHERE report_type = ${reportTypeFilter} AND (${yearPattern}::text IS NULL OR periodo ILIKE ${yearPattern})`;
           dataResult = await sql`
             SELECT r.id, r.periodo, r.status, r.pdf_url, r.created_at, r.comments,
                    r.young_id, r.version, r.report_type, r.source_report_ids,
@@ -177,11 +179,11 @@ export async function GET(req: NextRequest) {
             FROM reports r 
             LEFT JOIN youngs y ON r.young_id = y.id
             LEFT JOIN users u ON r.generated_by = u.id
-            WHERE r.report_type = ${reportTypeFilter}
+            WHERE r.report_type = ${reportTypeFilter} AND (${yearPattern}::text IS NULL OR r.periodo ILIKE ${yearPattern})
             ORDER BY r.created_at DESC LIMIT ${pageSize} OFFSET ${offset}
           `;
         } else if (periodoFilter) {
-          countResult = await sql`SELECT COUNT(*) as total FROM reports WHERE periodo = ${periodoFilter}`;
+          countResult = await sql`SELECT COUNT(*) as total FROM reports WHERE periodo = ${periodoFilter} AND (${yearPattern}::text IS NULL OR periodo ILIKE ${yearPattern})`;
           dataResult = await sql`
             SELECT r.id, r.periodo, r.status, r.pdf_url, r.created_at, r.comments,
                    r.young_id, r.version, r.report_type, r.source_report_ids,
@@ -191,11 +193,11 @@ export async function GET(req: NextRequest) {
             FROM reports r 
             LEFT JOIN youngs y ON r.young_id = y.id
             LEFT JOIN users u ON r.generated_by = u.id
-            WHERE r.periodo = ${periodoFilter}
+            WHERE r.periodo = ${periodoFilter} AND (${yearPattern}::text IS NULL OR r.periodo ILIKE ${yearPattern})
             ORDER BY r.created_at DESC LIMIT ${pageSize} OFFSET ${offset}
           `;
         } else {
-          countResult = await sql`SELECT COUNT(*) as total FROM reports`;
+          countResult = await sql`SELECT COUNT(*) as total FROM reports WHERE (${yearPattern}::text IS NULL OR periodo ILIKE ${yearPattern})`;
           dataResult = await sql`
             SELECT r.id, r.periodo, r.status, r.pdf_url, r.created_at, r.comments,
                    r.young_id, r.version, r.report_type, r.source_report_ids,
@@ -205,6 +207,7 @@ export async function GET(req: NextRequest) {
             FROM reports r 
             LEFT JOIN youngs y ON r.young_id = y.id
             LEFT JOIN users u ON r.generated_by = u.id
+            WHERE (${yearPattern}::text IS NULL OR r.periodo ILIKE ${yearPattern})
             ORDER BY r.created_at DESC LIMIT ${pageSize} OFFSET ${offset}
           `;
         }
@@ -221,6 +224,9 @@ export async function GET(req: NextRequest) {
       const filter: any = {};
       if (role === 'FACILITADOR' && session?.user) {
         filter.generatedBy = (session.user as any).id;
+      }
+      if (yearFilter) {
+        filter.periodo = { $regex: yearFilter };
       }
       const total = await ReportModel.countDocuments(filter);
       const items = await ReportModel.find(filter)

@@ -2,9 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectToDB, sql } from '@/lib/db';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import ExcelJS from 'exceljs';
-import fs from 'node:fs';
-import path from 'node:path';
+import { buildCompleteWorkbook } from '@/lib/excelExport';
 
 const USE_POSTGRES = !!(process.env.POSTGRES_URL || process.env.POSTGRES_PRISMA_URL);
 
@@ -16,39 +14,59 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
     }
 
-    const formId = params.id;
+    const formId = parseInt(params.id);
     let formData: any = null;
     let young: any = null;
+    let forms: any[] = [];
+    let formCreatedAt: any = null;
 
     if (USE_POSTGRES && sql) {
       const result = await sql`
-        SELECT f.data, f.periodo, f.young_id, y.nombre_completo, y.dni, y.taller, y.fecha_nacimiento, y.legajo, y.obra_social, y.pcp
+        SELECT f.id, f.data, f.periodo, f.young_id, f.created_at,
+               y.id as y_id, y.nombre_completo, y.dni, y.taller, y.fecha_nacimiento, y.legajo, y.obra_social, y.pcp
         FROM forms f
         LEFT JOIN youngs y ON f.young_id = y.id
-        WHERE f.id = ${parseInt(formId)}
+        WHERE f.id = ${formId}
       `;
       if (result.rows.length > 0) {
-        formData = result.rows[0].data;
+        const row = result.rows[0];
+        formData = row.data;
+        formCreatedAt = row.created_at;
         young = {
-          nombre_completo: result.rows[0].nombre_completo,
-          dni: result.rows[0].dni,
-          taller: result.rows[0].taller,
-          fecha_nacimiento: result.rows[0].fecha_nacimiento,
-          legajo: result.rows[0].legajo,
-          obra_social: result.rows[0].obra_social,
-          pcp: result.rows[0].pcp
+          id: row.y_id || row.young_id,
+          nombre_completo: row.nombre_completo,
+          dni: row.dni,
+          taller: row.taller,
+          fecha_nacimiento: row.fecha_nacimiento,
+          legajo: row.legajo,
+          obra_social: row.obra_social,
+          pcp: row.pcp
         };
+
+        if (young.id) {
+          const allFormsRes = await sql`
+            SELECT id, periodo, data, created_at
+            FROM forms
+            WHERE young_id = ${young.id}
+            ORDER BY periodo ASC, id ASC
+          `;
+          forms = allFormsRes.rows;
+        } else {
+          forms = [{ id: row.id, periodo: row.periodo, data: row.data, created_at: row.created_at }];
+        }
       }
     } else if (process.env.MONGODB_URI) {
       const { FormModel } = await import('@/models/Form');
-      const item = await FormModel.findById(formId).lean();
+      const item = await FormModel.findById(params.id).lean();
       if (item) {
         formData = item.data;
+        formCreatedAt = (item as any).createdAt;
         try {
           const { YoungModel } = await import('@/models/Young');
           const youngItem = await YoungModel.findById(item.youngId).lean();
           if (youngItem) {
             young = {
+              id: (youngItem as any)._id?.toString(),
               nombre_completo: (youngItem as any).nombreCompleto || (youngItem as any).nombre_completo,
               dni: (youngItem as any).dni,
               taller: (youngItem as any).taller,
@@ -58,6 +76,13 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
               pcp: (youngItem as any).pcp
             };
           }
+          const allItems = await FormModel.find({ youngId: item.youngId }).lean();
+          forms = allItems.map((it: any) => ({
+            id: it._id?.toString(),
+            periodo: it.data?.datosGenerales?.periodo,
+            data: it.data,
+            created_at: it.createdAt
+          }));
         } catch (e) {
           console.error('Error fetching young in Mongo export-excel:', e);
         }
@@ -68,354 +93,33 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       return NextResponse.json({ error: 'Borrador no encontrado' }, { status: 404 });
     }
 
-    const templatePath = path.join(process.cwd(), 'templates', 'monthly_template.xlsx');
-    if (!fs.existsSync(templatePath)) {
-      return NextResponse.json({ error: 'Plantilla de Excel no encontrada en el servidor' }, { status: 500 });
-    }
-
-    const workbook = new ExcelJS.Workbook();
-    await workbook.xlsx.readFile(templatePath);
-
-    const targetPeriod = (formData.datosGenerales?.periodo || 'JULIO').trim().toUpperCase();
-
-    // 1. Encontrar o crear la solapa correspondiente
-    let sheet = workbook.getWorksheet(targetPeriod);
-    if (!sheet) {
-      // Si no existe, tomar la primera solapa que no sea 'PCP' como base y renombrarla
-      const baseSheet = workbook.worksheets.find(w => w.name !== 'PCP');
-      if (baseSheet) {
-        baseSheet.name = targetPeriod;
-        sheet = baseSheet;
-      } else {
-        return NextResponse.json({ error: 'No se encontró una solapa base en la plantilla' }, { status: 500 });
-      }
-    }
-
-    // Dejar solo la solapa actual y borrar el resto (opcionalmente dejar PCP)
-    for (const w of [...workbook.worksheets]) {
-      if (w.name !== targetPeriod && w.name !== 'PCP') {
-        workbook.removeWorksheet(w.id);
-      }
-    }
-
-    // Rellenar solapa PCP con datos del perfil del joven
-    const pcpSheet = workbook.getWorksheet('PCP');
-    if (pcpSheet && young) {
-      writePcpSheet(pcpSheet, young);
-    }
-
-    // 2. Escribir Datos Generales
-    const nombreCompleto = formData.datosGenerales?.nombreCompleto || young?.nombre_completo || '';
-    const facilitadorNombre = formData.datosGenerales?.facilitadorNombre || '';
-    
-    sheet.getCell('A3').value = `Nombre y Apellido: ${nombreCompleto}`;
-    
-    const facCell = sheet.getCell('D4');
-    if (facCell.value && String(facCell.value).toLowerCase().includes('facilitador/a:')) {
-      facCell.value = `Facilitador/a: ${facilitadorNombre}`;
-    } else {
-      sheet.getCell('C4').value = `Facilitador/a: ${facilitadorNombre}`;
-    }
-
-    // 3. Limpiar checkboxes existentes en la planilla plantilla
-    // Escaneamos las columnas A, E, I, M, Q, U, Y, AC (c = 1, 5, 9, 13, 17, 21, 25, 29)
-    const cols = [1, 5, 9, 13, 17, 21, 25, 29];
-    for (let r = 5; r <= 120; r++) {
-      for (const c of cols) {
-        const itemCell = sheet.getCell(r, c);
-        const val = itemCell.value;
-        if (val && typeof val === 'string' && val.trim().length > 2 && !val.toUpperCase().includes('REFERENCIAS') && !val.toUpperCase().includes('ENSEÑADO')) {
-          // Limpiar celdas de la grilla 2x2 (filas r+2 y r+3, columnas c+1 a c+4)
-          for (let rowOffset = 2; rowOffset <= 3; rowOffset++) {
-            for (let colOffset = 1; colOffset <= 4; colOffset++) {
-              const cell = sheet.getCell(r + rowOffset, c + colOffset);
-              cell.fill = {
-                type: 'pattern',
-                pattern: 'none'
-              };
-            }
-          }
-        }
-      }
-    }
-
-    // Helpers para pintar celdas combinadas de la grilla 2x2
-    const paintLeftCell = (row: number, col: number) => {
-      const fillStyle: ExcelJS.Fill = {
-        type: 'pattern',
-        pattern: 'solid',
-        fgColor: { argb: 'FFA4C2F4' } // Color celeste de la grilla
-      };
-      sheet.getCell(row, col).fill = fillStyle;
-      sheet.getCell(row, col + 1).fill = fillStyle;
-    };
-
-    const paintRightCell = (row: number, col: number) => {
-      const fillStyle: ExcelJS.Fill = {
-        type: 'pattern',
-        pattern: 'solid',
-        fgColor: { argb: 'FFA4C2F4' } // Color celeste de la grilla
-      };
-      sheet.getCell(row, col + 2).fill = fillStyle;
-      sheet.getCell(row, col + 3).fill = fillStyle;
-    };
-
-    // 4. Mapear y colorear los checklists guardados
-    const talleres = formData.talleres || [];
-    let obsRowStart = 62;
-
-    for (const taller of talleres) {
-      const tallerName = String(taller.nombre).trim().toUpperCase();
-      
-      // Buscar la fila de inicio del taller en la columna A
-      let tallerRow = -1;
-      for (let r = 5; r <= 120; r++) {
-        const val = sheet.getCell(r, 1).value;
-        if (val && String(val).toUpperCase().includes('TALLER:') && String(val).toUpperCase().includes(tallerName)) {
-          tallerRow = r;
-          break;
-        }
-      }
-
-      // Si no se encuentra exactamente, buscar por coincidencia parcial o ignorar para posicionar
-      if (tallerRow === -1) continue;
-
-      // Buscar ítems dentro del taller
-      for (const item of taller.items) {
-        const itemNameNormalized = String(item.nombre).trim().toLowerCase();
-        let itemFound = false;
-
-        // Escanear el bloque del taller (desde tallerRow hasta el siguiente "TALLER:" o "Observaciones:")
-        for (let r = tallerRow + 1; r <= tallerRow + 30 && r <= 120; r++) {
-          const valA = sheet.getCell(r, 1).value;
-          if (valA && String(valA).toUpperCase().includes('TALLER:')) break;
-          if (valA && String(valA).toLowerCase().includes('observaciones:')) {
-            obsRowStart = r + 1;
-            break;
-          }
-
-          for (const c of cols) {
-            const cell = sheet.getCell(r, c);
-            const val = cell.value;
-            if (val && typeof val === 'string' && val.trim().toLowerCase() === itemNameNormalized) {
-              const nivel = Number(item.nivel || 0);
-              // Pintar según nivel (acumulativo)
-              if (nivel >= 1) {
-                // Arriba-Izquierda
-                paintLeftCell(r + 2, c + 1);
-              }
-              if (nivel >= 2) {
-                // Abajo-Izquierda
-                paintLeftCell(r + 3, c + 1);
-              }
-              if (nivel >= 3) {
-                // Arriba-Derecha
-                paintRightCell(r + 2, c + 1);
-              }
-              if (nivel >= 4) {
-                // Abajo-Derecha
-                paintRightCell(r + 3, c + 1);
-              }
-              itemFound = true;
-              break;
-            }
-          }
-          if (itemFound) break;
-        }
-      }
-    }
-
-    // 5. Escribir Observaciones
-    // Encontrar la celda de Observaciones:
-    let obsRow = -1;
-    for (let r = 30; r <= 130; r++) {
-      const val = sheet.getCell(r, 1).value;
-      if (val && String(val).toLowerCase().includes('observaciones:')) {
-        obsRow = r;
-        break;
-      }
-    }
-
-    if (obsRow !== -1) {
-      // Limpiar celdas de observaciones abajo de la cabecera
-      for (let r = obsRow + 1; r <= obsRow + 25; r++) {
-        sheet.getCell(r, 1).value = null;
-      }
-      // Escribir las observaciones
-      const obsText = formData.observaciones || '';
-      const lines = obsText.split('\n');
-      lines.forEach((line: string, idx: number) => {
-        sheet.getCell(obsRow + 1 + idx, 1).value = line;
-      });
-    }
-
+    const single = req.nextUrl.searchParams.get('single') === '1' || req.nextUrl.searchParams.get('single') === 'true';
+    const workbook = await buildCompleteWorkbook(young, forms, formData, {
+      includePcp: false,
+      singleMonthOnly: single
+    });
     const buffer = await workbook.xlsx.writeBuffer();
-    
-    return new Response(buffer, {
+
+    const nombreCompleto = young?.nombre_completo || formData.datosGenerales?.nombreCompleto || 'Concurrente';
+    const grupoNombre = young?.taller || formData.datosGenerales?.grupo || 'Grupo';
+    const rawFecha = formCreatedAt || formData.datosGenerales?.fechaCreacion || new Date();
+    const dCreacion = new Date(rawFecha);
+    const fechaCreacionStr = !isNaN(dCreacion.getTime())
+      ? `${String(dCreacion.getDate()).padStart(2, '0')}-${String(dCreacion.getMonth() + 1).padStart(2, '0')}-${dCreacion.getFullYear()}`
+      : new Date().toLocaleDateString('es-AR').replace(/\//g, '-');
+
+    const safeNombre = nombreCompleto.replace(/\s+/g, '_');
+    const safeGrupo = grupoNombre.replace(/\s+/g, '_');
+
+    return new Response(buffer as any, {
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'Content-Disposition': `attachment; filename="checklist-${nombreCompleto.replace(/\s+/g, '_')}-${targetPeriod}.xlsx"`
+        'Content-Disposition': `attachment; filename="cuadricula-${safeNombre}-${safeGrupo}-${fechaCreacionStr}.xlsx"`
       }
     });
 
   } catch (error: any) {
     console.error('Error al exportar Excel:', error);
     return NextResponse.json({ error: error?.message || 'Error desconocido al exportar planilla' }, { status: 500 });
-  }
-}
-
-function cleanText(v: any): string {
-  if (v === null || v === undefined) return '';
-  if (typeof v === 'string') return v.trim();
-  if (v instanceof Date) return v.toLocaleDateString('es-AR');
-  if (typeof v === 'object' && v.text) return String(v.text).trim();
-  return String(v).trim();
-}
-
-function writePcpSheet(pcpSheet: ExcelJS.Worksheet, young: any) {
-  if (!pcpSheet) return;
-
-  const pcp = young.pcp || {};
-  
-  // 1. Nombre y Año
-  const nombreCompleto = young.nombre_completo || young.nombreCompleto || '';
-  pcpSheet.getCell('A3').value = `Nombre y Apellido: ${nombreCompleto}`;
-  
-  const anio = pcp.anio || new Date().getFullYear();
-  pcpSheet.getCell('A2').value = `PCP ${anio}`;
-
-  // 2. Metadatos (DNI, Legajo, Obra Social, Fecha de Nacimiento, Taller)
-  const legajo = young.legajo || '';
-  const obraSocial = young.obra_social || young.obraSocial || '';
-  const dni = young.dni || '';
-  let fechaNacimientoStr = '';
-  if (young.fecha_nacimiento || young.fechaNacimiento) {
-    const d = new Date(young.fecha_nacimiento || young.fechaNacimiento);
-    if (!isNaN(d.getTime())) {
-      fechaNacimientoStr = d.toLocaleDateString('es-AR');
-    }
-  }
-  const taller = young.taller || '';
-
-  // Escanear filas 1 a 20 para escribir al lado de los labels
-  for (let r = 1; r <= 20; r++) {
-    for (let c = 1; c <= 8; c++) {
-      const cell = pcpSheet.getCell(r, c);
-      const val = cell.value;
-      if (val && typeof val === 'string') {
-        const txt = val.trim();
-        const low = txt.toLowerCase();
-        
-        if (low.startsWith('legajo:')) {
-          cell.value = `Legajo: ${legajo}`;
-        } else if (low === 'legajo') {
-          pcpSheet.getCell(r, c + 1).value = legajo;
-        }
-        
-        else if (low.startsWith('obra social:')) {
-          cell.value = `Obra Social: ${obraSocial}`;
-        } else if (low.includes('obra social') && !low.includes(':')) {
-          pcpSheet.getCell(r, c + 1).value = obraSocial;
-        }
-        
-        else if (low.startsWith('dni:')) {
-          cell.value = `DNI: ${dni}`;
-        } else if (low === 'dni') {
-          pcpSheet.getCell(r, c + 1).value = dni;
-        }
-        
-        else if (low.includes('fecha de nacimiento') || low.includes('nacimiento')) {
-          if (low.includes(':')) {
-            cell.value = `Fecha de Nacimiento: ${fechaNacimientoStr}`;
-          } else {
-            pcpSheet.getCell(r, c + 1).value = fechaNacimientoStr;
-          }
-        }
-        
-        else if (low.startsWith('taller:')) {
-          cell.value = `Taller: ${taller}`;
-        } else if (low === 'taller') {
-          pcpSheet.getCell(r, c + 1).value = taller;
-        }
-      }
-    }
-  }
-
-  // 3. Rutinas
-  if (pcp.rutinas) {
-    const sem = pcp.rutinas.semana || '';
-    const fin = pcp.rutinas.finDeSemana || '';
-    let rutinaCompleta = '';
-    if (sem) rutinaCompleta += `${sem}\n`;
-    if (fin) rutinaCompleta += `Los fines de semana ${fin}`;
-    if (rutinaCompleta) {
-      pcpSheet.getCell('A9').value = rutinaCompleta.trim();
-    }
-  }
-
-  // 4. Sueños
-  let dreamRow = -1;
-  for (let r = 10; r <= 20; r++) {
-    const val = pcpSheet.getCell(r, 1).value;
-    if (val && String(val).toUpperCase().includes('SUEÑO')) {
-      dreamRow = r;
-      break;
-    }
-  }
-  if (dreamRow !== -1 && pcp.perfil?.suenos && Array.isArray(pcp.perfil.suenos)) {
-    // Limpiar filas de abajo
-    for (let r = dreamRow + 1; r < 21; r++) {
-      pcpSheet.getCell(r, 1).value = '';
-    }
-    // Escribir los sueños
-    pcp.perfil.suenos.forEach((s: string, idx: number) => {
-      if (dreamRow + 1 + idx < 21) {
-        pcpSheet.getCell(dreamRow + 1 + idx, 1).value = s;
-      }
-    });
-  }
-
-  // 5. Capacidades
-  if (pcp.perfil?.capacidades && Array.isArray(pcp.perfil.capacidades)) {
-    pcpSheet.getCell('E17').value = pcp.perfil.capacidades.join('\n');
-  }
-
-  // 6. Escalas
-  const sisVal = pcp.perfil?.resultadosEscalas?.sis || '';
-  const gencatVal = pcp.perfil?.resultadosEscalas?.gencat || '';
-  const inicoVal = pcp.perfil?.resultadosEscalas?.inico || '';
-  const sanMartinVal = pcp.perfil?.resultadosEscalas?.sanMartin || '';
-
-  // Buscar celdas de las escalas
-  for (let r = 15; r <= 25; r++) {
-    for (let c = 1; c <= 8; c++) {
-      const val = pcpSheet.getCell(r, c).value;
-      if (val && typeof val === 'string') {
-        const txt = val.trim().toLowerCase();
-        if (txt === 'sis') {
-          pcpSheet.getCell(r + 1, c).value = sisVal;
-        } else if (txt.startsWith('gencat') || txt.includes('inico')) {
-          let scoreText = '';
-          if (gencatVal) scoreText += `GENCAT: ${gencatVal}\n`;
-          if (inicoVal) scoreText += `INICO: ${inicoVal}\n`;
-          if (sanMartinVal) scoreText += `SAN MARTIN: ${sanMartinVal}\n`;
-          pcpSheet.getCell(r + 1, c).value = scoreText.trim();
-        }
-      }
-    }
-  }
-
-  // 7. Plan de Futuro
-  if (pcp.planFuturo && typeof pcp.planFuturo === 'object') {
-    for (let r = 24; r <= 35; r++) {
-      const dimCodeRaw = pcpSheet.getCell(`A${r}`).value;
-      if (!dimCodeRaw) continue;
-      const dimCode = String(dimCodeRaw).trim().toUpperCase().replace(/\./g, '').trim();
-      const plan = pcp.planFuturo[dimCode];
-      if (plan) {
-        pcpSheet.getCell(r, 2).value = plan.objetivos || '';
-        pcpSheet.getCell(r, 4).value = plan.apoyos || '';
-      }
-    }
   }
 }

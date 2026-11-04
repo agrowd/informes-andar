@@ -45,8 +45,7 @@ export default function LoginPage() {
         setError(result.error === 'CredentialsSignin' ? 'Email o contraseña incorrectos' : 'Error al iniciar sesión. Intenta nuevamente.');
         setLoading(false);
       } else if (result?.ok) {
-        router.push('/');
-        router.refresh();
+        window.location.href = '/';
       } else {
         setError('Error desconocido al iniciar sesión');
         setLoading(false);

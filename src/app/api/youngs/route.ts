@@ -93,8 +93,8 @@ export async function POST(req: NextRequest) {
     const session = await getServerSession(authOptions as any) as any;
     const role = (session?.user as any)?.role || 'FACILITADOR';
     
-    // Permitir crear a ADMIN, DIRECTOR y COORDINACION
-    if (!['ADMIN', 'COORDINACION', 'DIRECTOR'].includes(role)) {
+    // Permitir crear a ADMIN, DIRECTOR, COORDINACION y FACILITADOR
+    if (!['ADMIN', 'COORDINACION', 'DIRECTOR', 'FACILITADOR'].includes(role)) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
     }
 

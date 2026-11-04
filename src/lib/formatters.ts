@@ -174,12 +174,21 @@ export function sanitizeNarrativeLevels(text: string): string {
 
 /**
  * Identifica si un período corresponde al Trimestral 1 (Verano: Enero a Marzo)
- * Evita falsos positivos con el año 2026 (%02%).
+ * Soporta cualquier ciclo lectivo (2026, 2027, etc.) y evita colisiones accidentales.
  */
-export function isTrimestral1(periodo: string): boolean {
+export function isTrimestral1(periodo: string, targetYear?: string): boolean {
   if (!periodo) return false;
   const p = periodo.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-  if (p.includes('2026-01') || p.includes('2026-02') || p.includes('2026-03')) return true;
+
+  if (targetYear) {
+    const yearMatch = p.match(/\b(20\d{2})\b/);
+    if (yearMatch && yearMatch[1] !== String(targetYear)) {
+      return false;
+    }
+    if (p.includes(`${targetYear}-01`) || p.includes(`${targetYear}-02`) || p.includes(`${targetYear}-03`)) return true;
+  }
+
+  if (/\b20\d{2}-0[123]\b/.test(p)) return true;
   if (p.includes('-01') || p.includes('-02') || p.includes('-03')) return true;
   if (p.includes('01 – 03') || p.includes('01-03') || p.includes('01 a 03') || p.includes('01 al 03')) return true;
   if (p.includes('enero') || p.includes('febrero') || p.includes('marzo') || p.includes('verano') || p.includes('1er') || p.includes('primer')) return true;
@@ -188,11 +197,21 @@ export function isTrimestral1(periodo: string): boolean {
 
 /**
  * Identifica si un período corresponde al Trimestral 2 (Primer Semestre: Abril a Junio)
+ * Soporta cualquier ciclo lectivo (2026, 2027, etc.).
  */
-export function isTrimestral2(periodo: string): boolean {
+export function isTrimestral2(periodo: string, targetYear?: string): boolean {
   if (!periodo) return false;
   const p = periodo.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-  if (p.includes('2026-04') || p.includes('2026-05') || p.includes('2026-06')) return true;
+
+  if (targetYear) {
+    const yearMatch = p.match(/\b(20\d{2})\b/);
+    if (yearMatch && yearMatch[1] !== String(targetYear)) {
+      return false;
+    }
+    if (p.includes(`${targetYear}-04`) || p.includes(`${targetYear}-05`) || p.includes(`${targetYear}-06`)) return true;
+  }
+
+  if (/\b20\d{2}-0[456]\b/.test(p)) return true;
   if (p.includes('-04') || p.includes('-05') || p.includes('-06')) return true;
   if (p.includes('04 – 06') || p.includes('04-06') || p.includes('06 – 04') || p.includes('04 a 06') || p.includes('04 al 06')) return true;
   if (p.includes('abril') || p.includes('mayo') || p.includes('junio') || p.includes('2do') || p.includes('segundo')) return true;

@@ -2,6 +2,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import UploadManualDocxModal from '@/app/_components/UploadManualDocxModal';
+import MonthlyFormPreviewModal from '@/app/_components/MonthlyFormPreviewModal';
+import ReportPreviewModal from '@/app/_components/ReportPreviewModal';
+import { useActiveCycle } from '@/lib/cycleState';
 import { formatDateTime, formatDate } from '@/lib/formatters';
 
 export default function InicioPage() {
@@ -13,6 +16,9 @@ export default function InicioPage() {
   const [youngs, setYoungs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const { activeYear } = useActiveCycle();
+  const [previewFormId, setPreviewFormId] = useState<string | null>(null);
+  const [previewReportId, setPreviewReportId] = useState<string | null>(null);
 
   const userRole = (session?.user as any)?.role || 'FACILITADOR';
   const isPrivileged = ['ADMIN', 'DIRECTOR', 'COORDINACION'].includes(userRole);
@@ -39,13 +45,13 @@ export default function InicioPage() {
     setLoading(true);
     try {
       const [f, r, y] = await Promise.all([
-        fetch('/api/forms?pageSize=12')
+        fetch(`/api/forms?pageSize=12${activeYear ? `&year=${activeYear}` : ''}`)
           .then(res => res.ok ? res.json() : { items: [], total: 0 })
           .catch(err => {
             console.error('Error cargando cuadrículas:', err);
             return { items: [], total: 0 };
           }),
-        fetch('/api/reports?pageSize=8')
+        fetch(`/api/reports?pageSize=8${activeYear ? `&year=${activeYear}` : ''}`)
           .then(res => res.ok ? res.json() : { items: [], total: 0 })
           .catch(err => {
             console.error('Error cargando informes:', err);
@@ -70,7 +76,7 @@ export default function InicioPage() {
     }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [activeYear]);
 
   // Resumen agrupado por Grupo institucional oficial (los talleres son las actividades internas)
   const talleresSummary = useMemo(() => {
@@ -229,6 +235,15 @@ export default function InicioPage() {
                       </td>
                       <td style={{ textAlign: 'center' }}>
                         <div style={{ display: 'inline-flex', gap: 6, justifyContent: 'center' }}>
+                          <button
+                            type="button"
+                            className="ga-btn secondary"
+                            style={{ fontSize: 12, padding: '5px 9px', background: '#eff6ff', color: '#1d4ed8', borderColor: '#bfdbfe', fontWeight: 600 }}
+                            onClick={() => setPreviewFormId(String(formId))}
+                            title="Previsualización rápida de la cuadrícula"
+                          >
+                            👁️ Ver
+                          </button>
                           <a 
                             href={`/form?formId=${formId}`} 
                             className="ga-btn primary" 
@@ -386,6 +401,15 @@ export default function InicioPage() {
                     </td>
                     <td style={{ textAlign: 'right' }}>
                       <div style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+                        <button
+                          type="button"
+                          className="ga-btn secondary"
+                          style={{ fontSize: 12, padding: '5px 11px', fontWeight: 600, background: '#eff6ff', color: '#1d4ed8', borderColor: '#bfdbfe' }}
+                          onClick={() => setPreviewReportId(String(r.id))}
+                          title="Previsualización rápida del informe institucional"
+                        >
+                          👁️ Previsualizar
+                        </button>
                         <a href={`/reports/${r.id}`} className="ga-btn secondary" style={{ fontSize: 12, padding: '5px 11px', fontWeight: 600 }}>
                           Ver Informe
                         </a>
@@ -429,6 +453,18 @@ export default function InicioPage() {
           setShowUploadModal(false);
           load();
         }}
+      />
+
+      <MonthlyFormPreviewModal
+        isOpen={!!previewFormId}
+        onClose={() => setPreviewFormId(null)}
+        formId={previewFormId}
+      />
+
+      <ReportPreviewModal
+        isOpen={!!previewReportId}
+        onClose={() => setPreviewReportId(null)}
+        reportId={previewReportId}
       />
     </div>
   );

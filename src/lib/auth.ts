@@ -88,6 +88,35 @@ export const authOptions: NextAuthOptions = {
   ],
   session: { strategy: 'jwt', maxAge: 30 * 60 }, // 30 minutos
   secret: process.env.NEXTAUTH_SECRET,
+  useSecureCookies: false,
+  cookies: {
+    sessionToken: {
+      name: 'next-auth.session-token',
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: false
+      }
+    },
+    callbackUrl: {
+      name: 'next-auth.callback-url',
+      options: {
+        sameSite: 'lax',
+        path: '/',
+        secure: false
+      }
+    },
+    csrfToken: {
+      name: 'next-auth.csrf-token',
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: false
+      }
+    }
+  },
   debug: process.env.NODE_ENV === 'development',
   pages: {
     signIn: '/login',

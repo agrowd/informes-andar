@@ -40,5 +40,5 @@ export async function connectToDB() {
   }
 }
 
-export const sql = USE_POSTGRES ? postgresSql : undefined;
+export const sql = (USE_POSTGRES ? postgresSql : undefined) as (typeof postgresSql | undefined);
 

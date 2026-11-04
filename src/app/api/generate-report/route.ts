@@ -50,14 +50,21 @@ export async function POST(req: NextRequest) {
     const pdfBuffer = await htmlToPdfBuffer(result.html);
     const reportsDir = path.join(process.cwd(), 'public', 'pdf-reports');
     await fs.promises.mkdir(reportsDir, { recursive: true });
+    
+    const formRaw = body?.form as any;
+    const safeName = (formRaw?.datosGenerales?.nombreCompleto || 'concurrente').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_').trim();
+    const safeGroup = (formRaw?.datosGenerales?.grupo || formRaw?.datosGenerales?.taller || 'grupo').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_').trim();
+    const now = new Date();
+    const safeDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     const timestamp = Date.now();
-    const filename = `informe-${timestamp}.pdf`;
+    
+    const filename = `informe-mensual-${safeName}-${safeGroup}-${safeDate}-${timestamp}.pdf`;
     const filePath = path.join(reportsDir, filename);
     await fs.promises.writeFile(filePath, pdfBuffer);
     const pdfUrl = `/pdf-reports/${filename}`;
 
     // Guardar también el Markdown
-    const markdownFilename = `informe-${timestamp}.md`;
+    const markdownFilename = `informe-mensual-${safeName}-${safeGroup}-${safeDate}-${timestamp}.md`;
     const markdownFilePath = path.join(reportsDir, markdownFilename);
     if (result.markdown) {
       await fs.promises.writeFile(markdownFilePath, result.markdown, 'utf8');

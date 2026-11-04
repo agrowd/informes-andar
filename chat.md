@@ -823,3 +823,33 @@
   3. En `final/route.ts`, `trimestral/route.ts` y `upload-manual-docx/route.ts`: al generar o subir informes desde Natoh/Admin, se asigna `generated_by` al facilitador oficial del grupo y se guarda `uploadedBy: 'Natoh'`.
   4. En PostgreSQL: se migraron todos los informes históricos de `generated_by = 1` a sus facilitadores correspondientes (0 informes huérfanos).
   5. Desplegado y verificado en vivo en producción en `http://149.50.128.73:8000`.
+
+
+# Registro de Conversación - 2026-11-04 (Arquitectura Multianual de Ciclos 2026/2027 y Previsualización Rápida Universal)
+## Usuario:
+- "Que la previsualizacion de las cuadriculas, seguimientos, informes subidos, informes generados y todo lo que se hace, se pueda previsualizar como en 'informe final' pero en el apartado mas conveniente. Tambien hacer una distincion de que se quiere empezar el año 2027 en todo lo anterior mencionado, asi se puede cambiar de año y usar el sistema desde un principio. A parte analiza el sistema por completo para encontrar incongruencias o cosas que mejorar para que funcione bien en todos los ambitos y no se necesite el toque manual por nosotros mediante actualizaciones posteriores para que funcione algo. Decime que entendiste antes de empezar"
+- "Empeza"
+
+## Antigravity:
+- **Diagnóstico y Análisis Integral**:
+  1. Necesidad de previsualización modal unificada para cuadrículas mensuales e informes (similar a la experiencia modal de Informe Final) directamente en Inicio (`/`), Cuadrícula Mensual (`/forms`), Informes (`/reports`) y Jóvenes (`/youngs`).
+  2. Arquitectura de Ciclos Multianuales: posibilidad de operar el año 2027 desde cero (nuevo ciclo) sin perder ni colisionar con los datos consolidados de 2026.
+  3. Erradicación de incongruencias y valores 2026 hardcodeados en botones, modales, parsers y consultas SQL.
+- **Implementación**:
+  1. **Módulo Institucional (`src/lib/institutional.ts`)**: Centralización canónica de los 7 grupos institucionales, facilitadores oficiales por grupo y catálogo de ciclos (`2026`, `2027`, `2028`).
+  2. **Ciclo Activo y Selector Global (`src/lib/cycleState.ts` & `src/app/_components/Nav.tsx`)**: Dropdown interactivo en la barra superior con persistencia (`localStorage`, cookies) y sincronización reactiva en todo el sistema.
+  3. **Modales de Previsualización Universal**:
+     - `MonthlyFormPreviewModal.tsx`: Visualización de habilidades por taller con niveles 1-4, observaciones completas y ficha técnica.
+     - `ReportPreviewModal.tsx`: Visualización de contenido evolutivo completo, secciones institucionales y ficha del joven.
+     - Endpoint detallado: `GET /api/forms/[id]`.
+  4. **Aislamiento Multianual en APIs**:
+     - `GET /api/forms` y `GET /api/reports`: filtran por `year` (`periodo ILIKE '%${year}%'`).
+     - `GET /api/reports/final` y `POST /api/reports/final`: parametrizados para 2026 y 2027.
+     - `POST /api/youngs/import-excel`: protección de sobreescritura cruzada entre ciclos.
+  5. **Integración en Todas las Pantallas**:
+     - Botones `[ 👁️ Ver ]` y `[ 👁️ Previsualizar ]` agregados en Inicio, Cuadrículas, Informes y Jóvenes.
+     - Filtros de ciclo reactivos aplicados en todas las tablas y paneles.
+  6. **Despliegue y Validación en VPS**:
+     - `npm run build` exitoso (19/19 páginas).
+     - PM2 recargado (`pid: 294240`).
+     - Verificación en vivo: Ciclo 2026 con 388 cuadrículas y 297 reportes consolidados; Ciclo 2027 limpio y listo para cargar y operar desde cero.

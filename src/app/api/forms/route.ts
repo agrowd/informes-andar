@@ -184,6 +184,8 @@ export async function GET(req: NextRequest) {
     const offset = (page - 1) * pageSize;
     
     const youngIdParam = url.searchParams.get('youngId');
+    const yearParam = url.searchParams.get('year') || url.searchParams.get('cycle');
+    const yearPattern = yearParam ? `%${yearParam}%` : null;
     
     console.log('[API /forms] Sesión:', session ? { email: session.user?.email, role } : 'null', 'Filter youngId:', youngIdParam);
     
@@ -196,7 +198,7 @@ export async function GET(req: NextRequest) {
       if (role === 'FACILITADOR' && session?.user) {
         const userId = Number((session.user as any).id);
         if (youngIdFilter) {
-          countQuery = sql`SELECT COUNT(*) as total FROM forms WHERE (created_by = ${userId} OR young_id IN (SELECT id FROM youngs WHERE ${userId} = ANY(assigned_facilitators))) AND young_id = ${youngIdFilter}`;
+          countQuery = sql`SELECT COUNT(*) as total FROM forms WHERE (created_by = ${userId} OR young_id IN (SELECT id FROM youngs WHERE ${userId} = ANY(assigned_facilitators))) AND young_id = ${youngIdFilter} AND (${yearPattern}::text IS NULL OR f.periodo ILIKE ${yearPattern})`;
           dataQuery = sql`
             SELECT 
               f.*,
@@ -207,12 +209,12 @@ export async function GET(req: NextRequest) {
             FROM forms f
             LEFT JOIN users u ON f.created_by = u.id
             LEFT JOIN youngs y ON f.young_id = y.id
-            WHERE (f.created_by = ${userId} OR f.young_id IN (SELECT id FROM youngs WHERE ${userId} = ANY(assigned_facilitators))) AND f.young_id = ${youngIdFilter}
+            WHERE (f.created_by = ${userId} OR f.young_id IN (SELECT id FROM youngs WHERE ${userId} = ANY(assigned_facilitators))) AND f.young_id = ${youngIdFilter} AND (${yearPattern}::text IS NULL OR f.periodo ILIKE ${yearPattern})
             ORDER BY f.updated_at DESC
             LIMIT ${pageSize} OFFSET ${offset}
           `;
         } else {
-          countQuery = sql`SELECT COUNT(*) as total FROM forms WHERE (created_by = ${userId} OR young_id IN (SELECT id FROM youngs WHERE ${userId} = ANY(assigned_facilitators)))`;
+          countQuery = sql`SELECT COUNT(*) as total FROM forms WHERE (created_by = ${userId} OR young_id IN (SELECT id FROM youngs WHERE ${userId} = ANY(assigned_facilitators))) AND (${yearPattern}::text IS NULL OR f.periodo ILIKE ${yearPattern})`;
           dataQuery = sql`
             SELECT 
               f.*,
@@ -223,14 +225,14 @@ export async function GET(req: NextRequest) {
             FROM forms f
             LEFT JOIN users u ON f.created_by = u.id
             LEFT JOIN youngs y ON f.young_id = y.id
-            WHERE (f.created_by = ${userId} OR f.young_id IN (SELECT id FROM youngs WHERE ${userId} = ANY(assigned_facilitators)))
+            WHERE (f.created_by = ${userId} OR f.young_id IN (SELECT id FROM youngs WHERE ${userId} = ANY(assigned_facilitators))) AND (${yearPattern}::text IS NULL OR f.periodo ILIKE ${yearPattern})
             ORDER BY f.updated_at DESC
             LIMIT ${pageSize} OFFSET ${offset}
           `;
         }
       } else {
         if (youngIdFilter) {
-          countQuery = sql`SELECT COUNT(*) as total FROM forms WHERE young_id = ${youngIdFilter}`;
+          countQuery = sql`SELECT COUNT(*) as total FROM forms WHERE young_id = ${youngIdFilter} AND (${yearPattern}::text IS NULL OR f.periodo ILIKE ${yearPattern})`;
           dataQuery = sql`
             SELECT 
               f.*,
@@ -241,12 +243,12 @@ export async function GET(req: NextRequest) {
             FROM forms f
             LEFT JOIN users u ON f.created_by = u.id
             LEFT JOIN youngs y ON f.young_id = y.id
-            WHERE f.young_id = ${youngIdFilter}
+            WHERE f.young_id = ${youngIdFilter} AND (${yearPattern}::text IS NULL OR f.periodo ILIKE ${yearPattern})
             ORDER BY f.updated_at DESC
             LIMIT ${pageSize} OFFSET ${offset}
           `;
         } else {
-          countQuery = sql`SELECT COUNT(*) as total FROM forms`;
+          countQuery = sql`SELECT COUNT(*) as total FROM forms WHERE (${yearPattern}::text IS NULL OR periodo ILIKE ${yearPattern})`;
           dataQuery = sql`
             SELECT 
               f.*,
@@ -257,6 +259,7 @@ export async function GET(req: NextRequest) {
             FROM forms f
             LEFT JOIN users u ON f.created_by = u.id
             LEFT JOIN youngs y ON f.young_id = y.id
+            WHERE (${yearPattern}::text IS NULL OR f.periodo ILIKE ${yearPattern})
             ORDER BY f.updated_at DESC
             LIMIT ${pageSize} OFFSET ${offset}
           `;
@@ -305,6 +308,7 @@ export async function GET(req: NextRequest) {
       const findFilter: any = {};
       if (role === 'FACILITADOR') findFilter.createdBy = (session?.user as any)?.id;
       if (youngIdParam) findFilter.youngId = youngIdParam;
+      if (yearParam) findFilter.periodo = { $regex: yearParam };
       const total = await FormModel.countDocuments(findFilter);
       const items = await FormModel.find(findFilter).sort({ updatedAt: -1 }).limit(pageSize).skip(offset).lean();
 

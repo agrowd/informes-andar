@@ -4,6 +4,7 @@ import { useSession } from 'next-auth/react';
 import UploadManualDocxModal from '@/app/_components/UploadManualDocxModal';
 import UploadExcelModal from '@/app/_components/UploadExcelModal';
 import BlockPreviewModal from '@/app/_components/BlockPreviewModal';
+import { useActiveCycle } from '@/lib/cycleState';
 import Link from 'next/link';
 
 interface YoungOverview {
@@ -38,6 +39,7 @@ const GRUPOS = [
 
 export default function FinalReportsPage() {
   const { data: session } = useSession();
+  const { activeYear } = useActiveCycle();
   const [youngs, setYoungs] = useState<YoungOverview[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedGroup, setSelectedGroup] = useState('Todos');
@@ -109,7 +111,7 @@ export default function FinalReportsPage() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/reports/final?overview=true');
+      const res = await fetch(`/api/reports/final?overview=true&year=${activeYear}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       if (data.youngs) {
@@ -125,7 +127,7 @@ export default function FinalReportsPage() {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [activeYear]);
 
   // Generar Informe Final Anual
   const handleGenerateFinal = async (young: YoungOverview) => {
@@ -156,7 +158,7 @@ export default function FinalReportsPage() {
       const res = await fetch('/api/reports/final', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ youngId: young.id })
+        body: JSON.stringify({ youngId: young.id, year: activeYear })
       });
 
       const data = await res.json();
@@ -213,7 +215,7 @@ export default function FinalReportsPage() {
 
     try {
       // 1. Buscar los formularios de Abr, May, Jun
-      const formsRes = await fetch(`/api/forms?youngId=${young.id}&pageSize=50`);
+      const formsRes = await fetch(`/api/forms?youngId=${young.id}&pageSize=50&year=${activeYear}`);
       const formsData = await formsRes.json();
       const items = formsData.items || [];
       const mForms = items.filter((f: any) => {
@@ -278,6 +280,7 @@ export default function FinalReportsPage() {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('youngId', String(activeUploadYoungId));
+    formData.append('year', activeYear);
 
     try {
       const res = await fetch('/api/youngs/import-excel', {
@@ -921,7 +924,7 @@ export default function FinalReportsPage() {
                       )}
                     </div>
                     <button
-                      onClick={() => openDocxModalForYoung(young.id, '2026-01 – 2026-03')}
+                      onClick={() => openDocxModalForYoung(young.id, `${activeYear}-01 – ${activeYear}-03`)}
                       style={{
                         marginTop: 8,
                         width: '100%',
@@ -1062,7 +1065,7 @@ export default function FinalReportsPage() {
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 8 }}>
                       <button
-                        onClick={() => openDocxModalForYoung(young.id, '2026-04 – 2026-06')}
+                        onClick={() => openDocxModalForYoung(young.id, `${activeYear}-04 – ${activeYear}-06`)}
                         style={{
                           width: '100%',
                           padding: '5px 8px',

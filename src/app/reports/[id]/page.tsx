@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import EditableText from '../../_components/EditableText';
+import FinalReportViewer from '../../_components/FinalReportViewer';
 import { formatApellidoNombre, formatDateTime, formatDate } from '@/lib/formatters';
 
 const REPORT_TYPE_LABELS: Record<string, string> = {
@@ -34,6 +35,7 @@ export default function ReportReview({ params }: { params: { id: string } }) {
   const [showHistory, setShowHistory] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [editedSections, setEditedSections] = useState<any>(null);
+  const [editedFinalData, setEditedFinalData] = useState<any>(null);
   const [saving, setSaving] = useState(false);
   
   const userRole = (session?.user as any)?.role || 'FACILITADOR';
@@ -113,6 +115,15 @@ export default function ReportReview({ params }: { params: { id: string } }) {
   };
 
   const handleEditStart = () => {
+    const isFinalType = getReportType() === 'FINAL' || getReportType() === 'INFORME_FINAL';
+    if (isFinalType && (data?.data?.parte1_informeFinal || data?.data?.parte2_planAbordaje)) {
+      setEditedFinalData({
+        parte1: JSON.parse(JSON.stringify(data.data.parte1_informeFinal || {})),
+        parte2: JSON.parse(JSON.stringify(data.data.parte2_planAbordaje || {}))
+      });
+      setEditMode(true);
+      return;
+    }
     if (!data?.data?.secciones) return;
     const normalized = normalizeSections(data.data.secciones, getReportType());
     setEditedSections(normalized);
@@ -121,6 +132,7 @@ export default function ReportReview({ params }: { params: { id: string } }) {
 
   const handleEditCancel = () => {
     setEditedSections(null);
+    setEditedFinalData(null);
     setEditMode(false);
   };
 
@@ -135,6 +147,43 @@ export default function ReportReview({ params }: { params: { id: string } }) {
   };
 
   const handleEditSave = async () => {
+    if (editedFinalData) {
+      setSaving(true);
+      try {
+        const res = await fetch(`/api/reports/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            parte1_informeFinal: editedFinalData.parte1,
+            parte2_planAbordaje: editedFinalData.parte2
+          })
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: 'Error guardando' }));
+          throw new Error(err.error || `HTTP ${res.status}`);
+        }
+        const result = await res.json();
+        setData((prev: any) => ({
+          ...prev,
+          data: {
+            ...prev.data,
+            parte1_informeFinal: editedFinalData.parte1,
+            parte2_planAbordaje: editedFinalData.parte2
+          },
+          version: result.version || prev.version,
+          pdfUrl: result.pdfUrl || prev.pdfUrl
+        }));
+        setEditMode(false);
+        setEditedFinalData(null);
+        setToasts((t) => [{ id: Date.now(), type: 'success', text: `Informe Final actualizado (v${result.version}).` }, ...t]);
+      } catch (err: any) {
+        setToasts((t) => [{ id: Date.now(), type: 'error', text: err.message || 'Error al guardar' }, ...t]);
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
+
     if (!editedSections) return;
     setSaving(true);
     try {
@@ -206,6 +255,8 @@ export default function ReportReview({ params }: { params: { id: string } }) {
 
   const rep = data.data;
   const reportType = getReportType();
+  const isFinalReport = (reportType === 'FINAL' || reportType === 'INFORME_FINAL') &&
+    Boolean(rep?.parte1_informeFinal || rep?.parte2_planAbordaje);
   const sections = normalizeSections(editMode ? editedSections : (rep.secciones || {}), reportType);
   const openCount = comments.filter((c) => c.status !== 'RESOLVED').length;
 
@@ -309,28 +360,32 @@ export default function ReportReview({ params }: { params: { id: string } }) {
           </>
         )}
         
-        <button className="ga-btn secondary" onClick={() => {
-          window.location.href = `/form?reportId=${id}`;
-        }} title="Cargar este informe en el formulario para editarlo">
-          📋 Editar en formulario
-        </button>
-        <button className="ga-btn secondary" onClick={async () => {
-          try {
-            const res = await fetch(`/api/reports/${id}/copy`, { method: 'POST' });
-            if (!res.ok) {
-              const error = await res.json().catch(() => ({ error: 'Error copiando informe' }));
-              throw new Error(error.error || `HTTP ${res.status}`);
-            }
-            const result = await res.json();
-            alert('Cuadrícula Mensual duplicada. Redirigiendo para editar el nuevo mes...');
-            // Redirigir al formulario con los datos de la cuadrícula copiada
-            window.location.href = `/form?formId=${result.id}`;
-          } catch (error: any) {
-            alert('Error: ' + (error.message || 'No se pudo copiar el informe'));
-          }
-        }} title="Duplicar formulario para crear la Cuadrícula Mensual del próximo mes">
-          📋 Duplicar para otro mes
-        </button>
+        {!isFinalReport && (
+          <>
+            <button className="ga-btn secondary" onClick={() => {
+              window.location.href = `/form?reportId=${id}`;
+            }} title="Cargar este informe en el formulario para editarlo">
+              📋 Editar en formulario
+            </button>
+            <button className="ga-btn secondary" onClick={async () => {
+              try {
+                const res = await fetch(`/api/reports/${id}/copy`, { method: 'POST' });
+                if (!res.ok) {
+                  const error = await res.json().catch(() => ({ error: 'Error copiando informe' }));
+                  throw new Error(error.error || `HTTP ${res.status}`);
+                }
+                const result = await res.json();
+                alert('Cuadrícula Mensual duplicada. Redirigiendo para editar el nuevo mes...');
+                // Redirigir al formulario con los datos de la cuadrícula copiada
+                window.location.href = `/form?formId=${result.id}`;
+              } catch (error: any) {
+                alert('Error: ' + (error.message || 'No se pudo copiar el informe'));
+              }
+            }} title="Duplicar formulario para crear la Cuadrícula Mensual del próximo mes">
+              📋 Duplicar para otro mes
+            </button>
+          </>
+        )}
         
         {/* Controles de Descarga y Carga de Word (.docx) */}
         {data.hasEditedDocx ? (
@@ -443,14 +498,76 @@ export default function ReportReview({ params }: { params: { id: string } }) {
         </div>
       )}
       {editMode ? (
-        /* VISTA EDITABLE: PSEUDO-WORD (PAGINA A4 SIMULADA) */
-        <div style={{
-          background: '#f1f5f9',
-          padding: '30px 15px',
-          borderRadius: 12,
-          border: '1px solid #cbd5e1',
-          marginTop: 20
-        }}>
+        isFinalReport ? (
+          <div style={{
+            background: '#f1f5f9',
+            padding: '30px 15px',
+            borderRadius: 12,
+            border: '1px solid #cbd5e1',
+            marginTop: 20
+          }}>
+            {/* Barra de herramientas flotante del Editor Informe Final */}
+            <div style={{
+              background: '#fff',
+              padding: '12px 20px',
+              borderRadius: 8,
+              border: '1px solid #cbd5e1',
+              marginBottom: 20,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              boxShadow: '0 2px 10px rgba(0,0,0,0.06)',
+              position: 'sticky',
+              top: 10,
+              zIndex: 10
+            }}>
+              <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                <span style={{ fontWeight: 700, color: '#0f172a', fontSize: 15 }}>✍️ Editor Informe Final & Plan de Abordaje (v{data.version})</span>
+                <span style={{ 
+                  background: '#EFF6FF', 
+                  color: '#1D4ED8', 
+                  padding: '2px 8px', 
+                  borderRadius: 4, 
+                  fontSize: 11, 
+                  fontWeight: 600 
+                }}>
+                  Edición Interactiva
+                </span>
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button className="ga-btn accent" onClick={handleEditSave} disabled={saving} style={{ padding: '6px 16px' }}>
+                  {saving ? '⏳ Guardando...' : '💾 Guardar Todo'}
+                </button>
+                <button className="ga-btn" onClick={handleEditCancel} disabled={saving} style={{ padding: '6px 16px' }}>
+                  ❌ Cancelar
+                </button>
+              </div>
+            </div>
+
+            <FinalReportViewer
+              rep={rep}
+              meta={{
+                id,
+                periodo: data.periodo || rep.periodo || '2026',
+                jovenNombre: data.jovenNombre || rep.datosGenerales?.nombreCompleto || '',
+                grupo: data.grupo || rep.datosGenerales?.grupo || '',
+                version: data.version
+              }}
+              editMode={true}
+              editedData={editedFinalData}
+              setEditedData={setEditedFinalData}
+              saving={saving}
+            />
+          </div>
+        ) : (
+          /* VISTA EDITABLE: PSEUDO-WORD (PAGINA A4 SIMULADA) */
+          <div style={{
+            background: '#f1f5f9',
+            padding: '30px 15px',
+            borderRadius: 12,
+            border: '1px solid #cbd5e1',
+            marginTop: 20
+          }}>
           {/* Barra de herramientas flotante del Pseudo-Word */}
           <div style={{
             background: '#fff',
@@ -587,9 +704,25 @@ export default function ReportReview({ params }: { params: { id: string } }) {
             </div>
           </div>
         </div>
+        )
       ) : (
-        /* VISTA DE LECTURA NORMAL (CON SECCIONES NORMALIZADAS) */
-        Object.entries(sections).map(([key, frags]: any) => (
+        isFinalReport ? (
+          <FinalReportViewer
+            rep={rep}
+            meta={{
+              id,
+              periodo: data.periodo || rep.periodo || '2026',
+              jovenNombre: data.jovenNombre || rep.datosGenerales?.nombreCompleto || '',
+              grupo: data.grupo || rep.datosGenerales?.grupo || '',
+              version: data.version
+            }}
+            editMode={false}
+            editedData={null}
+            setEditedData={() => {}}
+          />
+        ) : (
+          /* VISTA DE LECTURA NORMAL (CON SECCIONES NORMALIZADAS) */
+          Object.entries(sections).map(([key, frags]: any) => (
           <div key={key} style={{ marginTop: 24 }} className="ga-card">
             <h3 style={{ 
               color: '#1E3A8A', 
@@ -680,6 +813,7 @@ export default function ReportReview({ params }: { params: { id: string } }) {
             </ul>
           </div>
         ))
+        )
       )}
 
       {/* Toasts */}

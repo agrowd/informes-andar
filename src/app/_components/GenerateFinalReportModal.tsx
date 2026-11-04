@@ -343,11 +343,11 @@ export default function GenerateFinalReportModal({
                       borderRadius: '8px'
                     }}>
                       <div style={{ fontSize: '12px', fontWeight: 700, color: '#1e293b', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span>📋 2. Mensuales Abr-May-Jun</span>
+                        <span>📋 2. Mensuales Abr-May-Jun{diagnosticData.blocks.mensuales1?.has07 ? ' (+ Jul)' : ''}</span>
                       </div>
                       <div style={{ fontSize: '11px', marginTop: '4px', color: diagnosticData.blocks.mensuales1.available ? '#065f46' : '#92400e' }}>
                         {diagnosticData.blocks.mensuales1.available 
-                          ? `✅ ${diagnosticData.blocks.mensuales1.count} cuadrículas listas`
+                          ? `✅ ${diagnosticData.blocks.mensuales1.count} cuadrículas listas${diagnosticData.blocks.mensuales1?.has07 ? ' (incluye Julio)' : ''}`
                           : '⚠️ Sin cuadrículas registradas'}
                       </div>
                     </div>

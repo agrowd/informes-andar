@@ -1,5 +1,37 @@
 # 🗓️ Workcycle Log
 
+## 2026-11-04 (Arquitectura Multianual de Ciclos 2026/2027 y Previsualización Rápida Universal - D-95)
+- **Objetivo**: Implementar la directiva global del usuario:
+  *"Que la previsualizacion de las cuadriculas, seguimientos, informes subidos, informes generados y todo lo que se hace, se pueda previsualizar como en 'informe final' pero en el apartado mas conveniente. Tambien hacer una distincion de que se quiere empezar el año 2027 en todo lo anterior mencionado, asi se puede cambiar de año y usar el sistema desde un principio. A parte analiza el sistema por completo para encontrar incongruencias o cosas que mejorar para que funcione bien en todos los ambitos y no se necesite el toque manual por nosotros mediante actualizaciones posteriores para que funcione algo."*
+- **Acciones Realizadas**:
+  1. **Módulo Institucional Canónico (`src/lib/institutional.ts`)**:
+     - Se centralizaron los 7 grupos oficiales y el mapeo de facilitadores oficiales (`GROUP_FACILITATORS`).
+     - Se definieron los ciclos disponibles `['2026', '2027', '2028']`, el ciclo por defecto (`2026`), generador de períodos y extractor de año.
+  2. **Gestión de Ciclo Activo (`src/lib/cycleState.ts`) y Selector Global (`src/app/_components/Nav.tsx`)**:
+     - Se implementó el hook reactivo `useActiveCycle()` con sincronización en `localStorage`, cookies y custom events (`andar:cycle-changed`).
+     - Se integró el dropdown interactivo `📅 Ciclo: [ 2026 (Consolidado) | 2027 (Nuevo Ciclo) | 2028 ]` en la barra de navegación superior.
+  3. **Aislamiento y Filtrado Multianual en APIs Backend**:
+     - `GET /api/forms`: Acepta `year` y filtra por patrón `(periodo ILIKE '%${year}%')`.
+     - `GET /api/reports`: Acepta `year` y filtra informes mensuales, trimestrales y finales por ciclo.
+     - `GET /api/reports/final`: Parametrizado con `year` para overview (77 jóvenes) y diagnóstico por concurrente.
+     - `POST /api/reports/final`: Genera el informe final del año seleccionado (`${year} (Ciclo Anual Consolidado)`).
+     - `POST /api/youngs/import-excel`: Recibe `year`, define el `effectiveYear` del ciclo y restringe la búsqueda de borradores existentes al año efectivo para evitar sobreescrituras accidentales entre 2026 y 2027.
+  4. **Modales de Previsualización Rápida Universal**:
+     - `MonthlyFormPreviewModal.tsx`: Visualiza cualquier cuadrícula mensual con solapas de Habilidades (con insignias de nivel 1-4, filtro por taller y buscador), Observaciones completas y Ficha Técnica.
+     - `ReportPreviewModal.tsx`: Visualiza cualquier informe trimestral o final con Contenido Evolutivo completo, lista de secciones institucionales y Ficha del joven.
+     - Se expuso el endpoint `GET /api/forms/[id]` con todos los datos detallados de evaluación.
+  5. **Integración de Previsualización y Ciclo en todas las Vistas del Frontend**:
+     - **Inicio (`src/app/page.tsx`)**: Botones `[ 👁️ Ver ]` en Cuadrículas y `[ 👁️ Previsualizar ]` en Informes, sincronizados con `activeYear`.
+     - **Cuadrícula Mensual (`src/app/forms/page.tsx`)**: Botón `[ 👁️ Previsualizar ]` en cada fila y filtrado por ciclo activo.
+     - **Informes (`src/app/reports/page.tsx`)**: Botón `[ 👁️ Previsualizar ]` en cada fila y filtrado por ciclo activo.
+     - **Jóvenes (`src/app/youngs/page.tsx`)**: Botones de previsualización en la solapa Historial tanto para informes como para cuadrículas.
+     - **Informe Final (`src/app/final-reports/page.tsx`)**: Diagnóstico automático según el ciclo seleccionado (2026 consolidado vs 2027 nuevo ciclo), eliminando fechas hardcodeadas en botones de carga de Word y generación.
+  6. **Compilación y Despliegue en Producción (VPS)**:
+     - `npm run build` ejecutado localmente y en el VPS sin errores (19/19 rutas).
+     - PM2 recargado en el VPS (`pid: 294240`).
+     - Verificación en vivo: 2026 retorna 388 cuadrículas y 297 informes consolidados; 2027 muestra el sistema limpio y listo para operar desde cero.
+- **Estado**: Implementado, Verificado y Desplegado en Producción ✅
+
 ## 2026-11-04 (Asignación de Titularidad y Aclaración de Carga por Natoh en Informes Trimestrales y Finales - D-94)
 - **Objetivo**: Responder a la instrucción del usuario con imagen de la tabla de Informes Trimestrales/Finales:
   *"Lo mismo aca"* (mostrando la tabla *Últimos Informes Trimestrales (Word / PDF)* con concurrentes de Promotores como Sofía Chávez, Pablo Lezcano, Martiniano Correa, etc. figurando con Facilitador `👤 Natoh`).
