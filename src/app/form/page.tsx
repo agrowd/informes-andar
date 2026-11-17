@@ -17,8 +17,18 @@ const INITIAL_DATA = {
 };
 
 const PERIODS = [
-  'ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO',
-  'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE'
+  { value: '2026-10', label: 'Octubre 2026' },
+  { value: '2026-11', label: 'Noviembre 2026' },
+  { value: '2026-12', label: 'Diciembre 2026' },
+  { value: '2026-09', label: 'Septiembre 2026' },
+  { value: '2026-08', label: 'Agosto 2026' },
+  { value: '2026-07', label: 'Julio 2026' },
+  { value: '2026-06', label: 'Junio 2026' },
+  { value: '2026-05', label: 'Mayo 2026' },
+  { value: '2026-04', label: 'Abril 2026' },
+  { value: '2026-03', label: 'Marzo 2026' },
+  { value: '2026-02', label: 'Febrero 2026' },
+  { value: '2026-01', label: 'Enero 2026' }
 ];
 
 export default function ChecklistFormPage() {
@@ -468,9 +478,11 @@ export default function ChecklistFormPage() {
               onChange={(e) => updateDatosGenerales('periodo', e.target.value)}
             >
               <option value="">— Seleccionar período —</option>
-              {PERIODS.map(p => (
-                <option key={p} value={p}>{p}</option>
-              ))}
+              {PERIODS.map(p => {
+                const val = typeof p === 'string' ? p : p.value;
+                const lbl = typeof p === 'string' ? p : p.label;
+                return <option key={val} value={val}>{lbl}</option>;
+              })}
             </select>
           </label>
 
@@ -843,9 +855,11 @@ export default function ChecklistFormPage() {
                 style={{ width: '100%' }}
               >
                 <option value="">— Seleccionar mes siguiente —</option>
-                {PERIODS.map(p => (
-                  <option key={p} value={p}>{p}</option>
-                ))}
+                {PERIODS.map(p => {
+                  const val = typeof p === 'string' ? p : p.value;
+                  const lbl = typeof p === 'string' ? p : p.label;
+                  return <option key={val} value={val}>{lbl}</option>;
+                })}
               </select>
             </label>
             

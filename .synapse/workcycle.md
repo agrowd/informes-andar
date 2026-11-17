@@ -1,5 +1,35 @@
 # 🗓️ Workcycle Log
 
+## 2026-11-04 (Carga Mensual Continua y Módulo de Cierre Anual Trimestral Q4 Octubre-Noviembre-Diciembre - D-96)
+- **Objetivo**: Implementar el requerimiento de la dirección de la institución trasmitido por el usuario en los audios:
+  *"Ya necesito que los profes sigan cargando los informes mes a mes. Hoy estaba hablando de eso con Lourdes y lo que ella me plantea es que vos tenías que hacer un ajuste para que se pudiera cargar porque solo permitía cargar hasta el informe final que es en septiembre. Yo necesito que la carga sea mensual y que después el sistema... te saque el mensual, trimestral, semestral y final... No te olvides que yo tengo que cerrar el año en diciembre, que es un mes muy corto, con el trimestral de octubre, noviembre y diciembre. Por lo tanto yo necesito que los profes carguen el mes a mes."*
+- **Diagnóstico y Causa Raíz**:
+  1. En `/final-reports`, la interfaz estaba estructurada exclusivamente con 4 bloques que culminaban en el Informe Final Anual emitido entre Septiembre y Octubre. Esto generó en el equipo de facilitadores y coordinación (Lourdes) la falsa percepción de que el sistema "se cerraba" o impedía la carga a partir de septiembre.
+  2. Granja Andar cierra su ciclo operativo en diciembre (un mes corto), y requiere consolidar el cuarto trimestre (Q4: Octubre, Noviembre y Diciembre) en un Informe Trimestral de Cierre Institucional.
+  3. Los facilitadores requerían continuar cargando mes a mes sus cuadrículas de Octubre, Noviembre y Diciembre sin trabas, y tener un panel claro para revisar el estado de carga y emitir el Trimestral de Cierre.
+- **Acciones Realizadas**:
+  1. **Desbloqueo y Habilitación Explícita de Carga Mensual Continua**:
+     - En `src/app/form/page.tsx`: Se agregaron formalmente `2026-10 (Octubre 2026)`, `2026-11 (Noviembre 2026)` y `2026-12 (Diciembre 2026)` en la lista de períodos para carga y duplicación manual.
+     - En `src/app/api/forms/route.ts`: Se implementó auto-normalización en POST/PUT para mapear nombres de mes textuales (`OCTUBRE`, `NOVIEMBRE`, `DICIEMBRE`) al formato estándar `YYYY-MM`.
+     - En `src/app/forms/page.tsx`: Se integró un banner informativo destacado indicando que la carga mensual continúa activa para Octubre, Noviembre y Diciembre, con botones de filtrado rápido por mes.
+  2. **Módulo de Cierre Institucional de Fin de Año en `/final-reports`**:
+     - Se incorporó un selector interactivo superior con dos solapas:
+       * `[ 🏆 1. Informe Final Anual (Ene - Sep/Oct) ]`
+       * `[ 🎄 2. Cierre de Año (Trimestral Octubre - Noviembre - Diciembre) ]`
+     - En la solapa de Cierre:
+       * KPIs institucionales de avance (Octubre cargado: 27/77, Noviembre cargado, Diciembre cargado, Trimestrales de Cierre emitidos) sobre los 77 concurrentes.
+       * Filtros por estado (`Todos`, `⚡ Con Cuadrículas para Generar`, `🎄 Con Trimestral Cierre`, `⚠️ Sin Cuadrículas`).
+       * Tarjetas individuales por joven con 3 bloques claros (Octubre, Noviembre, Diciembre), botones `[ 👁️ Ver Cuadrícula ]` (vía `MonthlyFormPreviewModal`) y `[ 📥 Subir / Arrastrar Excel ]`.
+       * Botón de acción principal: `[ ⚡ Generar Trimestral Cierre (Oct-Nov-Dic) ]` con IA, o `[ 👁️ Previsualizar ]`, `[ ✏️ Editar ]`, `[ 📥 Word (.docx) ]` y `[ 🔄 Regenerar ]` si ya existe.
+  3. **Backend y API de Reportes**:
+     - En `src/app/api/reports/final/route.ts`: Se agregó el cálculo de `cierreAnual` en `evaluateBlocks` para overview y diagnóstico individual (identificando `has10`, `has11`, `has12`, sus IDs y la existencia de un trimestral Q4).
+     - En `src/app/api/reports/trimestral/route.ts`: Se incorporó soporte para `periodoPersonalizado` para consolidar el período como `YYYY-10 – YYYY-12`.
+     - En `src/app/reports/page.tsx`: Se agregó `<option value="FINAL">🏆 Informe Final</option>` al filtro de tipos de informe, complementando `MENSUAL`, `TRIMESTRAL`, `SEMESTRAL` y `ANUAL`.
+  4. **Compilación y Despliegue en Producción**:
+     - `npm run build` ejecutado localmente y en el VPS con 19/19 páginas estáticas generadas exitosamente (código 0).
+     - Servicio PM2 recargado en el VPS (`informes-andar`, PID 114317).
+- **Estado**: Implementado, Desplegado y Operativo en Producción ✅
+
 ## 2026-11-04 (Arquitectura Multianual de Ciclos 2026/2027 y Previsualización Rápida Universal - D-95)
 - **Objetivo**: Implementar la directiva global del usuario:
   *"Que la previsualizacion de las cuadriculas, seguimientos, informes subidos, informes generados y todo lo que se hace, se pueda previsualizar como en 'informe final' pero en el apartado mas conveniente. Tambien hacer una distincion de que se quiere empezar el año 2027 en todo lo anterior mencionado, asi se puede cambiar de año y usar el sistema desde un principio. A parte analiza el sistema por completo para encontrar incongruencias o cosas que mejorar para que funcione bien en todos los ambitos y no se necesite el toque manual por nosotros mediante actualizaciones posteriores para que funcione algo."*

@@ -178,9 +178,9 @@ export async function POST(req: NextRequest) {
 
     // 4. Armar el objeto de datos consolidado
     const periodos = forms.map(f => f.periodo).filter(Boolean);
-    const mergedPeriodo = periodos.length === 1 
+    const mergedPeriodo = (body as any)?.periodoPersonalizado || (periodos.length === 1 
       ? periodos[0] 
-      : `${periodos[0]} – ${periodos[periodos.length - 1]}`;
+      : `${periodos[0]} – ${periodos[periodos.length - 1]}`);
 
     // Obtener facilitadores del período
     const facilitatorsFromForms = forms

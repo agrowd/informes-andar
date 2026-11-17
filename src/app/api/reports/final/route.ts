@@ -104,6 +104,18 @@ function evaluateBlocks(
   mensuales1: { ok: boolean; has04: boolean; has05: boolean; has06: boolean; has07: boolean; count: number; missing: string[] };
   trimestral2: { ok: boolean; id: number | null; periodo: string | null };
   mensuales2: { ok: boolean; has08: boolean; has09: boolean; has10: boolean; count: number; missing: string[] };
+  cierreAnual?: {
+    has10: boolean;
+    has11: boolean;
+    has12: boolean;
+    form10Id: number | null;
+    form11Id: number | null;
+    form12Id: number | null;
+    count: number;
+    missing: string[];
+    trimestralCierre: { id: number; periodo: string; status: string; createdAt: string } | null;
+    canGenerate: boolean;
+  };
   finalReport: { id: number; periodo: string; status: string; createdAt: string } | null;
   canGenerate: boolean;
   strictCanGenerate: boolean;
@@ -175,11 +187,51 @@ function evaluateBlocks(
   if (!t2Ok) missingItems.push(`Bloque 3: Trimestral 2 (${yStr} Abr - Jun)`);
   if (!m2Ok) missingItems.push(`Bloque 4: Mensuales 2 (${yStr} Faltan: ${m2Missing.join(', ')})`);
 
+  // 6. Cierre de Año (Trimestral 4: Octubre, Noviembre, Diciembre)
+  const form10 = yearForms.find(f => f.periodo?.includes('10') || f.periodo?.toLowerCase().includes('octubre')) || null;
+  const form11 = yearForms.find(f => f.periodo?.includes('11') || f.periodo?.toLowerCase().includes('noviembre')) || null;
+  const form12 = yearForms.find(f => f.periodo?.includes('12') || f.periodo?.toLowerCase().includes('diciembre')) || null;
+  const has11 = !!form11;
+  const has12 = !!form12;
+
+  // Trimestral de cierre (Q4: Oct-Dic)
+  const tCierre = yearReports.find(r => r.report_type === 'TRIMESTRAL' && (
+    (r.periodo?.includes('10') && r.periodo?.includes('12')) ||
+    (r.periodo?.toLowerCase().includes('octubre') && r.periodo?.toLowerCase().includes('diciembre')) ||
+    (r.periodo?.includes(`${yStr}-10`) && r.periodo?.includes(`${yStr}-12`)) ||
+    (r.periodo?.includes(`${yStr}-10 – ${yStr}-12`)) ||
+    (r.periodo?.includes(`${yStr}-12 – ${yStr}-10`))
+  )) || null;
+
+  const cierreMissing: string[] = [];
+  if (!form10) cierreMissing.push('Octubre');
+  if (!form11) cierreMissing.push('Noviembre');
+  if (!form12) cierreMissing.push('Diciembre');
+
+  const cierreAnual = {
+    has10: !!form10,
+    has11: !!form11,
+    has12: !!form12,
+    form10Id: form10?.id || null,
+    form11Id: form11?.id || null,
+    form12Id: form12?.id || null,
+    count: (form10?1:0) + (form11?1:0) + (form12?1:0),
+    missing: cierreMissing,
+    trimestralCierre: tCierre ? {
+      id: tCierre.id,
+      periodo: tCierre.periodo,
+      status: tCierre.status,
+      createdAt: tCierre.created_at
+    } : null,
+    canGenerate: !!(form10 || form11 || form12)
+  };
+
   return {
     trimestral1: { ok: t1Ok, id: t1 ? t1.id : null, periodo: t1 ? t1.periodo : null },
     mensuales1: { ok: m1Ok, has04, has05, has06, has07, count: (has04?1:0)+(has05?1:0)+(has06?1:0)+(has07?1:0), missing: m1Missing },
     trimestral2: { ok: t2Ok, id: t2 ? t2.id : null, periodo: t2 ? t2.periodo : null },
     mensuales2: { ok: m2Ok, has08, has09, has10, count: (has08?1:0)+(has09?1:0)+(has10?1:0), missing: m2Missing },
+    cierreAnual,
     finalReport,
     canGenerate,
     strictCanGenerate,

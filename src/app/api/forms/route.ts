@@ -24,7 +24,18 @@ export async function POST(req: NextRequest) {
     console.log('[API /forms] Sesión:', session ? { email: session.user?.email } : 'null');
     console.log('[API /forms] Body recibido, saveAsDraft:', saveAsDraft);
     
-    const periodo = formData?.datosGenerales?.periodo || 'No informado';
+    const MONTH_MAP: Record<string, string> = {
+      'ENERO': '01', 'FEBRERO': '02', 'MARZO': '03', 'ABRIL': '04',
+      'MAYO': '05', 'JUNIO': '06', 'JULIO': '07', 'AGOSTO': '08',
+      'SEPTIEMBRE': '09', 'SETIEMBRE': '09', 'OCTUBRE': '10', 'NOVIEMBRE': '11', 'DICIEMBRE': '12'
+    };
+    let periodo = formData?.datosGenerales?.periodo || 'No informado';
+    const rawUpper = periodo.trim().toUpperCase();
+    if (MONTH_MAP[rawUpper]) {
+      const currentYear = new Date().getFullYear().toString();
+      periodo = `${currentYear}-${MONTH_MAP[rawUpper]}`;
+      if (formData?.datosGenerales) formData.datosGenerales.periodo = periodo;
+    }
     const youngId = formData?.datosGenerales?.youngId || null;
     const createdBy = session?.user ? Number((session.user as any).id) : null;
 
@@ -132,6 +143,18 @@ export async function PUT(req: NextRequest) {
     
     // FACILITADOR solo puede actualizar lo suyo
     const role = (session?.user as any)?.role || 'FACILITADOR';
+    const MONTH_MAP_PUT: Record<string, string> = {
+      'ENERO': '01', 'FEBRERO': '02', 'MARZO': '03', 'ABRIL': '04',
+      'MAYO': '05', 'JUNIO': '06', 'JULIO': '07', 'AGOSTO': '08',
+      'SEPTIEMBRE': '09', 'SETIEMBRE': '09', 'OCTUBRE': '10', 'NOVIEMBRE': '11', 'DICIEMBRE': '12'
+    };
+    if (data?.datosGenerales?.periodo) {
+      const pUpper = String(data.datosGenerales.periodo).trim().toUpperCase();
+      if (MONTH_MAP_PUT[pUpper]) {
+        const cYear = new Date().getFullYear().toString();
+        data.datosGenerales.periodo = `${cYear}-${MONTH_MAP_PUT[pUpper]}`;
+      }
+    }
     
     if (USE_POSTGRES && sql) {
       // Postgres
@@ -198,7 +221,7 @@ export async function GET(req: NextRequest) {
       if (role === 'FACILITADOR' && session?.user) {
         const userId = Number((session.user as any).id);
         if (youngIdFilter) {
-          countQuery = sql`SELECT COUNT(*) as total FROM forms WHERE (created_by = ${userId} OR young_id IN (SELECT id FROM youngs WHERE ${userId} = ANY(assigned_facilitators))) AND young_id = ${youngIdFilter} AND (${yearPattern}::text IS NULL OR f.periodo ILIKE ${yearPattern})`;
+          countQuery = sql`SELECT COUNT(*) as total FROM forms WHERE (created_by = ${userId} OR young_id IN (SELECT id FROM youngs WHERE ${userId} = ANY(assigned_facilitators))) AND young_id = ${youngIdFilter} AND (${yearPattern}::text IS NULL OR f.periodo ILIKE ${yearPattern} OR (${yearParam} = '2026' AND f.periodo NOT LIKE '202%'))`;
           dataQuery = sql`
             SELECT 
               f.*,
@@ -209,12 +232,12 @@ export async function GET(req: NextRequest) {
             FROM forms f
             LEFT JOIN users u ON f.created_by = u.id
             LEFT JOIN youngs y ON f.young_id = y.id
-            WHERE (f.created_by = ${userId} OR f.young_id IN (SELECT id FROM youngs WHERE ${userId} = ANY(assigned_facilitators))) AND f.young_id = ${youngIdFilter} AND (${yearPattern}::text IS NULL OR f.periodo ILIKE ${yearPattern})
+            WHERE (f.created_by = ${userId} OR f.young_id IN (SELECT id FROM youngs WHERE ${userId} = ANY(assigned_facilitators))) AND f.young_id = ${youngIdFilter} AND (${yearPattern}::text IS NULL OR f.periodo ILIKE ${yearPattern} OR (${yearParam} = '2026' AND f.periodo NOT LIKE '202%'))
             ORDER BY f.updated_at DESC
             LIMIT ${pageSize} OFFSET ${offset}
           `;
         } else {
-          countQuery = sql`SELECT COUNT(*) as total FROM forms WHERE (created_by = ${userId} OR young_id IN (SELECT id FROM youngs WHERE ${userId} = ANY(assigned_facilitators))) AND (${yearPattern}::text IS NULL OR f.periodo ILIKE ${yearPattern})`;
+          countQuery = sql`SELECT COUNT(*) as total FROM forms WHERE (created_by = ${userId} OR young_id IN (SELECT id FROM youngs WHERE ${userId} = ANY(assigned_facilitators))) AND (${yearPattern}::text IS NULL OR f.periodo ILIKE ${yearPattern} OR (${yearParam} = '2026' AND f.periodo NOT LIKE '202%'))`;
           dataQuery = sql`
             SELECT 
               f.*,
@@ -225,14 +248,14 @@ export async function GET(req: NextRequest) {
             FROM forms f
             LEFT JOIN users u ON f.created_by = u.id
             LEFT JOIN youngs y ON f.young_id = y.id
-            WHERE (f.created_by = ${userId} OR f.young_id IN (SELECT id FROM youngs WHERE ${userId} = ANY(assigned_facilitators))) AND (${yearPattern}::text IS NULL OR f.periodo ILIKE ${yearPattern})
+            WHERE (f.created_by = ${userId} OR f.young_id IN (SELECT id FROM youngs WHERE ${userId} = ANY(assigned_facilitators))) AND (${yearPattern}::text IS NULL OR f.periodo ILIKE ${yearPattern} OR (${yearParam} = '2026' AND f.periodo NOT LIKE '202%'))
             ORDER BY f.updated_at DESC
             LIMIT ${pageSize} OFFSET ${offset}
           `;
         }
       } else {
         if (youngIdFilter) {
-          countQuery = sql`SELECT COUNT(*) as total FROM forms WHERE young_id = ${youngIdFilter} AND (${yearPattern}::text IS NULL OR f.periodo ILIKE ${yearPattern})`;
+          countQuery = sql`SELECT COUNT(*) as total FROM forms WHERE young_id = ${youngIdFilter} AND (${yearPattern}::text IS NULL OR f.periodo ILIKE ${yearPattern} OR (${yearParam} = '2026' AND f.periodo NOT LIKE '202%'))`;
           dataQuery = sql`
             SELECT 
               f.*,
@@ -243,12 +266,12 @@ export async function GET(req: NextRequest) {
             FROM forms f
             LEFT JOIN users u ON f.created_by = u.id
             LEFT JOIN youngs y ON f.young_id = y.id
-            WHERE f.young_id = ${youngIdFilter} AND (${yearPattern}::text IS NULL OR f.periodo ILIKE ${yearPattern})
+            WHERE f.young_id = ${youngIdFilter} AND (${yearPattern}::text IS NULL OR f.periodo ILIKE ${yearPattern} OR (${yearParam} = '2026' AND f.periodo NOT LIKE '202%'))
             ORDER BY f.updated_at DESC
             LIMIT ${pageSize} OFFSET ${offset}
           `;
         } else {
-          countQuery = sql`SELECT COUNT(*) as total FROM forms WHERE (${yearPattern}::text IS NULL OR periodo ILIKE ${yearPattern})`;
+          countQuery = sql`SELECT COUNT(*) as total FROM forms WHERE (${yearPattern}::text IS NULL OR periodo ILIKE ${yearPattern} OR (${yearParam} = '2026' AND periodo NOT LIKE '202%'))`;
           dataQuery = sql`
             SELECT 
               f.*,
@@ -259,7 +282,7 @@ export async function GET(req: NextRequest) {
             FROM forms f
             LEFT JOIN users u ON f.created_by = u.id
             LEFT JOIN youngs y ON f.young_id = y.id
-            WHERE (${yearPattern}::text IS NULL OR f.periodo ILIKE ${yearPattern})
+            WHERE (${yearPattern}::text IS NULL OR f.periodo ILIKE ${yearPattern} OR (${yearParam} = '2026' AND f.periodo NOT LIKE '202%'))
             ORDER BY f.updated_at DESC
             LIMIT ${pageSize} OFFSET ${offset}
           `;

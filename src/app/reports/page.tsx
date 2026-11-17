@@ -235,6 +235,7 @@ export default function ReportsList() {
               <option value="TRIMESTRAL">📋 Trimestral</option>
               <option value="SEMESTRAL">📑 Semestral</option>
               <option value="ANUAL">📚 Anual</option>
+              <option value="FINAL">🏆 Informe Final</option>
             </select>
           </label>
           <label>

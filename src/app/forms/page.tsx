@@ -519,6 +519,102 @@ export default function FormsList() {
         </div>
       </div>
 
+      {/* Banner de Carga Mensual Continua y Cierre Lectivo */}
+      <div style={{
+        background: 'linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%)',
+        color: 'white',
+        padding: '14px 20px',
+        borderRadius: 12,
+        marginBottom: 16,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: 12,
+        boxShadow: '0 4px 6px -1px rgba(0,0,0,0.08)'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ fontSize: 26 }}>📢</span>
+          <div>
+            <div style={{ fontWeight: 800, fontSize: 14, letterSpacing: '0.02em' }}>
+              Carga Mensual Continua Activa (Octubre, Noviembre y Diciembre)
+            </div>
+            <div style={{ fontSize: 13, color: '#bfdbfe', marginTop: 2 }}>
+              La plataforma está habilitada para cargar mes a mes todo el año. Los profesores pueden cargar sus cuadrículas de <strong>Octubre</strong>, <strong>Noviembre</strong> y <strong>Diciembre</strong> para el cierre institucional.
+            </div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <span style={{ fontSize: 12, color: '#93c5fd', fontWeight: 600 }}>Filtrar mes:</span>
+          <button
+            type="button"
+            onClick={() => setFilter(filter === `${activeYear}-10` ? '' : `${activeYear}-10`)}
+            style={{
+              padding: '5px 12px',
+              borderRadius: 8,
+              border: '1px solid rgba(255,255,255,0.3)',
+              background: filter === `${activeYear}-10` ? '#ffffff' : 'rgba(255,255,255,0.15)',
+              color: filter === `${activeYear}-10` ? '#1e3a8a' : '#ffffff',
+              fontWeight: 700,
+              fontSize: 12,
+              cursor: 'pointer'
+            }}
+          >
+            🍂 Octubre
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilter(filter === `${activeYear}-11` ? '' : `${activeYear}-11`)}
+            style={{
+              padding: '5px 12px',
+              borderRadius: 8,
+              border: '1px solid rgba(255,255,255,0.3)',
+              background: filter === `${activeYear}-11` ? '#ffffff' : 'rgba(255,255,255,0.15)',
+              color: filter === `${activeYear}-11` ? '#1e3a8a' : '#ffffff',
+              fontWeight: 700,
+              fontSize: 12,
+              cursor: 'pointer'
+            }}
+          >
+            🍁 Noviembre
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilter(filter === `${activeYear}-12` ? '' : `${activeYear}-12`)}
+            style={{
+              padding: '5px 12px',
+              borderRadius: 8,
+              border: '1px solid rgba(255,255,255,0.3)',
+              background: filter === `${activeYear}-12` ? '#ffffff' : 'rgba(255,255,255,0.15)',
+              color: filter === `${activeYear}-12` ? '#1e3a8a' : '#ffffff',
+              fontWeight: 700,
+              fontSize: 12,
+              cursor: 'pointer'
+            }}
+          >
+            🎄 Diciembre
+          </button>
+          {filter && (
+            <button
+              type="button"
+              onClick={() => setFilter('')}
+              style={{
+                padding: '5px 10px',
+                borderRadius: 8,
+                border: 'none',
+                background: 'rgba(255,255,255,0.2)',
+                color: 'white',
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              ✕ Todos
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Tarjeta de Filtros con Selector de Grupos Institucionales */}
       <div className="ga-card" style={{ marginBottom: 16, padding: '16px 20px' }}>
         {/* 1. Selector de Grupo Institucional en Pills */}

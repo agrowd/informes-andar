@@ -853,3 +853,39 @@
      - `npm run build` exitoso (19/19 páginas).
      - PM2 recargado (`pid: 294240`).
      - Verificación en vivo: Ciclo 2026 con 388 cuadrículas y 297 reportes consolidados; Ciclo 2027 limpio y listo para cargar y operar desde cero.
+
+---
+
+### 2026-11-04 - Carga Mensual Continua y Módulo de Cierre Anual Trimestral Q4 (Octubre, Noviembre, Diciembre) - D-96
+- **Instrucción del Usuario**:
+  > Transcripción de audios de la dirección institucional:
+  > *"Ya necesito que los profes sigan cargando los informes mes a mes. Hoy estaba hablando de eso con Lourdes y lo que ella me plantea es que vos tenías que hacer un ajuste para que se pudiera cargar porque solo permitía cargar hasta el informe final que es en septiembre. Yo necesito que la carga sea mensual y que después el sistema... te saque el mensual, trimestral, semestral y final... No te olvides que yo tengo que cerrar el año en diciembre, que es un mes muy corto, con el trimestral de octubre, noviembre y diciembre. Por lo tanto yo necesito que los profes carguen el mes a mes."*
+  > Orden directa: *"hace lo que veas que pide"*.
+
+- **Diagnóstico y Causa Raíz**:
+  1. La vista de `/final-reports` culminaba en el Bloque 4 (Agosto-Septiembre) para emitir el Informe Final Anual, lo que indujo a los facilitadores y a coordinación (Lourdes) a creer erróneamente que la plataforma se bloqueaba tras septiembre y no admitía más meses.
+  2. La institución finaliza el ciclo lectivo en diciembre (mes corto de cierre institucional), requiriendo un informe trimestral formal que integre el cuarto trimestre (Octubre, Noviembre y Diciembre).
+  3. Los facilitadores debían contar con soporte transparente y visible para continuar cargando sus cuadrículas mensuales mes a mes.
+
+- **Acciones Implementadas**:
+  1. **Carga Continua de Meses y Auto-normalización**:
+     - Agregados los períodos `2026-10 (Octubre 2026)`, `2026-11 (Noviembre 2026)` y `2026-12 (Diciembre 2026)` en `src/app/form/page.tsx`.
+     - Normalización automática en `POST /api/forms` y `PUT /api/forms` para transformar meses en texto plano a formato canónico `YYYY-MM`.
+     - Banner informativo de carga mensual continua y filtros directos de mes (`🍂 Octubre`, `🍁 Noviembre`, `🎄 Diciembre`) en `src/app/forms/page.tsx`.
+  2. **Módulo de Cierre Institucional de Fin de Año en `/final-reports`**:
+     - Selector superior con 2 solapas:
+       * `🏆 1. Informe Final Anual (Ene - Sep/Oct)`
+       * `🎄 2. Cierre de Año (Trimestral Octubre - Noviembre - Diciembre)`
+     - En la solapa de Cierre:
+       * KPIs en tiempo real para los 77 concurrentes (Octubre cargado: 27/77, Noviembre, Diciembre y Trimestrales de Cierre).
+       * Filtros por estado (`Todos`, `⚡ Con Cuadrículas para Generar`, `🎄 Con Trimestral Cierre`, `⚠️ Sin Cuadrículas`).
+       * Cada tarjeta de concurrente despliega 3 bloques limpios (Octubre, Noviembre, Diciembre) con botones para `[ 👁️ Ver Cuadrícula ]` (usando `MonthlyFormPreviewModal`) y `[ 📥 Subir / Arrastrar Excel ]`.
+       * Botón de acción principal: `[ ⚡ Generar Trimestral Cierre (Oct-Nov-Dic) ]` con IA o previsualización/descarga Word si ya fue emitido.
+  3. **Backend y Filtros**:
+     - `evaluateBlocks` en `src/app/api/reports/final/route.ts` computa el objeto `cierreAnual` (`has10`, `has11`, `has12`, IDs de formulario y trimestral existente).
+     - `POST /api/reports/trimestral` soporta `periodoPersonalizado` para rotular `YYYY-10 – YYYY-12`.
+     - `src/app/reports/page.tsx` incorpora `<option value="FINAL">🏆 Informe Final</option>`.
+  4. **Compilación y Despliegue en Producción (VPS)**:
+     - `npm run build` ejecutado exitosamente en local y en el VPS (código 0, 19/19 páginas).
+     - PM2 recargado en el VPS (`informes-andar`, PID 114317).
+     - Verificación en vivo: 77 concurrentes activos, 27 cuadrículas de Octubre ya contabilizadas y sistema listo para recibir Noviembre y Diciembre.
