@@ -101,7 +101,7 @@ Queda TERMINANTEMENTE PROHIBIDO escribir las palabras "catering", "pastelería",
     const response = await client.chat.completions.create({
       model: process.env.LLM_MODEL || 'gpt-4o',
       temperature: Number(process.env.LLM_TEMPERATURE ?? 0.35),
-      max_tokens: 4000,
+      max_tokens: 8000,
       response_format: { type: 'json_object' },
       messages: [
         {
@@ -641,145 +641,119 @@ ${t2Text}
 ${m2Text}
 
 ## INSTRUCCIONES ESPECÍFICAS DE GENERACIÓN Y EXPLAYAMIENTO:
-1. **FIDELIDAD ESTRICTA A LA REALIDAD DEL JOVEN ("NO INVENTES NADA - USA TODA LA INFORMACIÓN")**:
-   - Integra exhaustivamente los 4 momentos del año tal como ocurrieron.
+1. **FIDELIDAD ESTRICTA A LA REALIDAD DEL JOVEN ("NO INVENTES NADA - USA TODA LA INFORMACIÓN DISPONIBLE")**:
+   - Integra exhaustivamente los 4 momentos del año tal como ocurrieron, articulando toda la información empírica.
    - Si están presentes las evaluaciones del mes de Julio, articula sus observaciones (asistencia, autorregulación, talleres de invierno, expresión emocional o vínculos) dentro de la trayectoria del concurrente como puente hacia el segundo semestre.
-   - Nombra las actividades reales: natación, arte con telas, festejos de Malvinas/Tierra/Autismo, cruces seguros y semáforos, paseos, Kermés, boliche CCP, Juegos Bonaerenses, salidas a shopping/polideportivo, etc.
-   - Si no hay registro de catering o cocina industrial, NO menciones catering. Céntrate estrictamente en sus talleres reales.
-2. **SECCIÓN 7: LOGROS DESTACADOS DEL CICLO ANUAL (EXPLAYAMIENTO EXTENSO Y CUALITATIVO)**:
+   - Nombra las actividades y vivencias reales: talleres institucionales cursados, roles funcionales (como tareas auxiliares, de limpieza o asistencia), natación/pileta adaptada, festejos y efemérides (Primavera, Malvinas, Tierra, Autismo), cruces seguros y semáforos, salidas comunitarias, Kermés institucional, boliche CCP, eventos recreativos, uso de transporte urbano (colectivos, trenes), herramientas de orientación (GPS) y gestión de dinero (billeteras virtuales).
+   - Si no hay registro de catering o cocina industrial, NO menciones catering ni pastelería. Céntrate estrictamente en sus talleres reales y autonomía sociolaboral.
+2. **SECCIÓN 7: LOGROS DESTACADOS DEL CICLO ANUAL (EXPLAYAMIENTO EXTENSO, PROFUNDO Y CUALITATIVO)**:
    - Explayate ampliamente en cada una de las 4 áreas de logros ("practicas", "emocionalesSociales", "decisiones", "nuevasExperiencias").
-   - Cada área DEBE contener entre 2 y 3 párrafos descriptivos completos (separados por \n\n), articulando:
-     * "practicas": Habilidades funcionales, manejo de pertenencias, AVD, autonomía en talleres reales (detallar talleres y destrezas explicando cualitativamente el grado de consolidación y autonomía, SIN escribir jamás "Nivel 1", "Nivel 2", "Nivel 3", "Nivel 4" ni hablar de "niveles"), movilidad, uso de celular y tecnología.
-     * "emocionalesSociales": Expresión verbal y gestual, clima afectivo con pares, autorregulación emocional, vivencias de grupo y desarrollo personal en espacios de diálogo.
-     * "decisiones": Protagonismo y autodeterminación, elecciones cotidianas de talleres, acondicionamiento de espacios, preparación de recetas/desayunos si aplica, e iniciativa propia.
-     * "nuevasExperiencias": Participación en salidas comunitarias, festejos institucionales, boliche CCP, actividades deportivas, evoluciones en pileta/natación, Juegos Bonaerenses y representación grupal.
-3. **NARRATIVA AMPLIA EN TODAS LAS SECCIONES DE LA PARTE 1**:
-   - "objetivoProceso", "escuchaActiva", "estadoEmocional", "apoyosAjustes", "suenosMetas" y "circuloApoyo" deben ser párrafos sólidos, explicativos y detallados, citando las experiencias y apoyos específicos del año.
+   - Cada área DEBE contener 3 párrafos descriptivos y completos (separados por \\n\\n), articulando:
+     * "practicas": Habilidades funcionales, rol en el taller y predio (tareas de mantenimiento, limpieza, acondicionamiento de espacios, asistencia a compañeros o materiales), manejo de pertenencias, AVD, autonomía en talleres reales (detallar talleres y destrezas explicando cualitativamente el grado de consolidación y autonomía, SIN escribir jamás "Nivel 1", "Nivel 2", "Nivel 3", "Nivel 4" ni hablar de "niveles"), movilidad urbana independiente, uso de celular responsable y tecnología (GPS, billeteras virtuales).
+     * "emocionalesSociales": Expresión verbal y gestual, clima afectivo con pares, empatía y contención hacia otros concurrentes, autorregulación emocional ante desafíos o situaciones de estrés, lazos de confianza y respeto mutuo con facilitadores y equipo interdisciplinario.
+     * "decisiones": Protagonismo y autodeterminación, elecciones cotidianas de talleres y tareas, acondicionamiento de espacios, preparación de colaciones o materiales, iniciativa propia en salidas y expresión libre de sus metas y deseos personales.
+     * "nuevasExperiencias": Participación en salidas comunitarias, festejos institucionales (Kermés, Primavera), boliche CCP, actividades deportivas y caminatas saludables, evoluciones en pileta/natación (flotación, confianza acuática y desplazamientos adaptados) y representación grupal.
+3. **NARRATIVA AMPLIA, PROFUNDA Y COMPLETA EN TODAS LAS SECCIONES DE LA PARTE 1 (CERO TEXTOS CORTOS)**:
+   - "objetivoProceso": 2 párrafos completos y profundos (250-350 palabras en total) que articulen la trayectoria anual integral, su rol y aporte al grupo, la evolución de su autonomía y la alineación con su proyecto de vida (PCP).
+   - "escuchaActiva": 2 párrafos descriptivos y detallados (200-300 palabras en total) sobre la expresión de sus elecciones, preferencias de talleres y actividades, autonomía funcional en la gestión de su rutina diaria y pertenencias, y su comunicación asertiva.
+   - "estadoEmocional": 2 párrafos descriptivos y minuciosos (200-300 palabras en total) sobre la evolución de su bienestar anímico, expresión de emociones, estrategias de autorregulación ante imprevistos, relaciones de afecto y compañerismo con pares y facilitadores, y momentos de entusiasmo en propuestas compartidas.
+   - "apoyosAjustes": 2 párrafos exhaustivos (200-300 palabras en total) detallando todos los apoyos y ajustes implementados: apoyos organizativos (rutinas visuales, cronogramas), apoyos verbales (anticipación, modelado entre pares), apoyos específicos interdisciplinarios (nutrición, controles de salud, tratamientos) y adecuaciones en actividades deportivas y salidas.
+   - "suenosMetas": 2 párrafos extensos y motivadores articulando sus metas y sueños personales del PCP con las habilidades prácticas, organizativas y de autonomía desarrolladas en el Centro de Día, proyectando su continuidad.
+   - "circuloApoyo": 2 párrafos completos valorando la articulación entre el equipo interdisciplinario de Andar, la familia (rutinas y hábitos en el hogar) y las redes comunitarias de soporte.
+   - "proyecciones": 8 a 10 líneas de acción descriptivas, ricas y operativas para el próximo ciclo (cada ítem debe ser una directiva completa y detallada de 1-2 oraciones explicativas, no solo un título corto).
 4. **ESCALA DE CALIDAD DE VIDA (8 DIMENSIONES DE SCHALOCK & VERDUGO)**:
-   En "evaluacionDimensiones", incluye exactamente las 8 dimensiones con valoración ("✔" o "➖" o "❌") y un comentario breve sustancioso sustentado en hechos del año, respetando la definición psicológica institucional:
-   1. Bienestar Físico: Salud general, controles médicos, nutrición, hábitos higiénicos, deporte y natación.
-   2. Bienestar Emocional: Estado anímico, tranquilidad, expresión y autorregulación emocional.
+   En "evaluacionDimensiones", incluye exactamente las 8 dimensiones con valoración ("✔" o "➖" o "❌") y un comentario sustancioso y descriptivo de 2 a 3 oraciones completas fundamentado en hechos reales del ciclo anual (nada de frases telegráficas de 1 oración):
+   1. Bienestar Físico: Salud general, controles médicos periódicos, adherencia nutricional, hábitos higiénicos, deporte, caminatas y natación adaptada.
+   2. Bienestar Emocional: Estado anímico habitual, tranquilidad, expresión adecuada de emociones, seguridad afectiva y estrategias de autorregulación.
    3. Bienestar Material (SITUACIÓN SOCIOECONÓMICA Y COBERTURA DE NECESIDADES BÁSICAS):
-      ¡ATENCIÓN ESTRICTA!: Se refiere EXCLUSIVAMENTE a estabilidad habitacional, situación económica familiar, cobertura de alimentación, vestimenta, transporte/pases, pensión, CUD y cobertura médica.
+      ¡ATENCIÓN ESTRICTA!: Se refiere EXCLUSIVAMENTE a estabilidad habitacional y familiar, situación socioeconómica, cobertura de alimentación adecuada, vestimenta acorde, transporte/pases, pensión, CUD y cobertura médica/social.
       PROHIBICIÓN TERMINANTE de hablar de elementos de cocina, utensilios, herramientas o materiales de taller.
-   4. Desarrollo Personal: Aprendizaje en talleres, destrezas funcionales y competencias prácticas.
-   5. Relaciones Interpersonales: Lazos de compañerismo, interacción con pares, empatía y convivencia.
-   6. Inclusión Social: Participación activa en la comunidad (Kermés, boliche CCP, polideportivo, salidas y eventos).
-   7. Autodeterminación: Elección, toma de decisiones cotidianas, gustos y metas de su PCP.
-   8. Derechos: Dignidad, privacidad, trato igualitario como sujeto de derecho y acceso a apoyos.
-5. **PLAN DE ABORDAJE ${proximoAnio} (PARTE 2)**:
-   - "introduccion": Párrafo institucional metodológico adaptado a ${jovenNombre}.
-   - "objetivoGeneral": Objetivo anual integrador para ${proximoAnio}.
-   - "objetivosEspecificos": 7 a 8 metas operativas para el próximo ciclo.
-   - "lineasAccion": 6 áreas con 3-4 acciones concretas cada una (autonomia, regulacionEmocional, habilidadesSociales, inclusionComunitaria, autodeterminacion, acompanamientoFamiliar).
-   - "suenosMetas": 4 a 5 metas proyectadas alineadas a "${pcpSuenos}".
-   - "indicadores": 8 indicadores de logro para las dimensiones de calidad de vida.
-   - "lineamientosFacilitador": 4 a 5 directivas prácticas para el equipo de apoyo.
+   4. Desarrollo Personal: Aprendizaje continuado en talleres, destrezas funcionales, competencias operativas y autogestión en la vida diaria.
+   5. Relaciones Interpersonales: Lazos de compañerismo, interacción comunicativa respetuosa, empatía, reciprocidad, contención mutua y convivencia con pares y facilitadores.
+   6. Inclusión Social: Participación activa en la comunidad (Kermés, boliche CCP, polideportivo, salidas comunitarias, paseos y festejos compartidos).
+   7. Autodeterminación: Elección libre, toma de decisiones cotidianas sobre sus actividades y tiempos, manifestación de preferencias y metas de su PCP.
+   8. Derechos: Dignidad, privacidad, trato igualitario como sujeto de pleno derecho y acceso efectivo a apoyos y ajustes razonables.
+5. **PLAN DE ABORDAJE ${proximoAnio} (PARTE 2 - PERSONALIZADO, OPERATIVO Y DETALLADO)**:
+   - "introduccion": Párrafo institucional metodológico adaptado a ${jovenNombre} (120-180 palabras).
+   - "objetivoGeneral": Objetivo anual integrador, robusto y motivador para el ciclo ${proximoAnio}.
+   - "objetivosEspecificos": 7 a 8 objetivos específicos personalizados, operativos y medibles (no genéricos), adaptados a las metas reales de la persona (ej. movilidad urbana autónoma, consolidación de tareas auxiliares/laborales, autocuidado nutricional, autodeterminación en la comunidad).
+   - "lineasAccion": 6 áreas (autonomia, regulacionEmocional, habilidadesSociales, inclusionComunitaria, autodeterminacion, acompanamientoFamiliar) con 3 a 4 acciones concretas, detalladas y personalizadas en cada una (cada acción formulada con una oración completa y descriptiva).
+   - "suenosMetas": 4 a 5 metas proyectadas concretas y medibles alineadas estrictamente a "${pcpSuenos}".
+   - "indicadores": 8 indicadores observables basados en las 8 dimensiones de Schalock & Verdugo (bienestarFisico, bienestarEmocional, bienestarMaterial, desarrolloPersonal, relacionesInterpersonales, inclusionSocial, autodeterminacion, derechos).
+   - "lineamientosFacilitador": 5 a 6 directivas de intervención concretas y prácticas para el facilitador de grupo y el equipo técnico.
 
 ## FORMATO DE SALIDA (JSON ESTRICTO):
 Responde ÚNICAMENTE con un JSON válido con la siguiente estructura:
 {
   "parte1_informeFinal": {
-    "objetivoProceso": "Párrafo amplio y profundo (150-250 palabras) que sintetiza la trayectoria anual, metas del PCP y habilidades abordadas a lo largo del año.",
-    "escuchaActiva": "Párrafo exhaustivo sobre sus preferencias expresadas, escucha activa, autonomía funcional, movilidad y elecciones en salidas compartidas.",
-    "estadoEmocional": "Párrafos detallados sobre la evolución anímica, bienestar emocional, manejo de situaciones de malestar, autorregulación y momentos de entusiasmo.",
-    "apoyosAjustes": "Párrafo minucioso detallando apoyos visuales, cronogramas, rutinas, acompañamientos verbales y adecuaciones físicas o comunicacionales implementadas.",
+    "objetivoProceso": "Dos párrafos amplios y profundos (250-350 palabras, separados por \\n\\n) que sintetizan la trayectoria anual, metas del PCP, rol en el grupo y habilidades abordadas a lo largo del año.",
+    "escuchaActiva": "Dos párrafos exhaustivos (200-300 palabras, separados por \\n\\n) sobre sus preferencias expresadas, escucha activa, autonomía funcional, movilidad y elecciones en salidas compartidas.",
+    "estadoEmocional": "Dos párrafos detallados (200-300 palabras, separados por \\n\\n) sobre la evolución anímica, bienestar emocional, manejo de situaciones de malestar, autorregulación y momentos de entusiasmo.",
+    "apoyosAjustes": "Dos párrafos minuciosos (200-300 palabras, separados por \\n\\n) detallando apoyos visuales, cronogramas, rutinas, acompañamientos verbales, apoyos nutricionales/médicos y adecuaciones físicas o comunicacionales implementadas.",
     "evaluacionDimensiones": [
-      { "dimension": "Bienestar Físico", "valoracion": "✔", "comentario": "..." },
-      { "dimension": "Bienestar Emocional", "valoracion": "✔", "comentario": "..." },
-      { "dimension": "Bienestar Material", "valoracion": "✔", "comentario": "Cuenta con adecuada cobertura de sus necesidades materiales básicas (alimentación, indumentaria, transporte regular y cobertura social) y estabilidad en su entorno familiar." },
-      { "dimension": "Desarrollo Personal", "valoracion": "✔", "comentario": "..." },
-      { "dimension": "Relaciones Interpersonales", "valoracion": "➖", "comentario": "..." },
-      { "dimension": "Inclusión Social", "valoracion": "✔", "comentario": "..." },
-      { "dimension": "Autodeterminación", "valoracion": "✔", "comentario": "..." },
-      { "dimension": "Derechos", "valoracion": "➖", "comentario": "..." }
+      { "dimension": "Bienestar Físico", "valoracion": "✔", "comentario": "Comentario sustancial de 2-3 oraciones descriptivas sobre controles de salud, hábitos higiénicos, caminatas y natación adaptada." },
+      { "dimension": "Bienestar Emocional", "valoracion": "✔", "comentario": "Comentario sustancial de 2-3 oraciones descriptivas sobre tranquilidad, autorregulación, bienestar anímico y expresión asertiva." },
+      { "dimension": "Bienestar Material", "valoracion": "✔", "comentario": "Cuenta con adecuada cobertura integral de sus necesidades materiales básicas (alimentación, indumentaria, transporte regular y cobertura social), estabilidad habitacional y un entorno familiar contenedor que respalda su proyecto de vida." },
+      { "dimension": "Desarrollo Personal", "valoracion": "✔", "comentario": "Comentario sustancial de 2-3 oraciones descriptivas sobre aprendizaje en talleres, competencias prácticas y resolución de tareas." },
+      { "dimension": "Relaciones Interpersonales", "valoracion": "✔", "comentario": "Comentario sustancial de 2-3 oraciones descriptivas sobre compañerismo, empatía, apoyo mutuo y relación con facilitadores." },
+      { "dimension": "Inclusión Social", "valoracion": "✔", "comentario": "Comentario sustancial de 2-3 oraciones descriptivas sobre salidas comunitarias, Kermés, boliche CCP y participación social." },
+      { "dimension": "Autodeterminación", "valoracion": "✔", "comentario": "Comentario sustancial de 2-3 oraciones descriptivas sobre toma de decisiones cotidianas, manifestación de gustos y protagonismo en su PCP." },
+      { "dimension": "Derechos", "valoracion": "✔", "comentario": "Comentario sustancial de 2-3 oraciones descriptivas sobre respeto pleno a su dignidad, privacidad, tiempos personales y acceso a apoyos." }
     ],
     "logros": {
-      "practicas": "2 a 3 párrafos descriptivos y continuos (separados por \\n\\n) detallando el desempeño en talleres reales cursados, explicando cualitativamente el grado de afianzamiento y autonomía en cada destreza con sus apoyos requeridos (PROHIBICIÓN ESTRICTA: jamás escribir 'Nivel 1', 'Nivel 2', 'Nivel 3', 'Nivel 4' ni hablar de 'niveles'; explicarlo siempre en términos de autonomía y apoyos). NO incluir etiquetas como 'Párrafo 1:'.",
-      "emocionalesSociales": "2 a 3 párrafos descriptivos y continuos (separados por \\n\\n) sobre la evolución anímica, expresión verbal y gestual, asertividad, vínculos afectivos con pares, clima de compañerismo y autorregulación emocional. NO incluir etiquetas como 'Párrafo 1:'.",
-      "decisiones": "2 a 3 párrafos descriptivos y continuos (separados por \\n\\n) sobre el ejercicio de la autodeterminación, protagonismo en actividades, elecciones cotidianas en talleres, menúes o propuestas de ocio, e iniciativa propia. NO incluir etiquetas como 'Párrafo 1:'.",
-      "nuevasExperiencias": "2 a 3 párrafos descriptivos y continuos (separados por \\n\\n) sobre la participación en vivencias comunitarias (Kermés, boliche CCP, festejos institucionales), desempeño en natación/deporte, salidas recreativas y representación en la comunidad. NO incluir etiquetas como 'Párrafo 1:'."
+      "practicas": "3 párrafos descriptivos y continuos (separados por \\n\\n) detallando el desempeño en talleres reales cursados, rol en el predio/taller, tareas de mantenimiento/limpieza o auxilio, manejo de pertenencias, orientación urbana, uso de GPS y billeteras virtuales, explicando cualitativamente el grado de afianzamiento y autonomía (PROHIBICIÓN ESTRICTA: jamás escribir 'Nivel 1', 'Nivel 2', 'Nivel 3', 'Nivel 4' ni hablar de 'niveles'). NO incluir etiquetas como 'Párrafo 1:'.",
+      "emocionalesSociales": "3 párrafos descriptivos y continuos (separados por \\n\\n) sobre la evolución anímica, expresión verbal y gestual, asertividad, vínculos afectivos con pares, clima de compañerismo, contención a otros y autorregulación emocional. NO incluir etiquetas como 'Párrafo 1:'.",
+      "decisiones": "3 párrafos descriptivos y continuos (separados por \\n\\n) sobre el ejercicio de la autodeterminación, protagonismo en actividades, elecciones cotidianas en talleres, preparación de espacios o colaciones, e iniciativa propia. NO incluir etiquetas como 'Párrafo 1:'.",
+      "nuevasExperiencias": "3 párrafos descriptivos y continuos (separados por \\n\\n) sobre la participación en vivencias comunitarias (Kermés, boliche CCP, festejos institucionales), desempeño en natación/pileta adaptada, caminatas saludables, salidas recreativas y representación en la comunidad. NO incluir etiquetas como 'Párrafo 1:'."
     },
-    "suenosMetas": "Párrafo extenso sobre la proyección de sus metas personales, herramientas afianzadas y horizonte de desarrollo.",
-    "circuloApoyo": "Párrafo detallado valorando la articulación con la familia, redes afectivas y el acompañamiento cotidiano en el hogar.",
+    "suenosMetas": "Dos párrafos extensos (separados por \\n\\n) sobre la proyección de sus metas personales y sueños del PCP, herramientas afianzadas y horizonte de desarrollo independiente.",
+    "circuloApoyo": "Dos párrafos detallados (separados por \\n\\n) valorando la articulación interdisciplinaria entre el Centro de Día, la familia (rutinas y cuidados en el hogar) y las redes afectivas de soporte.",
     "proyecciones": [
-      "Fortalecer la comunicación familiar",
-      "Promover la autonomía personal",
-      "Potenciar estrategias de autorregulación emocional",
-      "Fomentar la participación en actividades significativas",
-      "Desarrollar habilidades sociales y emocionales",
-      "Estimular la toma de decisiones y la iniciativa en actividades cotidianas y recreativas",
-      "Incentivar la planificación y organización de actividades personales y grupales",
-      "Promover la elección autónoma en actividades de ocio y recreación"
+      "8 a 10 líneas de acción descriptivas y operativas, cada una con una formulación completa y explicativa de 1 a 2 oraciones."
     ]
   },
   "parte2_planAbordaje": {
     "anio": "${proximoAnio}",
-    "introduccion": "Este plan se ha elaborado con el objetivo de mejorar el acceso del concurrente a los apoyos y servicios necesarios para incrementar su calidad de vida. Se han articulado las observaciones del ciclo institucional con sus fortalezas, redes de apoyo, sueños y metas para permitir una evaluación objetiva de los logros.",
-    "objetivoGeneral": "Fortalecer la autonomía, autodeterminación e inclusión social de ${jovenNombre}, consolidando los aprendizajes adquiridos en el ciclo anterior y ampliando sus oportunidades de participación comunitaria, recreativa y cultural, con el acompañamiento activo del equipo interdisciplinario.",
+    "introduccion": "Párrafo metodológico institucional adaptado a ${jovenNombre} (120-180 palabras).",
+    "objetivoGeneral": "Objetivo anual integrador, robusto y motivador para ${proximoAnio}.",
     "objetivosEspecificos": [
-      "Potenciar habilidades de la vida diaria, consolidando rutinas de autocuidado y organización.",
-      "Promover la autorregulación emocional y la expresión adecuada de sentimientos en distintos contextos.",
-      "Favorecer el desarrollo de habilidades sociales que fortalezcan la confianza en sí mismo y la convivencia.",
-      "Sostener la participación en espacios de decisión, favoreciendo su protagonismo y elecciones significativas.",
-      "Ampliar la participación en actividades comunitarias, culturales, deportivas y recreativas.",
-      "Acompañar sus intereses y sueños personales como motores centrales de desarrollo.",
-      "Reforzar el trabajo conjunto familia-equipo institucional."
+      "7 a 8 objetivos específicos personalizados, operativos y medibles para el próximo ciclo."
     ],
     "lineasAccion": {
       "autonomia": [
-        "Planificación semanal de actividades y responsabilidades mediante apoyos visuales y registro personal.",
-        "Mantenimiento del orden en pertenencias personales y colaboración activa en espacios compartidos.",
-        "Consolidación de rutinas prácticas de autocuidado y desplazamiento seguro."
+        "3 a 4 acciones concretas y descriptivas de autonomía en la vida diaria."
       ],
       "regulacionEmocional": [
-        "Uso de recursos gráficos y registros para identificar y manifestar emociones.",
-        "Espacios de diálogo para compartir vivencias y preocupaciones con contención del grupo.",
-        "Estrategias de relajación y pausas activas frente a situaciones de sobrecarga."
+        "3 a 4 acciones concretas y descriptivas de regulación emocional y bienestar subjetivo."
       ],
       "habilidadesSociales": [
-        "Instancias de encuentro con pares en actividades lúdicas, almuerzos y talleres.",
-        "Fortalecimiento de la comunicación asertiva y turnos de palabra en dinámicas grupales.",
-        "Ampliación de interacciones y lazos de compañerismo en espacios compartidos."
+        "3 a 4 acciones concretas y descriptivas de habilidades sociales y relaciones interpersonales."
       ],
       "inclusionComunitaria": [
-        "Participación en propuestas deportivas, culturales y salidas recreativas comunitarias.",
-        "Desplazamientos en la vía pública afianzando reconocimiento de señales y cruces seguros.",
-        "Aprovechamiento de eventos y festejos institucionales y barriales."
+        "3 a 4 acciones concretas y descriptivas de inclusión comunitaria y participación social."
       ],
       "autodeterminacion": [
-        "Participación protagónica en la elección de propuestas y talleres de su preferencia.",
-        "Ejercicio de toma de decisiones entre opciones cotidianas de ocio y formación.",
-        "Expresión clara de opiniones y proyectos personales."
+        "3 a 4 acciones concretas y descriptivas de autodeterminación y toma de decisiones."
       ],
       "acompanamientoFamiliar": [
-        "Reuniones y comunicación fluida familia-equipo para seguimiento conjunto.",
-        "Acompañamiento en el hogar que refuerce las responsabilidades y la autonomía alcanzada.",
-        "Respeto y respaldo familiar hacia sus elecciones y tiempos personales."
+        "3 a 4 acciones concretas y descriptivas de acompañamiento familiar y trabajo conjunto."
       ]
     },
     "suenosMetas": [
-      "Avanzar activamente hacia la concreción de sus metas personales expresadas en su proyecto de vida.",
-      "Ampliar oportunidades de interacción social y participación en eventos comunitarios.",
-      "Continuar afianzando destrezas prácticas y recreativas que fortalezcan su autoconfianza.",
-      "Apropiarse de herramientas cotidianas y tecnológicas como recursos de autonomía."
+      "4 a 5 metas proyectadas concretas alineadas a sus sueños del PCP."
     ],
     "indicadores": {
-      "bienestarFisico": "Continuidad y disfrute en la participación en actividades físicas adaptadas, natación y rutinas saludables.",
-      "bienestarEmocional": "Identificación y regulación de emociones con apoyos adaptados.",
-      "bienestarMaterial": "Cobertura integral de necesidades materiales básicas, estabilidad habitacional, traslados y recursos indispensables para su vida diaria.",
-      "desarrolloPersonal": "Progresos en habilidades prácticas, resolución de tareas cotidianas y autogestión.",
-      "relacionesInterpersonales": "Fortalecimiento de lazos de compañerismo, respeto y empatía con pares y facilitadores.",
-      "inclusionSocial": "Participación activa en salidas, eventos culturales, deportivos y comunitarios.",
-      "autodeterminacion": "Iniciativa y frecuencia en la toma de decisiones sobre sus actividades y tiempos.",
-      "derechos": "Respeto pleno de sus elecciones, tiempos personales y acceso a apoyos y ajustes razonables."
+      "bienestarFisico": "Indicador observable y medible de bienestar físico.",
+      "bienestarEmocional": "Indicador observable y medible de bienestar emocional.",
+      "bienestarMaterial": "Indicador observable y medible de bienestar material (necesidades básicas, transporte, recursos indispensables).",
+      "desarrolloPersonal": "Indicador observable y medible de desarrollo personal y habilidades prácticas.",
+      "relacionesInterpersonales": "Indicador observable y medible de relaciones interpersonales y compañerismo.",
+      "inclusionSocial": "Indicador observable y medible de inclusión social y comunitaria.",
+      "autodeterminacion": "Indicador observable y medible de autodeterminación e iniciativa.",
+      "derechos": "Indicador observable y medible de derechos y accesibilidad a apoyos."
     },
     "lineamientosFacilitador": [
-      "Garantizar apoyos visuales, organizativos y comunicacionales claros que refuercen su autonomía.",
-      "Respetar los tiempos personales del concurrente, brindando seguridad y contención en desafíos nuevos.",
-      "Ofrecer alternativas claras y registrar sus elecciones para potenciar su autodeterminación.",
-      "Sostener un diálogo fluido con la familia para asegurar coherencia en las pautas de autonomía.",
-      "Brindar contención empática en momentos de malestar, validando sus emociones y promoviendo el autocuidado."
+      "5 a 6 directivas de intervención claras, prácticas y metodológicas para el equipo de facilitadores."
     ]
   }
 }

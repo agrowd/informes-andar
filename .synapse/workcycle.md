@@ -1,5 +1,38 @@
 # 🗓️ Workcycle Log
 
+## 2026-11-18 (Optimización de Profundidad Narrativa, Viñetas Estructuradas en Word y Corrección de Metadatos Incompletos - D-97)
+- **Objetivo**: Resolver la observación y solicitud del usuario sobre el Informe Final de David Carrizo (ID 48, Emprendedores):
+  *"david carrizo el word cuando se genera o lo regenero de nuevo sale con varias cosas inconclusas o corto de texto, esta en descargas"*
+- **Diagnóstico y Causa Raíz**:
+  1. **Campos en Blanco en Cabecera**: `DNI: ` y `Obra Social: ` se mostraban vacíos tanto en la Parte 1 como en la Parte 2 porque en la tabla `youngs` 70 de los 77 concurrentes no tienen DNI cargado. La plantilla DOCX dejaba el espacio en blanco dando sensación de documento "inconcluso".
+  2. **Listas Aglutinadas sin Viñetas**: En `final_template.docx`, los campos `{proyeccionesTexto}`, `{planObjetivosEspecificos}`, `{planLineas_*}` (las 6 áreas), `{planSuenosMetas}`, `{planIndicadores}` y `{planLineamientosFacilitador}` se inyectaban como strings unidos con `\n` sin viñetas (`• `). En Word, `docxtemplater` con `linebreaks: true` insertaba saltos de línea suaves (`<w:br/>`) dentro del mismo párrafo, provocando que los ítems se vieran como un bloque corrido sin estructura de lista.
+  3. **Narrativa Corta y Genérica**:
+     - El límite de tokens para OpenAI estaba fijado en `max_tokens: 4000`, constriñendo la extensión del JSON devuelto.
+     - En el prompt de `finalReportGenerator.ts`, las secciones Objetivo del Proceso, Escucha Activa, Estado Emocional, Apoyos y Ajustes, Sueños y Metas, y Círculo de Apoyo estaban configuradas para solicitar "un párrafo", y la tabla de dimensiones pedía "un comentario breve".
+     - Como resultado, la IA condensaba excesivamente la información y copiaba los arrays genéricos del schema de ejemplo en el Plan de Abordaje 2027.
+- **Acciones Realizadas**:
+  1. **Formateo Universal con Viñetas en DOCX (`src/app/api/reports/[id]/.docx/route.ts`)**:
+     - Se creó la función `formatBullets(arr)` para anteponer la viñeta `• ` a cada elemento de lista y separarlos con saltos limpios.
+     - Se aplicó a: `proyeccionesTexto`, `planObjetivosEspecificos`, `planLineas_autonomia`, `planLineas_regulacionEmocional`, `planLineas_habilidadesSociales`, `planLineas_inclusionComunitaria`, `planLineas_autodeterminacion`, `planLineas_acompanamientoFamiliar`, `planSuenosMetas` y `planLineamientosFacilitador`.
+     - En `planIndicadores`, se formatearon las 8 dimensiones con viñeta (`• Bienestar Físico: ...`, `• Bienestar Emocional: ...`, etc.) en líneas independientes.
+     - Se implementó fallback institucional para datos faltantes: `displayDni = dni?.trim() || 'S/D (En legajo institucional)'` y `displayObraSocial = obraSocial?.trim() || 'S/D (En legajo institucional)'`.
+  2. **Ampliación de Profundidad Narrativa en IA (`src/lib/ai/finalReportGenerator.ts`)**:
+     - Se duplicó la capacidad máxima de tokens de `max_tokens: 4000` a `max_tokens: 8000`.
+     - Se reestructuraron las directivas del prompt de OpenAI:
+       * 2 párrafos amplios y profundos (250-350 palabras) para Objetivo del Proceso, Escucha Activa, Estado Emocional, Apoyos y Ajustes, Sueños y Metas, y Círculo de Apoyo.
+       * Comentarios sustanciosos de 2 a 3 oraciones completas con evidencia real en cada una de las 8 dimensiones de Calidad de Vida (Schalock & Verdugo).
+       * 3 párrafos descriptivos y completos por cada una de las 4 áreas de logros (Habilidades Prácticas, Emocionales/Sociales, Decisiones y Nuevas Experiencias), articulando minuciosamente su rol como auxiliar en Emprendedores, tareas de limpieza/mantenimiento, orientación urbana, uso de GPS y billeteras virtuales, caminatas saludables, natación adaptada y metas Bariloche/Capital.
+       * 8 a 10 líneas de acción descriptivas en Proyecciones.
+       * En la Parte 2 (Plan de Abordaje 2027): objetivos específicos y líneas de acción completamente personalizados y operativos para el concurrente.
+  3. **Compilación, Despliegue en VPS y Regeneración**:
+     - Compilación local `npm run build` exitosa (19/19 páginas estáticas generadas).
+     - Subida de archivos al VPS (`149.50.128.73`), build remoto ejecutado exitosamente y servicio PM2 `informes-andar` recargado (PID 649176).
+     - Se ejecutó regeneración completa de David Carrizo (ID 48) con OpenAI gpt-4o:
+       * Documento generado: 26.675 caracteres y 3.855 palabras (frente a los 19.200 caracteres anteriores).
+       * Reporte #305 actualizado en PostgreSQL en producción.
+       * Archivo descargado en `C:\Users\Try Hard\Downloads\informe-final-David_Carrizo-Emprendedores-2026-11-18.docx`.
+- **Estado**: Solucionado, Verificado y Desplegado en Producción ✅
+
 ## 2026-11-04 (Carga Mensual Continua y Módulo de Cierre Anual Trimestral Q4 Octubre-Noviembre-Diciembre - D-96)
 - **Objetivo**: Implementar el requerimiento de la dirección de la institución trasmitido por el usuario en los audios:
   *"Ya necesito que los profes sigan cargando los informes mes a mes. Hoy estaba hablando de eso con Lourdes y lo que ella me plantea es que vos tenías que hacer un ajuste para que se pudiera cargar porque solo permitía cargar hasta el informe final que es en septiembre. Yo necesito que la carga sea mensual y que después el sistema... te saque el mensual, trimestral, semestral y final... No te olvides que yo tengo que cerrar el año en diciembre, que es un mes muy corto, con el trimestral de octubre, noviembre y diciembre. Por lo tanto yo necesito que los profes carguen el mes a mes."*

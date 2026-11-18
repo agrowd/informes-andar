@@ -118,16 +118,29 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
           const ad = getDim('autodeterminación');
           const de = getDim('derechos');
 
+          const formatBullets = (arr: any) => {
+            if (!arr) return '';
+            const list = Array.isArray(arr) ? arr : (typeof arr === 'string' ? arr.split(/\r?\n/) : [arr]);
+            return list
+              .map(x => String(x || '').trim())
+              .filter(Boolean)
+              .map(x => (x.startsWith('•') || x.startsWith('-') || x.startsWith('*')) ? x : `• ${x}`)
+              .join('\n');
+          };
+
           const rawName = repData?.datosGenerales?.nombreCompleto || '';
           const formattedName = formatApellidoNombre(rawName);
+
+          const displayDni = repData?.datosGenerales?.dni?.trim() || youngPcp?.dni || 'S/D (En legajo institucional)';
+          const displayObraSocial = repData?.datosGenerales?.obraSocial?.trim() || youngPcp?.obraSocial || 'S/D (En legajo institucional)';
 
           const p2Lineas = p2.lineasAccion || {};
           const p2Indicadores = p2.indicadores || {};
 
           doc.setData({
             nombreCompleto: formattedName,
-            dni: repData?.datosGenerales?.dni || '',
-            obraSocial: repData?.datosGenerales?.obraSocial || '',
+            dni: displayDni,
+            obraSocial: displayObraSocial,
             circuloParticipacion: repData?.datosGenerales?.circuloApoyoParticipacion || 'Sí',
             circuloIntegrantes: repData?.datosGenerales?.circuloApoyoPersonas || 'Familiares, facilitadores y compañeras de taller.',
             objetivoProceso: stripParrafoPrefixes(p1.objetivoProceso || repData?.secciones?.participacion || ''),
@@ -148,29 +161,29 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
             logros_nuevasExperiencias: stripParrafoPrefixes(p1.logros?.nuevasExperiencias || repData?.secciones?.metasDeportivas || ''),
             suenosMetas: stripParrafoPrefixes(p1.suenosMetas || repData?.secciones?.metaAlcanzada || ''),
             circuloApoyo: stripParrafoPrefixes(p1.circuloApoyo || repData?.secciones?.integracionRelaciones || ''),
-            proyeccionesTexto: Array.isArray(p1.proyecciones) ? p1.proyecciones.join('\n') : (p1.proyecciones || ''),
-            planAnio: p2.anio || '2026',
+            proyeccionesTexto: formatBullets(p1.proyecciones),
+            planAnio: p2.anio || '2027',
             planIntroduccion: p2.introduccion || 'Este plan se ha elaborado con el objetivo de mejorar el acceso del concurrente a los apoyos y servicios necesarios para incrementar su calidad de vida.',
             planObjetivoGeneral: p2.objetivoGeneral || '',
-            planObjetivosEspecificos: Array.isArray(p2.objetivosEspecificos) ? p2.objetivosEspecificos.join('\n') : '',
-            planLineas_autonomia: Array.isArray(p2Lineas.autonomia) ? p2Lineas.autonomia.join('\n') : '',
-            planLineas_regulacionEmocional: Array.isArray(p2Lineas.regulacionEmocional) ? p2Lineas.regulacionEmocional.join('\n') : '',
-            planLineas_habilidadesSociales: Array.isArray(p2Lineas.habilidadesSociales) ? p2Lineas.habilidadesSociales.join('\n') : '',
-            planLineas_inclusionComunitaria: Array.isArray(p2Lineas.inclusionComunitaria) ? p2Lineas.inclusionComunitaria.join('\n') : (Array.isArray(p2Lineas.integracionComunitaria) ? p2Lineas.integracionComunitaria.join('\n') : ''),
-            planLineas_autodeterminacion: Array.isArray(p2Lineas.autodeterminacion) ? p2Lineas.autodeterminacion.join('\n') : '',
-            planLineas_acompanamientoFamiliar: Array.isArray(p2Lineas.acompanamientoFamiliar) ? p2Lineas.acompanamientoFamiliar.join('\n') : '',
-            planSuenosMetas: Array.isArray(p2.suenosMetas) ? p2.suenosMetas.join('\n') : (p2.suenosMetas || ''),
+            planObjetivosEspecificos: formatBullets(p2.objetivosEspecificos),
+            planLineas_autonomia: formatBullets(p2Lineas.autonomia),
+            planLineas_regulacionEmocional: formatBullets(p2Lineas.regulacionEmocional),
+            planLineas_habilidadesSociales: formatBullets(p2Lineas.habilidadesSociales),
+            planLineas_inclusionComunitaria: formatBullets(p2Lineas.inclusionComunitaria || p2Lineas.integracionComunitaria),
+            planLineas_autodeterminacion: formatBullets(p2Lineas.autodeterminacion),
+            planLineas_acompanamientoFamiliar: formatBullets(p2Lineas.acompanamientoFamiliar),
+            planSuenosMetas: formatBullets(p2.suenosMetas),
             planIndicadores: [
-              `Bienestar Físico: ${p2Indicadores.bienestarFisico || 'Continuidad en actividades físicas y saludables.'}`,
-              `Bienestar Emocional: ${p2Indicadores.bienestarEmocional || 'Regulación de emociones con apoyos.'}`,
-              `Bienestar Material: ${p2Indicadores.bienestarMaterial || 'Cobertura adecuada de necesidades materiales básicas, transporte y recursos indispensables.'}`,
-              `Desarrollo Personal: ${p2Indicadores.desarrolloPersonal || 'Progresos en habilidades prácticas y vida diaria.'}`,
-              `Relaciones Interpersonales: ${p2Indicadores.relacionesInterpersonales || 'Fortalecimiento de lazos de compañerismo.'}`,
-              `Inclusión Social: ${p2Indicadores.inclusionSocial || p2Indicadores.integracionSocial || 'Participación en eventos comunitarios y deportivos.'}`,
-              `Autodeterminación: ${p2Indicadores.autodeterminacion || 'Elecciones autónomas en actividades cotidianas.'}`,
-              `Derechos: ${p2Indicadores.derechos || 'Respeto a decisiones y acceso a apoyos.'}`
+              `• Bienestar Físico: ${p2Indicadores.bienestarFisico || 'Continuidad y disfrute en la participación en actividades físicas adaptadas, natación y rutinas saludables.'}`,
+              `• Bienestar Emocional: ${p2Indicadores.bienestarEmocional || 'Identificación y regulación de emociones con apoyos adaptados.'}`,
+              `• Bienestar Material: ${p2Indicadores.bienestarMaterial || 'Cobertura integral de necesidades materiales básicas, estabilidad habitacional, traslados y recursos indispensables para su vida diaria.'}`,
+              `• Desarrollo Personal: ${p2Indicadores.desarrolloPersonal || 'Progresos en habilidades prácticas, resolución de tareas cotidianas y autogestión.'}`,
+              `• Relaciones Interpersonales: ${p2Indicadores.relacionesInterpersonales || 'Fortalecimiento de lazos de compañerismo, respeto y empatía con pares y facilitadores.'}`,
+              `• Inclusión Social: ${p2Indicadores.inclusionSocial || p2Indicadores.integracionSocial || 'Participación activa en salidas, eventos culturales, deportivos y comunitarios.'}`,
+              `• Autodeterminación: ${p2Indicadores.autodeterminacion || 'Iniciativa y frecuencia en la toma de decisiones sobre sus actividades y tiempos.'}`,
+              `• Derechos: ${p2Indicadores.derechos || 'Respeto pleno de sus elecciones, tiempos personales y acceso a apoyos y ajustes razonables.'}`
             ].join('\n'),
-            planLineamientosFacilitador: Array.isArray(p2.lineamientosFacilitador) ? p2.lineamientosFacilitador.join('\n') : (p2.lineamientosFacilitador || '')
+            planLineamientosFacilitador: formatBullets(p2.lineamientosFacilitador)
           });
         } else if (isTrimestral) {
           const fechaActual = new Date();
@@ -185,7 +198,22 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
           const rawName = repData?.datosGenerales?.nombreCompleto || '';
           const formattedName = formatApellidoNombre(rawName);
 
+          const displayDniTrim = repData?.datosGenerales?.dni?.trim() || youngPcp?.dni || 'S/D (En legajo institucional)';
+          const displayLegajo = repData?.datosGenerales?.legajo?.trim() || youngPcp?.legajo || 'S/D';
+
           doc.setData({
+            nombreCompleto: formattedName,
+            apellidoNombre: formattedName,
+            grupo: repData?.datosGenerales?.grupo || 'Clave de Sol',
+            facilitadores: repData?.datosGenerales?.facilitadores || repData?.datosGenerales?.facilitadorNombre || 'Sin facilitador',
+            metaSueno: repData?.datosGenerales?.metaSueno || 'Desarrollar su proyecto de vida...',
+            fechaInforme,
+            pcpAnio,
+            periodoAnio,
+            dni: displayDniTrim,
+            legajo: displayLegajo,
+            numeroLegajo: displayLegajo,
+            legajoNumero: displayLegajo,
             nombreCompleto: formattedName,
             apellidoNombre: formattedName,
             grupo: repData?.datosGenerales?.grupo || 'Clave de Sol',
