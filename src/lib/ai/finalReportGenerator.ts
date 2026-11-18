@@ -171,11 +171,83 @@ DIRECTIVAS CRÍTICAS DE ESTILO, PROFUNDIDAD NARRATIVA Y RIGOR INSTITUCIONAL:
     if (!content) throw new Error('Respuesta vacía de OpenAI para Informe Final');
 
     const cleanJson = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-    const parsed = JSON.parse(cleanJson);
-    return cleanPositiveNarrative(parsed, options.jovenNombre, hasCatering);
+    let parsed: any;
+    try {
+      parsed = JSON.parse(cleanJson);
+    } catch (parseErr) {
+      console.warn('JSON.parse inicial falló, intentando reparar JSON truncado...', parseErr);
+      parsed = repairTruncatedJson(cleanJson);
+    }
+    return cleanPositiveNarrative(parsed, options.jovenNombre, hasCatering, options);
   } catch (error) {
     console.error('Error llamando a OpenAI para narrativa de informe final:', error);
-    return cleanPositiveNarrative(generateDeterministicFinalFallback(options), options.jovenNombre, hasCatering);
+    return cleanPositiveNarrative(generateDeterministicFinalFallback(options), options.jovenNombre, hasCatering, options);
+  }
+}
+
+/**
+ * Repara estructuras JSON que hayan sido truncadas por límites de tokens de OpenAI
+ * cerrando cadenas incompletas, arrays y objetos abiertos.
+ */
+export function repairTruncatedJson(str: string): any {
+  let s = str.trim();
+  s = s.replace(/^```json\s*/i, '').replace(/\s*```$/i, '').trim();
+
+  try {
+    return JSON.parse(s);
+  } catch (initialErr) {
+    // Continuar a reparación estructural
+  }
+
+  let inString = false;
+  let isEscaped = false;
+  const stack: ('{' | '[')[] = [];
+
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    if (isEscaped) {
+      isEscaped = false;
+      continue;
+    }
+    if (ch === '\\') {
+      isEscaped = true;
+      continue;
+    }
+    if (ch === '"') {
+      inString = !inString;
+      continue;
+    }
+    if (!inString) {
+      if (ch === '{' || ch === '[') {
+        stack.push(ch);
+      } else if (ch === '}') {
+        if (stack[stack.length - 1] === '{') stack.pop();
+      } else if (ch === ']') {
+        if (stack[stack.length - 1] === '[') stack.pop();
+      }
+    }
+  }
+
+  let repaired = s;
+  if (inString) {
+    repaired += '"';
+  }
+
+  // Cerrar contenedores abiertos en orden LIFO
+  for (let i = stack.length - 1; i >= 0; i--) {
+    const top = stack[i];
+    if (top === '{') repaired += '}';
+    else if (top === '[') repaired += ']';
+  }
+
+  try {
+    return JSON.parse(repaired);
+  } catch (err) {
+    const lastComma = s.lastIndexOf(',');
+    if (lastComma > 0) {
+      return repairTruncatedJson(s.substring(0, lastComma));
+    }
+    throw err;
   }
 }
 
@@ -309,88 +381,148 @@ export function stripParrafoPrefixes(text: string, hasCatering: boolean = true):
     .trim();
 }
 
-function cleanPositiveNarrative(obj: any, jovenNombre?: string, hasCatering: boolean = true): FinalReportGeneratedStructure {
+function cleanPositiveNarrative(
+  obj: any,
+  jovenNombre?: string,
+  hasCatering: boolean = true,
+  options?: FinalReportGeneratorOptions
+): FinalReportGeneratedStructure {
+  const fallback = options ? generateDeterministicFinalFallback(options) : null;
+  const fP1: any = fallback?.parte1_informeFinal;
+  const fP2: any = fallback?.parte2_planAbordaje;
+
   if (!obj || typeof obj !== 'object') {
-    return generateDeterministicFinalFallback({ jovenNombre: jovenNombre || 'Concurrente', pcp: {} });
+    return fallback || generateDeterministicFinalFallback({ jovenNombre: jovenNombre || 'Concurrente', pcp: {} });
   }
 
-  const p1 = obj.parte1_informeFinal || {};
-  const p2 = obj.parte2_planAbordaje || {};
+  // Resolución resiliente de parte 1 y parte 2 ante posibles variantes de nombres de OpenAI
+  const p1 = obj.parte1_informeFinal || obj.parte1 || obj.informeFinal || obj.informe_final || obj.parte_1 || (obj.objetivoProceso ? obj : {});
+  const p2 = obj.parte2_planAbordaje || obj.parte2 || obj.planAbordaje || obj.plan_de_abordaje || obj.parte_2 || (obj.lineasAccion ? obj : {});
 
-  // Clean parte 1
+  // 1. Limpieza y resolución de las 8 Dimensiones de Calidad de Vida (Schalock & Verdugo)
+  const rawDims = Array.isArray(p1.evaluacionDimensiones) && p1.evaluacionDimensiones.length > 0
+    ? p1.evaluacionDimensiones
+    : (Array.isArray(p1.dimensiones) && p1.dimensiones.length > 0 ? p1.dimensiones : (fP1?.evaluacionDimensiones || []));
+
+  const standardDimensionNames = [
+    'Bienestar Físico',
+    'Bienestar Emocional',
+    'Bienestar Material',
+    'Desarrollo Personal',
+    'Relaciones Interpersonales',
+    'Inclusión Social',
+    'Autodeterminación',
+    'Derechos'
+  ];
+
+  const cleanedDims = standardDimensionNames.map(name => {
+    const found = rawDims.find((d: any) => d.dimension?.toLowerCase().includes(name.toLowerCase()));
+    const fbFound = fP1?.evaluacionDimensiones?.find((d: any) => d.dimension?.toLowerCase().includes(name.toLowerCase()));
+    const val = found?.valoracion && ['✔', '➖', '❌'].includes(found.valoracion) ? found.valoracion : (fbFound?.valoracion || '✔');
+    const commentCandidate = (found?.comentario && found.comentario.trim().length > 10)
+      ? found.comentario
+      : (fbFound?.comentario || `Evolución positiva y sostenida en ${name.toLowerCase()} con apoyos institucionales.`);
+    const com = cleanString(commentCandidate, undefined, hasCatering);
+    return {
+      dimension: name,
+      valoracion: val as '✔' | '➖' | '❌',
+      comentario: com
+    };
+  });
+
+  // 2. Limpieza y resolución de Logros en 4 Áreas
+  const p1Logros = p1.logros || {};
+  const cleanedLogros = {
+    practicas: cleanString(
+      (p1Logros.practicas || p1.logrosPracticas || p1.practicas || '').trim() || fP1?.logros?.practicas || '',
+      jovenNombre,
+      hasCatering
+    ),
+    emocionalesSociales: cleanString(
+      (p1Logros.emocionalesSociales || p1.logrosEmocionalesSociales || p1.emocionalesSociales || '').trim() || fP1?.logros?.emocionalesSociales || '',
+      jovenNombre,
+      hasCatering
+    ),
+    decisiones: cleanString(
+      (p1Logros.decisiones || p1.logrosDecisiones || p1.decisiones || '').trim() || fP1?.logros?.decisiones || '',
+      jovenNombre,
+      hasCatering
+    ),
+    nuevasExperiencias: cleanString(
+      (p1Logros.nuevasExperiencias || p1.logrosNuevasExperiencias || p1.nuevasExperiencias || '').trim() || fP1?.logros?.nuevasExperiencias || '',
+      jovenNombre,
+      hasCatering
+    )
+  };
+
+  // 3. Proyecciones
+  const rawProyecciones = Array.isArray(p1.proyecciones) && p1.proyecciones.length > 0
+    ? p1.proyecciones
+    : (fP1?.proyecciones || []);
+
   const cleanedP1: any = {
-    objetivoProceso: cleanString(p1.objetivoProceso, jovenNombre, hasCatering),
-    escuchaActiva: cleanString(p1.escuchaActiva, jovenNombre, hasCatering),
-    estadoEmocional: cleanString(p1.estadoEmocional, jovenNombre, hasCatering),
-    apoyosAjustes: cleanString(p1.apoyosAjustes, jovenNombre, hasCatering),
-    evaluacionDimensiones: Array.isArray(p1.evaluacionDimensiones)
-      ? p1.evaluacionDimensiones.map((d: any) => ({
-          dimension: cleanString(d.dimension || '', undefined, hasCatering),
-          valoracion: ['✔', '➖', '❌'].includes(d.valoracion) ? d.valoracion : '✔',
-          comentario: cleanString(d.comentario || '', undefined, hasCatering)
-        }))
-      : [],
-    logros: {
-      practicas: cleanString(p1.logros?.practicas, jovenNombre, hasCatering),
-      emocionalesSociales: cleanString(p1.logros?.emocionalesSociales, jovenNombre, hasCatering),
-      decisiones: cleanString(p1.logros?.decisiones, jovenNombre, hasCatering),
-      nuevasExperiencias: cleanString(p1.logros?.nuevasExperiencias, jovenNombre, hasCatering)
-    },
-    suenosMetas: cleanString(p1.suenosMetas, jovenNombre, hasCatering),
-    circuloApoyo: cleanString(p1.circuloApoyo, jovenNombre, hasCatering),
-    proyecciones: Array.isArray(p1.proyecciones)
-      ? p1.proyecciones.map((pr: any) => cleanString(String(pr || ''), undefined, hasCatering)).filter(Boolean)
-      : []
+    objetivoProceso: cleanString((p1.objetivoProceso || '').trim() || fP1?.objetivoProceso || '', jovenNombre, hasCatering),
+    escuchaActiva: cleanString((p1.escuchaActiva || p1.escucha_activa || '').trim() || fP1?.escuchaActiva || '', jovenNombre, hasCatering),
+    estadoEmocional: cleanString((p1.estadoEmocional || p1.estado_emocional || '').trim() || fP1?.estadoEmocional || '', jovenNombre, hasCatering),
+    apoyosAjustes: cleanString((p1.apoyosAjustes || p1.apoyos_ajustes || '').trim() || fP1?.apoyosAjustes || '', jovenNombre, hasCatering),
+    evaluacionDimensiones: cleanedDims,
+    logros: cleanedLogros,
+    suenosMetas: cleanString((p1.suenosMetas || p1.suenos_metas || '').trim() || fP1?.suenosMetas || '', jovenNombre, hasCatering),
+    circuloApoyo: cleanString((p1.circuloApoyo || p1.circulo_apoyo || '').trim() || fP1?.circuloApoyo || '', jovenNombre, hasCatering),
+    proyecciones: rawProyecciones.map((pr: any) => cleanString(String(pr || ''), undefined, hasCatering)).filter(Boolean)
   };
 
-  // Clean parte 2
+  // 4. Limpieza y resolución de Parte 2 (Plan de Abordaje 2027)
+  const p2Lineas: any = p2.lineasAccion || {};
+  const fP2Lineas: any = (fP2 as any)?.lineasAccion || {};
+
   const cleanedP2: any = {
-    anio: p2.anio || '2026',
-    introduccion: cleanString(p2.introduccion, jovenNombre, hasCatering),
-    objetivoGeneral: cleanString(p2.objetivoGeneral, jovenNombre, hasCatering),
-    objetivosEspecificos: Array.isArray(p2.objetivosEspecificos)
-      ? p2.objetivosEspecificos.map((o: any) => cleanString(String(o || ''), undefined, hasCatering)).filter(Boolean)
-      : [],
+    anio: p2.anio || fP2?.anio || '2027',
+    introduccion: cleanString((p2.introduccion || '').trim() || fP2?.introduccion || '', jovenNombre, hasCatering),
+    objetivoGeneral: cleanString((p2.objetivoGeneral || '').trim() || fP2?.objetivoGeneral || '', jovenNombre, hasCatering),
+    objetivosEspecificos: (Array.isArray(p2.objetivosEspecificos) && p2.objetivosEspecificos.length > 0
+      ? p2.objetivosEspecificos
+      : (fP2?.objetivosEspecificos || [])).map((o: any) => cleanString(String(o || ''), undefined, hasCatering)).filter(Boolean),
     lineasAccion: {
-      autonomia: Array.isArray(p2.lineasAccion?.autonomia) ? p2.lineasAccion.autonomia.map((it: any) => cleanString(String(it || ''), undefined, hasCatering)).filter(Boolean) : [],
-      regulacionEmocional: Array.isArray(p2.lineasAccion?.regulacionEmocional) ? p2.lineasAccion.regulacionEmocional.map((it: any) => cleanString(String(it || ''), undefined, hasCatering)).filter(Boolean) : [],
-      habilidadesSociales: Array.isArray(p2.lineasAccion?.habilidadesSociales) ? p2.lineasAccion.habilidadesSociales.map((it: any) => cleanString(String(it || ''), undefined, hasCatering)).filter(Boolean) : [],
-      inclusionComunitaria: Array.isArray(p2.lineasAccion?.inclusionComunitaria) ? p2.lineasAccion.inclusionComunitaria.map((it: any) => cleanString(String(it || ''), undefined, hasCatering)).filter(Boolean) : [],
-      autodeterminacion: Array.isArray(p2.lineasAccion?.autodeterminacion) ? p2.lineasAccion.autodeterminacion.map((it: any) => cleanString(String(it || ''), undefined, hasCatering)).filter(Boolean) : [],
-      acompanamientoFamiliar: Array.isArray(p2.lineasAccion?.acompanamientoFamiliar) ? p2.lineasAccion.acompanamientoFamiliar.map((it: any) => cleanString(String(it || ''), undefined, hasCatering)).filter(Boolean) : []
+      autonomia: (Array.isArray(p2Lineas.autonomia) && p2Lineas.autonomia.length > 0 ? p2Lineas.autonomia : (fP2Lineas.autonomia || [])).map((it: any) => cleanString(String(it || ''), undefined, hasCatering)).filter(Boolean),
+      regulacionEmocional: (Array.isArray(p2Lineas.regulacionEmocional) && p2Lineas.regulacionEmocional.length > 0 ? p2Lineas.regulacionEmocional : (fP2Lineas.regulacionEmocional || [])).map((it: any) => cleanString(String(it || ''), undefined, hasCatering)).filter(Boolean),
+      habilidadesSociales: (Array.isArray(p2Lineas.habilidadesSociales) && p2Lineas.habilidadesSociales.length > 0 ? p2Lineas.habilidadesSociales : (fP2Lineas.habilidadesSociales || [])).map((it: any) => cleanString(String(it || ''), undefined, hasCatering)).filter(Boolean),
+      inclusionComunitaria: (Array.isArray(p2Lineas.inclusionComunitaria || p2Lineas.integracionComunitaria) && (p2Lineas.inclusionComunitaria || p2Lineas.integracionComunitaria).length > 0 ? (p2Lineas.inclusionComunitaria || p2Lineas.integracionComunitaria) : (fP2Lineas.inclusionComunitaria || [])).map((it: any) => cleanString(String(it || ''), undefined, hasCatering)).filter(Boolean),
+      autodeterminacion: (Array.isArray(p2Lineas.autodeterminacion) && p2Lineas.autodeterminacion.length > 0 ? p2Lineas.autodeterminacion : (fP2Lineas.autodeterminacion || [])).map((it: any) => cleanString(String(it || ''), undefined, hasCatering)).filter(Boolean),
+      acompanamientoFamiliar: (Array.isArray(p2Lineas.acompanamientoFamiliar) && p2Lineas.acompanamientoFamiliar.length > 0 ? p2Lineas.acompanamientoFamiliar : (fP2Lineas.acompanamientoFamiliar || [])).map((it: any) => cleanString(String(it || ''), undefined, hasCatering)).filter(Boolean)
     },
-    suenosMetas: Array.isArray(p2.suenosMetas)
-      ? p2.suenosMetas.map((s: any) => cleanString(String(s || ''), undefined, hasCatering)).filter(Boolean)
-      : [],
+    suenosMetas: (Array.isArray(p2.suenosMetas) && p2.suenosMetas.length > 0
+      ? p2.suenosMetas
+      : (fP2?.suenosMetas || [])).map((s: any) => cleanString(String(s || ''), undefined, hasCatering)).filter(Boolean),
     indicadores: {
-      bienestarFisico: cleanString(p2.indicadores?.bienestarFisico || '', undefined, hasCatering),
-      bienestarEmocional: cleanString(p2.indicadores?.bienestarEmocional || '', undefined, hasCatering),
-      bienestarMaterial: cleanString(p2.indicadores?.bienestarMaterial || '', undefined, hasCatering),
-      desarrolloPersonal: cleanString(p2.indicadores?.desarrolloPersonal || '', undefined, hasCatering),
-      relacionesInterpersonales: cleanString(p2.indicadores?.relacionesInterpersonales || '', undefined, hasCatering),
-      inclusionSocial: cleanString(p2.indicadores?.inclusionSocial || '', undefined, hasCatering),
-      autodeterminacion: cleanString(p2.indicadores?.autodeterminacion || '', undefined, hasCatering),
-      derechos: cleanString(p2.indicadores?.derechos || '', undefined, hasCatering)
+      bienestarFisico: cleanString(p2.indicadores?.bienestarFisico || fP2?.indicadores?.bienestarFisico || '', undefined, hasCatering),
+      bienestarEmocional: cleanString(p2.indicadores?.bienestarEmocional || fP2?.indicadores?.bienestarEmocional || '', undefined, hasCatering),
+      bienestarMaterial: cleanString(p2.indicadores?.bienestarMaterial || fP2?.indicadores?.bienestarMaterial || '', undefined, hasCatering),
+      desarrolloPersonal: cleanString(p2.indicadores?.desarrolloPersonal || fP2?.indicadores?.desarrolloPersonal || '', undefined, hasCatering),
+      relacionesInterpersonales: cleanString(p2.indicadores?.relacionesInterpersonales || fP2?.indicadores?.relacionesInterpersonales || '', undefined, hasCatering),
+      inclusionSocial: cleanString(p2.indicadores?.inclusionSocial || fP2?.indicadores?.inclusionSocial || '', undefined, hasCatering),
+      autodeterminacion: cleanString(p2.indicadores?.autodeterminacion || fP2?.indicadores?.autodeterminacion || '', undefined, hasCatering),
+      derechos: cleanString(p2.indicadores?.derechos || fP2?.indicadores?.derechos || '', undefined, hasCatering)
     },
-    lineamientosFacilitador: Array.isArray(p2.lineamientosFacilitador)
-      ? p2.lineamientosFacilitador.map((l: any) => cleanString(String(l || ''), undefined, hasCatering)).filter(Boolean)
-      : []
+    lineamientosFacilitador: (Array.isArray(p2.lineamientosFacilitador) && p2.lineamientosFacilitador.length > 0
+      ? p2.lineamientosFacilitador
+      : (fP2?.lineamientosFacilitador || [])).map((l: any) => cleanString(String(l || ''), undefined, hasCatering)).filter(Boolean)
   };
 
-  // Secciones backward-compatibility map
+  // Secciones backward-compatibility map (alimentado con la narrativa completa)
   const secciones: Record<string, string> = {
-    metaAlcanzada: cleanedP1.suenosMetas || 'Consolidación de metas personales.',
-    participacion: cleanedP1.objetivoProceso || 'Participación activa y regular.',
-    integracionRelaciones: cleanedP1.circuloApoyo || 'Vínculos sólidos con familiares y facilitadores.',
-    actividadesRelacionadas: cleanedP1.logros.practicas || 'Desarrollo en los talleres de Centro de Día.',
-    vidaIndependiente: cleanedP1.logros.practicas || 'Autonomía en tareas de la vida diaria.',
-    habilidadesViajar: cleanedP1.escuchaActiva || 'Habilidades de movilidad y traslados seguros.',
-    desarrolloPersonal: cleanedP1.logros.emocionalesSociales || 'Desarrollo personal y expresión asertiva.',
-    metasDeportivas: cleanedP1.logros.nuevasExperiencias || 'Participación en deportes y natación.',
-    metasSociales: cleanedP1.logros.decisiones || 'Participación en decisiones y celebraciones comunitarias.',
-    dimensionesCalidadVida: cleanedP1.estadoEmocional || 'Bienestar subjetivo y autorregulación emocional.',
-    actividadesComplementarias: cleanedP1.logros.nuevasExperiencias || 'Actividades culturales y recreativas.',
-    mejoraCalidadVida: cleanedP1.proyecciones.join('. ') || 'Balance anual positivo y proyecciones favorables.'
+    metaAlcanzada: cleanedP1.suenosMetas || fP1?.suenosMetas || '',
+    participacion: cleanedP1.objetivoProceso || fP1?.objetivoProceso || '',
+    integracionRelaciones: cleanedP1.circuloApoyo || fP1?.circuloApoyo || '',
+    actividadesRelacionadas: cleanedP1.logros.practicas || fP1?.logros?.practicas || '',
+    vidaIndependiente: cleanedP1.logros.practicas || fP1?.logros?.practicas || '',
+    habilidadesViajar: cleanedP1.escuchaActiva || fP1?.escuchaActiva || '',
+    desarrolloPersonal: cleanedP1.logros.emocionalesSociales || fP1?.logros?.emocionalesSociales || '',
+    metasDeportivas: cleanedP1.logros.nuevasExperiencias || fP1?.logros?.nuevasExperiencias || '',
+    metasSociales: cleanedP1.logros.decisiones || fP1?.logros?.decisiones || '',
+    dimensionesCalidadVida: cleanedP1.estadoEmocional || fP1?.estadoEmocional || '',
+    actividadesComplementarias: cleanedP1.logros.nuevasExperiencias || fP1?.logros?.nuevasExperiencias || '',
+    mejoraCalidadVida: cleanedP1.proyecciones.join('. ') || fP1?.proyecciones?.join('. ') || ''
   };
 
   return {

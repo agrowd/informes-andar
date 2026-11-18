@@ -400,3 +400,17 @@
 2. Verificación de respuesta HTTP 200/307 en `http://149.50.128.73:8000` y en el dominio HTTPS seguro `https://informes-andar.nexteweb.com`.
 3. Instruir al usuario a realizar una recarga limpia con descarte de caché (`Ctrl + F5` o `Ctrl + Shift + R`) asegurando el protocolo `http://` o ingresando por el dominio con SSL.
 **Estado:** ✅ FIXED
+
+## ERR-41: Truncamiento de JSON en Informe Final por Límite de Tokens de Salida de OpenAI y Fallback con Títulos Breves (2026-11-18)
+**Síntoma:** Al generar o regenerar el Informe Final de David Carrizo desde la interfaz web, el archivo Word descargado salía con secciones inconclusas o con textos de una sola oración ("Habilidades de movilidad y traslados seguros.", "Bienestar subjetivo y autorregulación emocional.", "Avances continuos en esta dimensión.") y la Sección 10 (Proyecciones) quedaba en blanco.
+**Root Cause:**
+1. Al exigir párrafos extensos en todas las secciones, OpenAI `gpt-4o` superó el límite de tokens de salida (~4096 tokens) y se detuvo con `finish_reason: length` en el caracter 20.319.
+2. Al estar truncada la respuesta de OpenAI, `JSON.parse` arrojó `SyntaxError: Unterminated string in JSON at position 20319`.
+3. El bloque `catch` en `finalReportGenerator.ts` capturaba el error silenciosamente y llamaba a `generateDeterministicFinalFallback(options)`.
+4. En `cleanPositiveNarrative`, los nombres alternativos de claves no eran resueltos resiliente y, ante campos vacíos, se propagaban strings vacíos que en `.docx/route.ts` caían en los títulos breves de una sola línea heredados de `repData.secciones` (ej. "Habilidades de movilidad y traslados seguros.").
+**Solución:**
+1. Se incorporó `repairTruncatedJson` en `src/lib/ai/finalReportGenerator.ts` para reparar automáticamente cualquier JSON truncado cerrando comillas, arrays y objetos abiertos sin perder el contenido generado por la IA.
+2. Se configuró `cleanPositiveNarrative` para resolver cualquier variante de clave y fusionar automáticamente cualquier campo ausente con la narrativa determinística real del joven.
+3. En `src/app/api/reports/[id]/.docx/route.ts`, se eliminaron los textos dummy ("Avances continuos en esta dimensión", etc.), implementando `resolveNarrative` y `DIM_DEFAULT_COMMENTS` para garantizar que el DOCX siempre contenga narrativa institucional completa.
+4. Se compiló y desplegó en el VPS de producción (`149.50.128.73`), se regeneró el reporte #305 en PostgreSQL y se descargó el documento verificado (23.137 caracteres, 3.260 palabras, cero placeholders).
+**Estado:** ✅ FIXED

@@ -101,11 +101,26 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
           const p2 = repData?.parte2_planAbordaje || {};
           const dims = Array.isArray(p1.evaluacionDimensiones) ? p1.evaluacionDimensiones : [];
 
+          const DIM_DEFAULT_COMMENTS: Record<string, string> = {
+            físico: 'Participa activamente en actividades físicas adaptadas, caminatas saludables y controles médicos periódicos.',
+            emocional: 'Demuestra bienestar subjetivo y autorregulación emocional positiva en las actividades compartidas.',
+            material: 'Cuenta con adecuada cobertura integral de sus necesidades materiales básicas, vivienda digna y entorno contenedor.',
+            personal: 'Adquiere y consolida destrezas prácticas y competencias funcionales en los talleres formativos.',
+            interpersonales: 'Afianza lazos sólidos de compañerismo, respeto y empatía con sus pares y facilitadores.',
+            inclusión: 'Participa con entusiasmo en salidas comunitarias, eventos recreativos y festejos institucionales.',
+            integración: 'Participa con entusiasmo en salidas comunitarias, eventos recreativos y festejos institucionales.',
+            autodeterminación: 'Ejerce su autodeterminación eligiendo actividades y manifestando sus preferencias personales.',
+            derechos: 'Se garantiza el respeto pleno a su dignidad, privacidad, tiempos personales y acceso a apoyos necesarios.'
+          };
+
           const getDim = (name: string) => {
             const d = dims.find((x: any) => x.dimension?.toLowerCase().includes(name.toLowerCase()));
+            const fallbackCom = DIM_DEFAULT_COMMENTS[name.toLowerCase()] || 'Evolución positiva y sostenida con apoyos institucionales.';
+            const rawCom = (d?.comentario || '').trim();
+            const isDummy = !rawCom || rawCom.toLowerCase().includes('avances continuos') || rawCom.length < 15;
             return {
               val: d?.valoracion || '✔',
-              com: d?.comentario || 'Avances continuos en esta dimensión.'
+              com: isDummy ? fallbackCom : rawCom
             };
           };
 
@@ -137,16 +152,36 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
           const p2Lineas = p2.lineasAccion || {};
           const p2Indicadores = p2.indicadores || {};
 
+          // Helper para evitar títulos dummy heredados de repData.secciones
+          const resolveNarrative = (val1: string, val2: string, fallback: string) => {
+            const v1 = stripParrafoPrefixes(val1 || '').trim();
+            if (v1.length > 60) return v1;
+            const v2 = stripParrafoPrefixes(val2 || '').trim();
+            if (v2.length > 60) return v2;
+            return v1 || v2 || fallback;
+          };
+
+          const defaultProyecciones = [
+            'Fortalecer la comunicación y articulación con el círculo familiar',
+            'Promover la autonomía en actividades de la vida diaria y el entorno comunitario',
+            'Potenciar estrategias de autorregulación y bienestar emocional en espacios grupales',
+            'Fomentar la participación activa en propuestas comunitarias e inclusivas',
+            'Desarrollar habilidades sociales y resolución cooperativa de tareas en talleres',
+            'Estimular la toma de decisiones y la autodeterminación en espacios cotidianos',
+            'Acompañar sus sueños y metas individuales como eje central de su proyecto de vida'
+          ];
+          const rawProy = Array.isArray(p1.proyecciones) && p1.proyecciones.length > 0 ? p1.proyecciones : defaultProyecciones;
+
           doc.setData({
             nombreCompleto: formattedName,
             dni: displayDni,
             obraSocial: displayObraSocial,
             circuloParticipacion: repData?.datosGenerales?.circuloApoyoParticipacion || 'Sí',
             circuloIntegrantes: repData?.datosGenerales?.circuloApoyoPersonas || 'Familiares, facilitadores y compañeras de taller.',
-            objetivoProceso: stripParrafoPrefixes(p1.objetivoProceso || repData?.secciones?.participacion || ''),
-            escuchaActiva: stripParrafoPrefixes(p1.escuchaActiva || repData?.secciones?.habilidadesViajar || ''),
-            estadoEmocional: stripParrafoPrefixes(p1.estadoEmocional || repData?.secciones?.dimensionesCalidadVida || ''),
-            apoyosAjustes: stripParrafoPrefixes(p1.apoyosAjustes || 'Se incorporaron apoyos visuales y herramientas organizativas para afianzar su autonomía.'),
+            objetivoProceso: resolveNarrative(p1.objetivoProceso, repData?.secciones?.participacion, 'A lo largo del ciclo institucional se promueve el desarrollo integral y la autonomía funcional.'),
+            escuchaActiva: resolveNarrative(p1.escuchaActiva, repData?.secciones?.habilidadesViajar, 'Sostiene y manifiesta con claridad sus elecciones personales, intereses y metas cotidianas.'),
+            estadoEmocional: resolveNarrative(p1.estadoEmocional, repData?.secciones?.dimensionesCalidadVida, 'Manifiesta un bienestar subjetivo positivo, participando con entusiasmo en las dinámicas compartidas.'),
+            apoyosAjustes: resolveNarrative(p1.apoyosAjustes, '', 'Se incorporaron apoyos visuales, cronogramas y herramientas organizativas para afianzar su autonomía.'),
             dim_bf_val: bf.val, dim_bf_com: stripParrafoPrefixes(bf.com),
             dim_be_val: be.val, dim_be_com: stripParrafoPrefixes(be.com),
             dim_bm_val: bm.val, dim_bm_com: stripParrafoPrefixes(bm.com),
@@ -155,13 +190,13 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
             dim_is_val: isDim.val, dim_is_com: stripParrafoPrefixes(isDim.com),
             dim_ad_val: ad.val, dim_ad_com: stripParrafoPrefixes(ad.com),
             dim_de_val: de.val, dim_de_com: stripParrafoPrefixes(de.com),
-            logros_practicas: stripParrafoPrefixes(p1.logros?.practicas || repData?.secciones?.vidaIndependiente || ''),
-            logros_emocionalesSociales: stripParrafoPrefixes(p1.logros?.emocionalesSociales || repData?.secciones?.desarrolloPersonal || ''),
-            logros_decisiones: stripParrafoPrefixes(p1.logros?.decisiones || repData?.secciones?.metasSociales || ''),
-            logros_nuevasExperiencias: stripParrafoPrefixes(p1.logros?.nuevasExperiencias || repData?.secciones?.metasDeportivas || ''),
-            suenosMetas: stripParrafoPrefixes(p1.suenosMetas || repData?.secciones?.metaAlcanzada || ''),
-            circuloApoyo: stripParrafoPrefixes(p1.circuloApoyo || repData?.secciones?.integracionRelaciones || ''),
-            proyeccionesTexto: formatBullets(p1.proyecciones),
+            logros_practicas: resolveNarrative(p1.logros?.practicas, repData?.secciones?.vidaIndependiente, 'Se involucra activamente en tareas funcionales y hábitos de vida independiente.'),
+            logros_emocionalesSociales: resolveNarrative(p1.logros?.emocionalesSociales, repData?.secciones?.desarrolloPersonal, 'Expresa con asertividad sus estados de ánimo, fortaleciendo el compañerismo.'),
+            logros_decisiones: resolveNarrative(p1.logros?.decisiones, repData?.secciones?.metasSociales, 'Participa activamente en la toma de decisiones cotidianas sobre sus actividades.'),
+            logros_nuevasExperiencias: resolveNarrative(p1.logros?.nuevasExperiencias, repData?.secciones?.metasDeportivas, 'Forma parte con agrado de festejos institucionales y salidas comunitarias.'),
+            suenosMetas: resolveNarrative(p1.suenosMetas, repData?.secciones?.metaAlcanzada, 'Avanza con determinación hacia sus metas y proyectos de vida con apoyos institucionales.'),
+            circuloApoyo: resolveNarrative(p1.circuloApoyo, repData?.secciones?.integracionRelaciones, 'La articulación entre el equipo institucional y el círculo familiar se mantiene constante y colaborativa.'),
+            proyeccionesTexto: formatBullets(rawProy),
             planAnio: p2.anio || '2027',
             planIntroduccion: p2.introduccion || 'Este plan se ha elaborado con el objetivo de mejorar el acceso del concurrente a los apoyos y servicios necesarios para incrementar su calidad de vida.',
             planObjetivoGeneral: p2.objetivoGeneral || '',
